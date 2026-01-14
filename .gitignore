@@ -1,0 +1,79 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production builds
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/*
+!.vscode/extensions.json
+
+# Database files (SQLite)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+server/prisma/data/*.db
+server/prisma/data/*.db-journal
+
+# Backup files
+*.backup
+*backup*.json
+
+# OS files
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# IDE
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo
+
+# Next.js (if used later)
+.next/
+out/
+next-env.d.ts

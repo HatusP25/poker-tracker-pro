@@ -1,0 +1,123 @@
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Session } from '@/types';
+
+interface ProfitChartProps {
+  sessions: Session[];
+}
+
+interface ChartData {
+  date: string;
+  profit: number;
+  cumulative: number;
+}
+
+const ProfitChart = ({ sessions }: ProfitChartProps) => {
+  // Calculate cumulative profit over time
+  const chartData: ChartData[] = sessions
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .reduce((acc: ChartData[], session) => {
+      const profit = session.entries?.reduce((sum, entry) => {
+        return sum + (entry.cashOut - entry.buyIn);
+      }, 0) || 0;
+
+      const previousCumulative = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
+      const cumulative = previousCumulative + profit;
+
+      acc.push({
+        date: new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        profit,
+        cumulative,
+      });
+
+      return acc;
+    }, []);
+
+  const formatCurrency = (value: number) => {
+    return `$${value.toFixed(0)}`;
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-medium mb-1">{payload[0].payload.date}</p>
+          <p className="text-sm text-muted-foreground">
+            Session: <span className={payload[0].value >= 0 ? 'text-green-500' : 'text-red-500'}>
+              {payload[0].value >= 0 ? '+' : ''}{formatCurrency(payload[0].value)}
+            </span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Total: <span className={payload[1].value >= 0 ? 'text-green-500' : 'text-red-500'}>
+              {payload[1].value >= 0 ? '+' : ''}{formatCurrency(payload[1].value)}
+            </span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Profit Over Time</CardTitle>
+          <CardDescription>Cumulative profit and session results</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 flex items-center justify-center text-muted-foreground">
+            No session data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Profit Over Time</CardTitle>
+        <CardDescription>Cumulative profit and session results</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis
+              dataKey="date"
+              stroke="#9CA3AF"
+              style={{ fontSize: '12px' }}
+            />
+            <YAxis
+              stroke="#9CA3AF"
+              style={{ fontSize: '12px' }}
+              tickFormatter={formatCurrency}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={0} stroke="#6B7280" strokeDasharray="3 3" />
+            <Line
+              type="monotone"
+              dataKey="cumulative"
+              stroke="#10B981"
+              strokeWidth={2}
+              dot={{ fill: '#10B981', r: 4 }}
+              activeDot={{ r: 6 }}
+              name="Cumulative"
+            />
+            <Line
+              type="monotone"
+              dataKey="profit"
+              stroke="#3B82F6"
+              strokeWidth={2}
+              dot={{ fill: '#3B82F6', r: 3 }}
+              name="Session"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default ProfitChart;

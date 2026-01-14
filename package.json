@@ -1,0 +1,31 @@
+{
+  "name": "poker-tracker-pro",
+  "version": "1.0.0",
+  "description": "Full-featured poker tracking web application",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "db:migrate": "cd server && npm run db:migrate",
+    "db:seed": "cd server && npm run db:seed",
+    "db:studio": "cd server && npm run db:studio",
+    "db:generate": "cd server && npm run db:generate",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "poker",
+    "tracker",
+    "statistics",
+    "analytics"
+  ],
+  "author": "",
+  "license": "MIT"
+}
