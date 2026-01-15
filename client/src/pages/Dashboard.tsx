@@ -7,6 +7,8 @@ import { useGroupContext } from '@/context/GroupContext';
 import { useDashboardStats } from '@/hooks/useStats';
 import StatCardSkeleton from '@/components/skeletons/StatCardSkeleton';
 import CardSkeleton from '@/components/skeletons/CardSkeleton';
+import PlayerPerformanceChart from '@/components/dashboard/PlayerPerformanceChart';
+import PlayerStreaks from '@/components/dashboard/PlayerStreaks';
 
 const Dashboard = () => {
   const { selectedGroup } = useGroupContext();
@@ -227,6 +229,12 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Trends & Insights */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PlayerPerformanceChart groupId={selectedGroup.id} />
+        <PlayerStreaks groupId={selectedGroup.id} />
       </div>
 
       {/* Quick Actions */}

@@ -91,6 +91,35 @@ export const statsApi = {
     api.get(`/stats/sessions/${sessionId}/balance-check`, {
       params: { threshold },
     }),
+  getProfitTrend: (groupId: string, period?: 'daily' | 'weekly' | 'monthly') =>
+    api.get<{ date: string; profit: number; sessions: number }[]>(`/stats/groups/${groupId}/trends`, {
+      params: { period },
+    }),
+  getPlayerStreaks: (groupId: string) =>
+    api.get<{
+      playerId: string;
+      playerName: string;
+      currentStreak: number;
+      streakType: 'win' | 'loss' | 'none';
+      longestWinStreak: number;
+      longestLossStreak: number;
+    }[]>(`/stats/groups/${groupId}/streaks`),
+  getAggregatedStats: (groupId: string, year: number, month?: number) =>
+    api.get<{
+      period: string;
+      totalSessions: number;
+      totalPlayers: number;
+      totalPot: number;
+      avgSessionSize: number;
+    }>(`/stats/groups/${groupId}/aggregates`, {
+      params: { year, month },
+    }),
+  getPlayerPerformanceTrend: (playerId: string) =>
+    api.get<Array<{
+      date: string;
+      sessionProfit: number;
+      cumulativeProfit: number;
+    }>>(`/stats/players/${playerId}/performance-trend`),
 };
 
 // Backup
@@ -99,6 +128,29 @@ export const backupApi = {
   validate: (backup: any) => api.post('/backup/validate', backup),
   import: (backup: any, options: { mode: 'merge' | 'replace'; skipDuplicates: boolean }) =>
     api.post('/backup/import', { backup, options }),
+};
+
+// Templates
+export const templatesApi = {
+  getByGroup: (groupId: string) => api.get(`/templates/groups/${groupId}/templates`),
+  getById: (id: string) => api.get(`/templates/${id}`),
+  create: (data: {
+    groupId: string;
+    name: string;
+    location?: string;
+    defaultTime?: string;
+    playerIds: string[];
+  }) => api.post('/templates', data),
+  update: (
+    id: string,
+    data: {
+      name?: string;
+      location?: string;
+      defaultTime?: string;
+      playerIds?: string[];
+    }
+  ) => api.patch(`/templates/${id}`, data),
+  delete: (id: string) => api.delete(`/templates/${id}`),
 };
 
 export default api;

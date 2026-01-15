@@ -17,8 +17,9 @@ model Group {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  players  Player[]
-  sessions Session[]
+  players   Player[]
+  sessions  Session[]
+  templates SessionTemplate[]
 
   @@map("groups")
 }
@@ -100,4 +101,21 @@ model PlayerNote {
 
   @@index([playerId])
   @@map("player_notes")
+}
+
+// SessionTemplate - saved session configurations for quick entry
+model SessionTemplate {
+  id          String   @id @default(cuid())
+  groupId     String
+  name        String // e.g., "Thursday Night Poker"
+  location    String?
+  defaultTime String? // e.g., "19:30"
+  playerIds   String // JSON array of player IDs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("session_templates")
 }

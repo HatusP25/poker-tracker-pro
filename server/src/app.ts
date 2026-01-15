@@ -8,6 +8,7 @@ import playerRoutes from './routes/players';
 import sessionRoutes from './routes/sessions';
 import statsRoutes from './routes/stats';
 import backupRoutes from './routes/backup';
+import templateRoutes from './routes/templates';
 
 const app: Express = express();
 
@@ -31,6 +32,7 @@ app.use('/api/players', playerRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/templates', templateRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

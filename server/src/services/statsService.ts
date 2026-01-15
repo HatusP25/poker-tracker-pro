@@ -379,6 +379,216 @@ export class StatsService {
       threshold,
     };
   }
+
+  /**
+   * Get profit trend over time for a group
+   * Returns daily/weekly/monthly aggregated profit data
+   */
+  async getProfitTrend(
+    groupId: string,
+    period: 'daily' | 'weekly' | 'monthly' = 'daily'
+  ) {
+    const sessions = await prisma.session.findMany({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
+      include: {
+        entries: {
+          include: {
+            player: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+    // Group sessions by period
+    const groupedData: Record<string, { date: string; profit: number; sessions: number }> = {};
+
+    sessions.forEach((session) => {
+      let key: string;
+      const sessionDate = new Date(session.date);
+
+      if (period === 'daily') {
+        key = sessionDate.toISOString().split('T')[0];
+      } else if (period === 'weekly') {
+        // Get start of week (Sunday)
+        const weekStart = new Date(sessionDate);
+        weekStart.setDate(sessionDate.getDate() - sessionDate.getDay());
+        key = weekStart.toISOString().split('T')[0];
+      } else {
+        // Monthly
+        key = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      if (!groupedData[key]) {
+        groupedData[key] = { date: key, profit: 0, sessions: 0 };
+      }
+
+      // Calculate session net (should be 0 for balanced sessions, but track actual)
+      const totalCashOut = session.entries.reduce((sum, e) => sum + e.cashOut, 0);
+      const totalBuyIn = session.entries.reduce((sum, e) => sum + e.buyIn, 0);
+
+      groupedData[key].profit += round(totalCashOut - totalBuyIn);
+      groupedData[key].sessions += 1;
+    });
+
+    return Object.values(groupedData).map((d) => ({
+      date: d.date,
+      profit: d.profit,
+      sessions: d.sessions,
+    }));
+  }
+
+  /**
+   * Get player streaks (current win/loss streaks)
+   */
+  async getPlayerStreaks(groupId: string) {
+    const players = await prisma.player.findMany({
+      where: {
+        groupId,
+        isActive: true,
+      },
+      include: {
+        entries: {
+          include: {
+            session: true,
+          },
+          orderBy: {
+            session: {
+              date: 'desc',
+            },
+          },
+        },
+      },
+    });
+
+    return players.map((player) => {
+      const entries = player.entries;
+
+      if (entries.length === 0) {
+        return {
+          playerId: player.id,
+          playerName: player.name,
+          currentStreak: 0,
+          streakType: 'none' as const,
+          longestWinStreak: 0,
+          longestLossStreak: 0,
+        };
+      }
+
+      // Convert entries to the format expected by streak calculation functions
+      const sessionResults = entries.map((e) => ({
+        profit: calculateProfit(e.cashOut, e.buyIn), // Fixed: cashOut first, then buyIn
+        date: new Date(e.session.date),
+      }));
+
+      const streakInfo = calculateStreak(sessionResults);
+      const longestWinStreak = calculateLongestWinStreak(sessionResults);
+      const longestLossStreak = calculateLongestLossStreak(sessionResults);
+
+      return {
+        playerId: player.id,
+        playerName: player.name,
+        currentStreak: streakInfo.count,
+        streakType: streakInfo.type,
+        longestWinStreak,
+        longestLossStreak,
+      };
+    });
+  }
+
+  /**
+   * Get player performance trend (cumulative profit over time)
+   */
+  async getPlayerPerformanceTrend(playerId: string) {
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      include: {
+        entries: {
+          include: {
+            session: true,
+          },
+          orderBy: {
+            session: {
+              date: 'asc',
+            },
+          },
+        },
+      },
+    });
+
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    let cumulativeProfit = 0;
+    const performanceData = player.entries.map((entry) => {
+      const sessionProfit = calculateProfit(entry.cashOut, entry.buyIn);
+      cumulativeProfit += sessionProfit;
+
+      return {
+        date: new Date(entry.session.date).toISOString().split('T')[0],
+        sessionProfit: round(sessionProfit),
+        cumulativeProfit: round(cumulativeProfit),
+      };
+    });
+
+    return performanceData;
+  }
+
+  /**
+   * Get monthly aggregated stats for a year
+   */
+  async getAggregatedStats(groupId: string, year: number, month?: number) {
+    const startDate = month
+      ? new Date(year, month - 1, 1)
+      : new Date(year, 0, 1);
+
+    const endDate = month
+      ? new Date(year, month, 0, 23, 59, 59)
+      : new Date(year, 11, 31, 23, 59, 59);
+
+    const sessions = await prisma.session.findMany({
+      where: {
+        groupId,
+        deletedAt: null,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        entries: {
+          include: {
+            player: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+    const totalSessions = sessions.length;
+    const totalPlayers = new Set(sessions.flatMap((s) => s.entries.map((e) => e.playerId))).size;
+    const totalPot = sessions.reduce((sum, s) => {
+      return sum + s.entries.reduce((entrySum, e) => entrySum + e.buyIn, 0);
+    }, 0);
+
+    const avgSessionSize = totalSessions > 0 ? totalPot / totalSessions : 0;
+
+    return {
+      period: month ? `${year}-${String(month).padStart(2, '0')}` : `${year}`,
+      totalSessions,
+      totalPlayers,
+      totalPot: round(totalPot),
+      avgSessionSize: round(avgSessionSize),
+    };
+  }
 }
 
 export const statsService = new StatsService();

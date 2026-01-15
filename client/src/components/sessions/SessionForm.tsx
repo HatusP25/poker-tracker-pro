@@ -10,10 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
 import { useCreateSession } from '@/hooks/useSessions';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
+import { useCreateTemplate } from '@/hooks/useTemplates';
 import EntryRow from './EntryRow';
 import BalanceIndicator from './BalanceIndicator';
 import QuickEntryButtons from './QuickEntryButtons';
-import type { Player } from '@/types';
+import TemplateSelector from '@/components/templates/TemplateSelector';
+import SaveTemplateDialog from '@/components/templates/SaveTemplateDialog';
+import type { Player, SessionTemplate } from '@/types';
 
 const sessionSchema = z.object({
   date: z.string().refine((date) => {
@@ -50,9 +53,11 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess }: SessionFormProps) => 
   ]);
   const [activeEntryIndex, setActiveEntryIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
 
   const { data: players = [] } = usePlayersByGroup(groupId);
   const createSession = useCreateSession();
+  const createTemplate = useCreateTemplate();
 
   const {
     register,
@@ -113,6 +118,42 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess }: SessionFormProps) => 
   const totalBuyIn = entries.reduce((sum, e) => sum + (e.buyIn || 0), 0);
   const totalCashOut = entries.reduce((sum, e) => sum + (e.cashOut || 0), 0);
 
+  const handleLoadTemplate = (template: SessionTemplate) => {
+    const playerIds = JSON.parse(template.playerIds) as string[];
+
+    // Update form fields
+    if (template.location) {
+      reset({ ...control._formValues, location: template.location });
+    }
+    if (template.defaultTime) {
+      reset({ ...control._formValues, startTime: template.defaultTime });
+    }
+
+    // Update entries with template players
+    const newEntries: EntryState[] = playerIds.map((playerId, index) => ({
+      id: (index + 1).toString(),
+      playerId,
+      buyIn: defaultBuyIn,
+      cashOut: 0,
+    }));
+
+    setEntries(newEntries);
+    setError(null);
+  };
+
+  const handleSaveTemplate = (name: string) => {
+    const validEntries = entries.filter(e => e.playerId);
+    const formValues = control._formValues;
+
+    createTemplate.mutate({
+      groupId,
+      name,
+      location: formValues.location || undefined,
+      defaultTime: formValues.startTime || undefined,
+      playerIds: validEntries.map(e => e.playerId),
+    });
+  };
+
   const onSubmit = async (data: SessionFormData) => {
     setError(null);
 
@@ -169,6 +210,18 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess }: SessionFormProps) => 
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Template Selector */}
+      <TemplateSelector
+        groupId={groupId}
+        onLoadTemplate={handleLoadTemplate}
+        onSaveTemplate={() => setSaveTemplateDialogOpen(true)}
+        currentFormData={{
+          location: control._formValues.location,
+          startTime: control._formValues.startTime,
+          playerIds: entries.filter(e => e.playerId).map(e => e.playerId),
+        }}
+      />
+
       {/* Session Details */}
       <Card>
         <CardHeader>
@@ -299,6 +352,13 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess }: SessionFormProps) => 
           {createSession.isPending ? 'Creating Session...' : 'Create Session'}
         </Button>
       </div>
+
+      {/* Save Template Dialog */}
+      <SaveTemplateDialog
+        open={saveTemplateDialogOpen}
+        onOpenChange={setSaveTemplateDialogOpen}
+        onSave={handleSaveTemplate}
+      />
     </form>
   );
 };

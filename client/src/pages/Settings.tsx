@@ -2,16 +2,64 @@ import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Download, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Download, Upload, AlertCircle, CheckCircle2, Settings as SettingsIcon, Trash2 } from 'lucide-react';
 import { backupApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useGroupContext } from '@/context/GroupContext';
+import { useUpdateGroup, useDeleteGroup } from '@/hooks/useGroups';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Settings = () => {
+  const { selectedGroup, setSelectedGroup } = useGroupContext();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Group settings state
+  const [groupName, setGroupName] = useState(selectedGroup?.name || '');
+  const [defaultBuyIn, setDefaultBuyIn] = useState(selectedGroup?.defaultBuyIn.toString() || '5');
+  const [currency, setCurrency] = useState(selectedGroup?.currency || 'USD');
+
+  const updateGroup = useUpdateGroup();
+  const deleteGroup = useDeleteGroup();
+
+  const handleUpdateGroup = async () => {
+    if (!selectedGroup) return;
+
+    if (groupName.trim().length < 3) {
+      toast.error('Group name must be at least 3 characters');
+      return;
+    }
+
+    const buyInValue = parseFloat(defaultBuyIn);
+    if (isNaN(buyInValue) || buyInValue <= 0) {
+      toast.error('Default buy-in must be a positive number');
+      return;
+    }
+
+    updateGroup.mutate({
+      id: selectedGroup.id,
+      data: {
+        name: groupName.trim(),
+        defaultBuyIn: buyInValue,
+        currency: currency,
+      },
+    });
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!selectedGroup) return;
+
+    deleteGroup.mutate(selectedGroup.id, {
+      onSuccess: () => {
+        setSelectedGroup(null);
+      },
+    });
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -108,6 +156,151 @@ const Settings = () => {
           Manage your application settings and data
         </p>
       </div>
+
+      {/* Group Settings */}
+      {selectedGroup ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <SettingsIcon className="h-5 w-5" />
+              Group Settings
+            </CardTitle>
+            <CardDescription>
+              Manage settings for {selectedGroup.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Group Name */}
+            <div className="space-y-2">
+              <Label htmlFor="groupName">Group Name</Label>
+              <Input
+                id="groupName"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Enter group name"
+              />
+            </div>
+
+            {/* Default Buy-In */}
+            <div className="space-y-2">
+              <Label htmlFor="defaultBuyIn">Default Buy-In</Label>
+              <Input
+                id="defaultBuyIn"
+                type="number"
+                step="0.01"
+                min="0"
+                value={defaultBuyIn}
+                onChange={(e) => setDefaultBuyIn(e.target.value)}
+                placeholder="5.00"
+              />
+            </div>
+
+            {/* Currency */}
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger id="currency">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="GBP">GBP (£)</SelectItem>
+                  <SelectItem value="CAD">CAD ($)</SelectItem>
+                  <SelectItem value="AUD">AUD ($)</SelectItem>
+                  <SelectItem value="BRL">BRL (R$)</SelectItem>
+                  <SelectItem value="MXN">MXN ($)</SelectItem>
+                  <SelectItem value="ARS">ARS ($)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Summary */}
+            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Players</span>
+                <span className="font-medium">{selectedGroup._count?.players || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Sessions</span>
+                <span className="font-medium">{selectedGroup._count?.sessions || 0}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-4">
+              <Button
+                onClick={handleUpdateGroup}
+                disabled={updateGroup.isPending}
+              >
+                {updateGroup.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setGroupName(selectedGroup.name);
+                  setDefaultBuyIn(selectedGroup.defaultBuyIn.toString());
+                  setCurrency(selectedGroup.currency);
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="border-t pt-6">
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Irreversible actions that will permanently delete data
+                  </p>
+                </div>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Group
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the group
+                        <strong> "{selectedGroup.name}"</strong> and all associated data:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>{selectedGroup._count?.players || 0} players</li>
+                          <li>{selectedGroup._count?.sessions || 0} sessions</li>
+                          <li>All session entries and statistics</li>
+                        </ul>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteGroup}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteGroup.isPending ? 'Deleting...' : 'Delete Group'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">
+              Please select a group to manage its settings
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Backup & Restore */}
       <Card>

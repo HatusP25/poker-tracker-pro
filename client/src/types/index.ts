@@ -120,3 +120,14 @@ export interface DashboardStats {
     totalPot: number;
   }>;
 }
+
+export interface SessionTemplate {
+  id: string;
+  groupId: string;
+  name: string;
+  location: string | null;
+  defaultTime: string | null;
+  playerIds: string; // JSON string array
+  createdAt: string;
+  updatedAt: string;
+}
