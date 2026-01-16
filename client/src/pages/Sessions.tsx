@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Plus, Download, Upload, Filter } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import { useSessionsByGroup, useCreateSession } from '@/hooks/useSessions';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import SessionCard from '@/components/sessions/SessionCard';
@@ -15,6 +16,7 @@ import SessionCardSkeleton from '@/components/skeletons/SessionCardSkeleton';
 
 const Sessions = () => {
   const { selectedGroup } = useGroupContext();
+  const { canEdit } = useRole();
   const navigate = useNavigate();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -134,20 +136,24 @@ const Sessions = () => {
             <Filter className="h-4 w-4 mr-2" />
             {showFilters ? 'Hide' : 'Show'} Filters
           </Button>
-          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+          )}
           {sessions && sessions.length > 0 && (
             <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
           )}
-          <Button onClick={() => navigate('/entry')}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Session
-          </Button>
+          {canEdit && (
+            <Button onClick={() => navigate('/entry')}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Session
+            </Button>
+          )}
         </div>
       </div>
 
@@ -173,14 +179,18 @@ const Sessions = () => {
         <Card>
           <CardHeader>
             <CardTitle>No Sessions Yet</CardTitle>
-            <CardDescription>Get started by creating your first poker session</CardDescription>
+            <CardDescription>
+              {canEdit ? 'Get started by creating your first poker session' : 'No sessions have been created yet'}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={() => navigate('/entry')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Session
-            </Button>
-          </CardContent>
+          {canEdit && (
+            <CardContent>
+              <Button onClick={() => navigate('/entry')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Session
+              </Button>
+            </CardContent>
+          )}
         </Card>
       ) : filteredSessions.length === 0 ? (
         <Card>

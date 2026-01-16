@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
 import { GroupProvider } from '@/context/GroupContext';
+import { RoleProvider } from '@/context/RoleContext';
 import AppLayout from '@/components/layout/AppLayout';
 import GroupSelection from '@/pages/GroupSelection';
 import Dashboard from '@/pages/Dashboard';
@@ -32,32 +33,34 @@ const queryClient = new QueryClient({
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <GroupProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Group selection (no layout) */}
-            <Route path="/groups" element={<GroupSelection />} />
+      <RoleProvider>
+        <GroupProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Group selection (no layout) */}
+              <Route path="/groups" element={<GroupSelection />} />
 
-            {/* Main app with layout */}
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/entry" element={<DataEntry />} />
-              <Route path="/sessions" element={<Sessions />} />
-              <Route path="/sessions/:id" element={<SessionDetail />} />
-              <Route path="/players" element={<Players />} />
-              <Route path="/players/:id" element={<PlayerDetail />} />
-              <Route path="/rankings" element={<Rankings />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/live/start" element={<LiveSessionStart />} />
-              <Route path="/live/:sessionId" element={<LiveSessionView />} />
-              <Route path="/live/:sessionId/settlement" element={<SettlementView />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-        <Toaster theme="dark" position="top-right" richColors />
-        <ReactQueryDevtools initialIsOpen={false} />
-      </GroupProvider>
+              {/* Main app with layout */}
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/entry" element={<DataEntry />} />
+                <Route path="/sessions" element={<Sessions />} />
+                <Route path="/sessions/:id" element={<SessionDetail />} />
+                <Route path="/players" element={<Players />} />
+                <Route path="/players/:id" element={<PlayerDetail />} />
+                <Route path="/rankings" element={<Rankings />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/live/start" element={<LiveSessionStart />} />
+                <Route path="/live/:sessionId" element={<LiveSessionView />} />
+                <Route path="/live/:sessionId/settlement" element={<SettlementView />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+          <Toaster theme="dark" position="top-right" richColors />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </GroupProvider>
+      </RoleProvider>
     </QueryClientProvider>
   );
 };

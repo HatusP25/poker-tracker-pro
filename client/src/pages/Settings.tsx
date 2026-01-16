@@ -3,16 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Download, Upload, AlertCircle, CheckCircle2, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { Download, Upload, AlertCircle, CheckCircle2, Settings as SettingsIcon, Trash2, Eye, Edit3 } from 'lucide-react';
 import { backupApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import { useUpdateGroup, useDeleteGroup } from '@/hooks/useGroups';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Settings = () => {
   const { selectedGroup, setSelectedGroup } = useGroupContext();
+  const { role, setRole, canEdit } = useRole();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
@@ -156,6 +158,78 @@ const Settings = () => {
           Manage your application settings and data
         </p>
       </div>
+
+      {/* User Role Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            User Role
+          </CardTitle>
+          <CardDescription>
+            Control what you can do in the application
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="userRole">Current Role</Label>
+            <Select value={role} onValueChange={(value) => setRole(value as 'VIEWER' | 'EDITOR')}>
+              <SelectTrigger id="userRole">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="VIEWER">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Viewer</div>
+                      <div className="text-xs text-muted-foreground">Read-only access</div>
+                    </div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="EDITOR">
+                  <div className="flex items-center gap-2">
+                    <Edit3 className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Editor</div>
+                      <div className="text-xs text-muted-foreground">Can create and modify data</div>
+                    </div>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="rounded-lg bg-muted p-4 text-sm">
+            {role === 'VIEWER' ? (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 text-blue-500" />
+                  <div>
+                    <p className="font-medium">Viewer Mode Active</p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      You can view all data but cannot create, edit, or delete anything.
+                      Perfect for sharing your poker stats without risking accidental changes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500" />
+                  <div>
+                    <p className="font-medium">Editor Mode Active</p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      Full access to create sessions, manage players, and modify all data.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Group Settings */}
       {selectedGroup ? (

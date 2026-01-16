@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { useStartLiveSession } from '@/hooks/useLiveSessions';
-import { Play } from 'lucide-react';
+import { Play, Eye } from 'lucide-react';
 
 const LiveSessionStart = () => {
   const { selectedGroup } = useGroupContext();
+  const { canEdit } = useRole();
   const navigate = useNavigate();
   const { data: players = [] } = usePlayersByGroup(selectedGroup?.id || '');
   const startSession = useStartLiveSession();
@@ -27,6 +29,41 @@ const LiveSessionStart = () => {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Please select a group first.</p>
+      </div>
+    );
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Start Live Session</h1>
+          <p className="text-muted-foreground">View-only access</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-muted-foreground" />
+              Viewer Mode
+            </CardTitle>
+            <CardDescription>
+              You are in viewer mode and cannot start live sessions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              To start live sessions, switch to Editor role in Settings or ask an administrator for permission.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/sessions')}>
+                View Sessions
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/settings')}>
+                Go to Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

@@ -8,9 +8,10 @@ interface PlayerTableProps {
   players: Player[];
   onEdit: (player: Player) => void;
   onDelete: (player: Player) => void;
+  canEdit?: boolean;
 }
 
-const PlayerTable = ({ players, onEdit, onDelete }: PlayerTableProps) => {
+const PlayerTable = ({ players, onEdit, onDelete, canEdit = true }: PlayerTableProps) => {
   const toggleActive = useTogglePlayerActive();
 
   const handleToggleActive = async (player: Player) => {
@@ -58,22 +59,26 @@ const PlayerTable = ({ players, onEdit, onDelete }: PlayerTableProps) => {
               </div>
             </TableCell>
             <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleToggleActive(player)}
-                  disabled={toggleActive.isPending}
-                >
-                  {player.isActive ? 'Deactivate' : 'Activate'}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onEdit(player)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onDelete(player)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
+              {canEdit ? (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleActive(player)}
+                    disabled={toggleActive.isPending}
+                  >
+                    {player.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(player)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => onDelete(player)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">View only</span>
+              )}
             </TableCell>
           </TableRow>
         ))}

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Filter } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { usePlayerStats } from '@/hooks/useStats';
 import PlayerTable from '@/components/players/PlayerTable';
@@ -16,6 +17,7 @@ import type { Player } from '@/types';
 
 const Players = () => {
   const { selectedGroup } = useGroupContext();
+  const { canEdit } = useRole();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -113,10 +115,12 @@ const Players = () => {
             <Filter className="h-4 w-4 mr-2" />
             {showFilters ? 'Hide' : 'Show'} Filters
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Player
-          </Button>
+          {canEdit && (
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Player
+            </Button>
+          )}
         </div>
       </div>
 
@@ -151,6 +155,7 @@ const Players = () => {
               players={filteredPlayers || []}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              canEdit={canEdit}
             />
           )}
         </CardContent>

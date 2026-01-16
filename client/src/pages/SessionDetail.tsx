@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw } from 'lucide-react';
+import { useRole } from '@/context/RoleContext';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
 import BalanceIndicator from '@/components/sessions/BalanceIndicator';
 import { parseLocalDate } from '@/lib/dateUtils';
@@ -22,6 +23,7 @@ import { parseLocalDate } from '@/lib/dateUtils';
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { canEdit } = useRole();
   const { data: session, isLoading } = useSession(id || '');
   const deleteSession = useDeleteSession();
   const restoreSession = useRestoreSession();
@@ -94,27 +96,29 @@ const SessionDetail = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Sessions
         </Button>
-        <div className="flex gap-2">
-          {isDeleted ? (
-            <Button
-              variant="outline"
-              onClick={handleRestore}
-              disabled={restoreSession.isPending}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              {restoreSession.isPending ? 'Restoring...' : 'Restore Session'}
-            </Button>
-          ) : (
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={deleteSession.isPending}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {deleteSession.isPending ? 'Deleting...' : 'Move to Trash'}
-            </Button>
-          )}
-        </div>
+        {canEdit && (
+          <div className="flex gap-2">
+            {isDeleted ? (
+              <Button
+                variant="outline"
+                onClick={handleRestore}
+                disabled={restoreSession.isPending}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                {restoreSession.isPending ? 'Restoring...' : 'Restore Session'}
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={deleteSession.isPending}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {deleteSession.isPending ? 'Deleting...' : 'Move to Trash'}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {isDeleted && (

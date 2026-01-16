@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "groups" ADD COLUMN "userRole" TEXT NOT NULL DEFAULT 'EDITOR';

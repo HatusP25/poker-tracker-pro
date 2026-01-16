@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import SessionForm from '@/components/sessions/SessionForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, FileText } from 'lucide-react';
+import { Play, FileText, Eye } from 'lucide-react';
 
 const DataEntry = () => {
   const { selectedGroup } = useGroupContext();
+  const { canEdit } = useRole();
   const navigate = useNavigate();
 
   const handleSuccess = () => {
@@ -18,6 +20,41 @@ const DataEntry = () => {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Please select a group first.</p>
+      </div>
+    );
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">New Session</h1>
+          <p className="text-muted-foreground">View-only access</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-muted-foreground" />
+              Viewer Mode
+            </CardTitle>
+            <CardDescription>
+              You are in viewer mode and cannot create or edit sessions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              To create sessions, switch to Editor role in Settings or ask an administrator for permission.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/sessions')}>
+                View Sessions
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/settings')}>
+                Go to Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
