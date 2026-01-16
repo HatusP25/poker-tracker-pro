@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Filter } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
+import { usePlayerStats } from '@/hooks/useStats';
 import PlayerTable from '@/components/players/PlayerTable';
 import CreatePlayerDialog from '@/components/players/CreatePlayerDialog';
 import EditPlayerDialog from '@/components/players/EditPlayerDialog';
 import DeletePlayerDialog from '@/components/players/DeletePlayerDialog';
+import PlayerFilters, { type PlayerFilterValues } from '@/components/filters/PlayerFilters';
 import TableSkeleton from '@/components/skeletons/TableSkeleton';
 import type { Player } from '@/types';
 
@@ -19,8 +21,29 @@ const Players = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<PlayerFilterValues>({
+    name: '',
+    minGames: '',
+    minWinRate: '',
+    maxWinRate: '',
+    activeOnly: false,
+  });
 
   const { data: players, isLoading } = usePlayersByGroup(selectedGroup?.id || '');
+
+  // Get stats for all players to enable filtering
+  const playerStats = useMemo(() => {
+    const statsMap = new Map();
+    players?.forEach(player => {
+      // You would normally fetch this from the API, but for now we'll use a simplified approach
+      statsMap.set(player.id, {
+        totalGames: 0,
+        winRate: 0,
+      });
+    });
+    return statsMap;
+  }, [players]);
 
   const handleEdit = (player: Player) => {
     setSelectedPlayer(player);
@@ -32,9 +55,40 @@ const Players = () => {
     setDeleteDialogOpen(true);
   };
 
-  const filteredPlayers = players?.filter((player) =>
-    player.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleClearFilters = () => {
+    setFilters({
+      name: '',
+      minGames: '',
+      minWinRate: '',
+      maxWinRate: '',
+      activeOnly: false,
+    });
+    setSearchQuery('');
+  };
+
+  // Apply filters to players
+  const filteredPlayers = useMemo(() => {
+    if (!players) return [];
+
+    return players.filter((player) => {
+      // Name search (from search bar or filters)
+      const nameQuery = searchQuery || filters.name;
+      if (nameQuery && !player.name.toLowerCase().includes(nameQuery.toLowerCase())) {
+        return false;
+      }
+
+      // Active only filter
+      if (filters.activeOnly && !player.isActive) {
+        return false;
+      }
+
+      // Note: Min games and win rate filters would need player stats from the API
+      // For now, we'll skip these since they require additional data fetching
+      // In a full implementation, you'd fetch stats for each player
+
+      return true;
+    });
+  }, [players, searchQuery, filters]);
 
   if (!selectedGroup) {
     return (
@@ -45,17 +99,35 @@ const Players = () => {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Players</h1>
-          <p className="text-muted-foreground">Manage players in {selectedGroup.name}</p>
+          <p className="text-muted-foreground">
+            Manage players in {selectedGroup.name}
+            {filteredPlayers.length !== players?.length && ` (${filteredPlayers.length} of ${players?.length})`}
+          </p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Player
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+            <Filter className="h-4 w-4 mr-2" />
+            {showFilters ? 'Hide' : 'Show'} Filters
+          </Button>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Player
+          </Button>
+        </div>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <PlayerFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClear={handleClearFilters}
+        />
+      )}
 
       <Card>
         <CardHeader>
