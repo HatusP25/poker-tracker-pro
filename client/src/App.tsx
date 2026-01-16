@@ -14,6 +14,9 @@ import PlayerDetail from '@/pages/PlayerDetail';
 import Rankings from '@/pages/Rankings';
 import Analytics from '@/pages/Analytics';
 import Settings from '@/pages/Settings';
+import LiveSessionStart from '@/pages/LiveSessionStart';
+import LiveSessionView from '@/pages/LiveSessionView';
+import SettlementView from '@/pages/SettlementView';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -46,6 +49,9 @@ const App = () => {
               <Route path="/rankings" element={<Rankings />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/live/start" element={<LiveSessionStart />} />
+              <Route path="/live/:sessionId" element={<LiveSessionView />} />
+              <Route path="/live/:sessionId/settlement" element={<SettlementView />} />
             </Route>
           </Routes>
         </BrowserRouter>

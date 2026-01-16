@@ -46,22 +46,25 @@ model Player {
 
 // Session - represents a poker night/game
 model Session {
-  id        String    @id @default(cuid())
-  groupId   String
-  date      DateTime
-  startTime String? // e.g., "19:30"
-  endTime   String? // e.g., "23:45"
-  location  String?
-  notes     String?
-  photoUrls String? // JSON array of URLs
-  deletedAt DateTime? // Soft delete timestamp
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  groupId     String
+  date        DateTime
+  startTime   String? // e.g., "19:30"
+  endTime     String? // e.g., "23:45"
+  location    String?
+  notes       String?
+  photoUrls   String? // JSON array of URLs
+  status      String    @default("COMPLETED") // "IN_PROGRESS" | "COMPLETED"
+  settlements String? // JSON array: [{ from, to, amount }]
+  deletedAt   DateTime? // Soft delete timestamp
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   group   Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
   entries SessionEntry[]
 
   @@index([groupId, date])
+  @@index([groupId, status])
   @@map("sessions")
 }
 

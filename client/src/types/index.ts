@@ -34,10 +34,13 @@ export interface Session {
   location: string | null;
   notes: string | null;
   photoUrls: string | null;
+  status?: string; // "IN_PROGRESS" | "COMPLETED"
+  settlements?: string | null; // JSON string
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
   entries?: SessionEntry[];
+  group?: Group;
 }
 
 export interface SessionEntry {
@@ -130,4 +133,10 @@ export interface SessionTemplate {
   playerIds: string; // JSON string array
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Settlement {
+  from: string; // Player name
+  to: string; // Player name
+  amount: number;
 }

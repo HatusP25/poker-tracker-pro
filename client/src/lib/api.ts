@@ -153,4 +153,24 @@ export const templatesApi = {
   delete: (id: string) => api.delete(`/templates/${id}`),
 };
 
+// Live Sessions
+export const liveSessionsApi = {
+  start: (data: {
+    groupId: string;
+    date: string;
+    startTime: string;
+    location?: string;
+    players: Array<{ playerId: string; buyIn: number }>;
+  }) => api.post('/live-sessions/start', data),
+  get: (sessionId: string) => api.get(`/live-sessions/${sessionId}`),
+  addRebuy: (sessionId: string, data: { playerId: string; amount: number }) =>
+    api.post(`/live-sessions/${sessionId}/rebuy`, data),
+  addPlayer: (sessionId: string, data: { playerId: string; buyIn: number }) =>
+    api.post(`/live-sessions/${sessionId}/add-player`, data),
+  end: (sessionId: string, data: { endTime: string; cashOuts: Array<{ playerId: string; cashOut: number }> }) =>
+    api.post(`/live-sessions/${sessionId}/end`, data),
+  reopen: (sessionId: string) => api.post(`/live-sessions/${sessionId}/reopen`, {}),
+  getActive: (groupId: string) => api.get(`/live-sessions/groups/${groupId}/active`),
+};
+
 export default api;

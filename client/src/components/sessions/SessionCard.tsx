@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, MapPin, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
 interface SessionCardProps {
@@ -22,7 +23,8 @@ const SessionCard = ({ session, onClick }: SessionCardProps) => {
 
   const winnerProfit = winner ? winner.cashOut - winner.buyIn : 0;
 
-  const formattedDate = format(new Date(session.date), 'MMM dd, yyyy');
+  // Parse date as local date to avoid timezone issues
+  const formattedDate = format(parseLocalDate(session.date), 'MMM dd, yyyy');
   const formattedTime = session.startTime
     ? `${session.startTime}${session.endTime ? ` - ${session.endTime}` : ''}`
     : null;

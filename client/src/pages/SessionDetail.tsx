@@ -17,6 +17,7 @@ import {
 import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw } from 'lucide-react';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
 import BalanceIndicator from '@/components/sessions/BalanceIndicator';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -62,7 +63,8 @@ const SessionDetail = () => {
     );
   }
 
-  const formattedDate = format(new Date(session.date), 'MMMM dd, yyyy');
+  // Parse date as local date to avoid timezone issues
+  const formattedDate = format(parseLocalDate(session.date), 'MMMM dd, yyyy');
   const totalBuyIn = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
   const totalCashOut = session.entries?.reduce((sum, e) => sum + e.cashOut, 0) || 0;
 
