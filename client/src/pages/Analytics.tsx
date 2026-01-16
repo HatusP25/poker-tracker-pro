@@ -4,11 +4,12 @@ import { useSessionsByGroup } from '@/hooks/useSessions';
 import { useLeaderboard } from '@/hooks/useStats';
 import DateRangeSelector, { type DateRange } from '@/components/analytics/DateRangeSelector';
 import ProfitChart from '@/components/analytics/ProfitChart';
-import SessionsChart from '@/components/analytics/SessionsChart';
 import PlayerComparisonChart from '@/components/analytics/PlayerComparisonChart';
-import WinRateDistributionChart from '@/components/analytics/WinRateDistributionChart';
-import DayOfWeekChart from '@/components/analytics/DayOfWeekChart';
+import SessionSizeChart from '@/components/analytics/SessionSizeChart';
+import RecentActivity from '@/components/analytics/RecentActivity';
+import TopPerformances from '@/components/analytics/TopPerformances';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TrendingUp, Users, DollarSign, Trophy } from 'lucide-react';
 
 const Analytics = () => {
   const { selectedGroup } = useGroupContext();
@@ -44,30 +45,50 @@ const Analytics = () => {
   const stats = useMemo(() => {
     if (!filteredSessions || filteredSessions.length === 0) {
       return {
-        totalProfit: 0,
         totalSessions: 0,
-        avgProfitPerSession: 0,
-        winRate: 0,
+        totalPlayers: 0,
+        avgPotSize: 0,
+        avgPlayersPerSession: 0,
+        mostActivePlayer: 'N/A',
+        biggestWin: 0,
       };
     }
 
-    let totalProfit = 0;
-    let winningSessions = 0;
+    let totalPot = 0;
+    let totalPlayers = 0;
+    const playerParticipation: Record<string, number> = {};
+    let biggestWin = 0;
 
     filteredSessions.forEach(session => {
-      const profit = session.entries?.reduce((sum, entry) => {
-        return sum + (entry.cashOut - entry.buyIn);
-      }, 0) || 0;
+      const sessionPot = session.entries?.reduce((sum, entry) => sum + entry.buyIn, 0) || 0;
+      totalPot += sessionPot;
+      totalPlayers += session.entries?.length || 0;
 
-      totalProfit += profit;
-      if (profit > 0) winningSessions++;
+      // Track player participation
+      session.entries?.forEach(entry => {
+        if (entry.player) {
+          playerParticipation[entry.player.name] = (playerParticipation[entry.player.name] || 0) + 1;
+
+          // Track biggest win
+          const profit = entry.cashOut - entry.buyIn;
+          if (profit > biggestWin) {
+            biggestWin = profit;
+          }
+        }
+      });
     });
 
+    // Find most active player
+    const mostActivePlayer = Object.entries(playerParticipation)
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'N/A';
+
     return {
-      totalProfit,
       totalSessions: filteredSessions.length,
-      avgProfitPerSession: totalProfit / filteredSessions.length,
-      winRate: (winningSessions / filteredSessions.length) * 100,
+      totalPlayers: Object.keys(playerParticipation).length,
+      avgPotSize: totalPot / filteredSessions.length,
+      avgPlayersPerSession: totalPlayers / filteredSessions.length,
+      mostActivePlayer,
+      biggestWin,
     };
   }, [filteredSessions]);
 
@@ -104,67 +125,69 @@ const Analytics = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.totalProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {stats.totalProfit >= 0 ? '+' : ''}${stats.totalProfit.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.totalSessions} session{stats.totalSessions !== 1 ? 's' : ''}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg per Session</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.avgProfitPerSession >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {stats.avgProfitPerSession >= 0 ? '+' : ''}${stats.avgProfitPerSession.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">Per session average</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">Winning sessions</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalSessions}</div>
             <p className="text-xs text-muted-foreground">In selected range</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Players</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalPlayers}</div>
+            <p className="text-xs text-muted-foreground">
+              Avg {stats.avgPlayersPerSession.toFixed(1)} per session
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Pot Size</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.avgPotSize.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Per session</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Biggest Win</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              +${stats.biggestWin.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">Single session</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Top Performances */}
+      <TopPerformances sessions={filteredSessions} />
+
+      {/* Charts Row 1 - Player Comparison and Session Size */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {leaderboard && leaderboard.length > 0 && (
+          <PlayerComparisonChart players={leaderboard} />
+        )}
+        <SessionSizeChart sessions={filteredSessions} />
+      </div>
+
+      {/* Charts Row 2 - Cumulative Profit and Recent Activity */}
       <div className="grid gap-6 lg:grid-cols-2">
         <ProfitChart sessions={filteredSessions} />
-        <SessionsChart sessions={filteredSessions} />
+        <RecentActivity sessions={filteredSessions} />
       </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <WinRateDistributionChart sessions={filteredSessions} />
-        <DayOfWeekChart sessions={filteredSessions} />
-      </div>
-
-      {/* Charts Row 3 */}
-      {leaderboard && leaderboard.length > 0 && (
-        <PlayerComparisonChart players={leaderboard} />
-      )}
 
       {filteredSessions.length === 0 && (
         <Card>

@@ -28,7 +28,7 @@ const PlayerSessionHistoryChart = ({ sessions, playerId }: PlayerSessionHistoryC
     });
 
   const formatCurrency = (value: number) => {
-    return `$${Math.abs(value).toFixed(0)}`;
+    return `$${value.toFixed(0)}`;
   };
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -44,7 +44,7 @@ const PlayerSessionHistoryChart = ({ sessions, playerId }: PlayerSessionHistoryC
             Cash-out: <span className="font-medium text-foreground">${data.cashOut.toFixed(2)}</span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Profit: <span className={data.profit >= 0 ? 'text-green-500' : 'text-red-500'}>
+            {data.profit >= 0 ? 'Profit:' : 'Loss:'} <span className={data.profit >= 0 ? 'text-green-500' : 'text-red-500'}>
               {data.profit >= 0 ? '+' : ''}{formatCurrency(data.profit)}
             </span>
           </p>
@@ -89,6 +89,7 @@ const PlayerSessionHistoryChart = ({ sessions, playerId }: PlayerSessionHistoryC
               stroke="#9CA3AF"
               style={{ fontSize: '12px' }}
               tickFormatter={formatCurrency}
+              domain={[(dataMin: number) => Math.min(dataMin, 0), (dataMax: number) => Math.max(dataMax, 0)]}
             />
             <Tooltip content={<CustomTooltip />} />
             <ReferenceLine y={0} stroke="#6B7280" strokeDasharray="3 3" />
