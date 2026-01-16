@@ -124,7 +124,7 @@ export const statsApi = {
 
 // Backup
 export const backupApi = {
-  export: () => api.get('/backup/export', { responseType: 'blob' }),
+  export: () => api.get('/backup/export'),
   validate: (backup: any) => api.post('/backup/validate', backup),
   import: (backup: any, options: { mode: 'merge' | 'replace'; skipDuplicates: boolean }) =>
     api.post('/backup/import', { backup, options }),
