@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { groupService } from '../services/groupService';
 
-export const getAllGroups = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllGroups = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const groups = await groupService.getAllGroups();
     res.json(groups);

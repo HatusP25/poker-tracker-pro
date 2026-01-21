@@ -6,7 +6,7 @@ export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   // Log errors with context
   const errorLog = {
@@ -84,7 +84,7 @@ export const errorHandler = (
   }
 
   // Default error - hide details in production
-  res.status(500).json({
+  return res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'production'
       ? 'An unexpected error occurred'

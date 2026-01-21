@@ -28,7 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Security headers for production
 if (process.env.NODE_ENV === 'production') {
-  app.use((req, res, next) => {
+  app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -38,7 +38,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Health check endpoint
-app.get('/api/health', (req: Request, res: Response) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -77,7 +77,7 @@ if (process.env.NODE_ENV === 'production') {
   }));
 
   // SPA fallback - serve index.html for all non-API routes
-  app.get('*', (req: Request, res: Response) => {
+  app.get('*', (_req: Request, res: Response) => {
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 } else {

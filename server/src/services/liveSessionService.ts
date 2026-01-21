@@ -9,7 +9,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { calculateSessionSettlements, Settlement } from './settlementService';
+import { calculateSessionSettlements } from './settlementService';
 
 const prisma = new PrismaClient();
 

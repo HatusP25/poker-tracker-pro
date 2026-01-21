@@ -11,7 +11,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "migrate:export": "tsx scripts/migrate-to-postgres.ts export",
+    "migrate:import": "tsx scripts/migrate-to-postgres.ts import"
   },
   "keywords": [
     "poker",

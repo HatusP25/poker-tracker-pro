@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { backupService } from '../services/backupService';
 
 export const exportDatabase = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -61,7 +61,7 @@ export const importDatabase = async (
       });
     }
 
-    res.json({
+    return res.json({
       message: 'Import completed successfully',
       report,
     });
