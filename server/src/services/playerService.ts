@@ -171,13 +171,22 @@ export class PlayerService {
    * Search players by name
    */
   async searchPlayers(groupId: string, query: string) {
+    // Case-insensitive search - only works with PostgreSQL
+    // For PostgreSQL in production, we use mode: 'insensitive'
+    // For SQLite in development, contains is case-insensitive by default
+    const nameFilter: any = {
+      contains: query,
+    };
+
+    // Add case-insensitive mode for PostgreSQL
+    if (process.env.DATABASE_URL?.includes('postgresql')) {
+      nameFilter.mode = 'insensitive';
+    }
+
     return prisma.player.findMany({
       where: {
         groupId,
-        name: {
-          contains: query,
-          mode: 'insensitive',
-        },
+        name: nameFilter,
       },
       include: {
         _count: {

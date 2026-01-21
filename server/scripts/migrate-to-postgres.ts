@@ -71,6 +71,7 @@ async function importData() {
           name: groupData.name,
           defaultBuyIn: groupData.defaultBuyIn,
           currency: groupData.currency,
+          userRole: groupData.userRole || 'EDITOR',
           createdAt: new Date(groupData.createdAt),
           updatedAt: new Date(groupData.updatedAt)
         }
@@ -100,7 +101,8 @@ async function importData() {
             data: {
               id: note.id,
               playerId: newPlayer.id,
-              content: note.content,
+              note: note.note,
+              tags: note.tags,
               createdAt: new Date(note.createdAt),
               updatedAt: new Date(note.updatedAt)
             }

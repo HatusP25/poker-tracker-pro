@@ -42,7 +42,7 @@ const CreateGroupDialog = ({ open, onOpenChange }: CreateGroupDialogProps) => {
   const onSubmit = async (data: CreateGroupForm) => {
     setError(null);
     try {
-      await createGroup.mutateAsync(data);
+      await createGroup.mutateAsync(data as any);
       reset();
       onOpenChange(false);
     } catch (err: unknown) {

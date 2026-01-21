@@ -38,30 +38,32 @@ export const importDatabase = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const { backup, options } = req.body;
 
     // Validate backup first
     const validation = backupService.validateBackup(backup);
     if (!validation.valid) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Invalid backup file',
         details: validation.errors,
       });
+      return;
     }
 
     // Import with options
     const report = await backupService.importDatabase(backup, options);
 
     if (!report.success) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Import failed',
         report,
       });
+      return;
     }
 
-    return res.json({
+    res.json({
       message: 'Import completed successfully',
       report,
     });

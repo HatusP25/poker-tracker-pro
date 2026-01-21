@@ -200,7 +200,7 @@ const ImportDialog = ({ open, onOpenChange, onImport }: ImportDialogProps) => {
               <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-lg font-medium mb-2">Drop CSV file here</p>
               <p className="text-sm text-muted-foreground mb-4">or</p>
-              <Button asChild variant="outline">
+              <Button variant="outline">
                 <label htmlFor="file-upload" className="cursor-pointer">
                   Choose File
                   <input
