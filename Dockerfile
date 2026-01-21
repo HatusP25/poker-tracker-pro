@@ -49,10 +49,14 @@ COPY --from=server-builder /app/server/dist ./dist
 # Copy built client from client-builder
 COPY --from=client-builder /app/client/dist ./public
 
+# Copy startup script
+COPY server/start.sh ./start.sh
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
+    chown -R nodejs:nodejs /app && \
+    chmod +x ./start.sh
 
 USER nodejs
 
@@ -63,5 +67,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start command - migrations run automatically, then start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Start command - use startup script with better error handling
+CMD ["sh", "./start.sh"]
