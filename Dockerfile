@@ -35,6 +35,9 @@ RUN npm run build
 FROM node:20-alpine AS production
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Install production dependencies only
 COPY server/package*.json ./
 RUN npm ci --only=production
