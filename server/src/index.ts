@@ -4,7 +4,7 @@ import app from './app';
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Bind to 0.0.0.0 for Docker/Railway compatibility
 app.listen(PORT, '0.0.0.0', () => {
