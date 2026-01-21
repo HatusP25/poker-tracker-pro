@@ -10,12 +10,21 @@
     "build": "npm run build:server && npm run build:client",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
+    "start": "cd server && npm start",
     "db:migrate": "cd server && npm run db:migrate",
     "db:seed": "cd server && npm run db:seed",
     "db:studio": "cd server && npm run db:studio",
     "db:generate": "cd server && npm run db:generate",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
-    "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist"
+    "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist",
+    "docker:build": "docker build -t poker-tracker-pro .",
+    "docker:run": "docker run -p 3001:3001 --env-file server/.env poker-tracker-pro",
+    "migrate:export": "cd server && tsx scripts/migrate-to-postgres.ts export",
+    "migrate:import": "cd server && tsx scripts/migrate-to-postgres.ts import"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

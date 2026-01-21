@@ -8,7 +8,21 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error('Error:', err);
+  // Log errors with context
+  const errorLog = {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+  };
+
+  if (process.env.NODE_ENV === 'production') {
+    // In production, log to console (Railway captures this)
+    console.error('Error occurred:', JSON.stringify(errorLog));
+  } else {
+    console.error('Error:', err);
+  }
 
   // Validation errors
   if (err instanceof ValidationError) {
@@ -43,6 +57,22 @@ export const errorHandler = (
         message: 'Invalid reference to related record',
       });
     }
+
+    // Connection error
+    if (err.code === 'P1001') {
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        message: 'Database connection failed',
+      });
+    }
+  }
+
+  // Prisma initialization errors
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    return res.status(503).json({
+      error: 'Service Unavailable',
+      message: 'Database service is temporarily unavailable',
+    });
   }
 
   // Generic "not found" errors
@@ -53,10 +83,12 @@ export const errorHandler = (
     });
   }
 
-  // Default error
+  // Default error - hide details in production
   res.status(500).json({
     error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred',
+    message: process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred'
+      : err.message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

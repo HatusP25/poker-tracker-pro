@@ -1,0 +1,68 @@
+# Dependencies
+node_modules
+client/node_modules
+server/node_modules
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist
+build
+client/dist
+server/dist
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Database files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+server/prisma/data
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Testing
+coverage
+.nyc_output
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# Development only
+DEVELOPMENT.md
+PROGRESS.md
+TESTING.md
+TEST_RESULTS.md
+PHASE*.md
+
+# Claude files
+.claude
