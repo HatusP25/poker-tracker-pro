@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
 interface PlayerSessionHistoryChartProps {
@@ -11,16 +12,17 @@ const PlayerSessionHistoryChart = ({ sessions, playerId }: PlayerSessionHistoryC
   // Get last 10 sessions for this player
   const chartData = sessions
     .filter(session => session.entries?.some(entry => entry.playerId === playerId))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
     .slice(0, 10)
     .reverse()
     .map(session => {
       const entry = session.entries?.find(e => e.playerId === playerId);
       const profit = entry ? entry.cashOut - entry.buyIn : 0;
+      const localDate = parseLocalDate(session.date);
 
       return {
-        date: new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        fullDate: new Date(session.date).toLocaleDateString(),
+        date: localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        fullDate: localDate.toLocaleDateString(),
         profit: Number(profit.toFixed(2)),
         buyIn: entry?.buyIn || 0,
         cashOut: entry?.cashOut || 0,

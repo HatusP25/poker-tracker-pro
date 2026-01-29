@@ -1,5 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
 interface ProfitChartProps {
@@ -15,7 +16,7 @@ interface ChartData {
 const ProfitChart = ({ sessions }: ProfitChartProps) => {
   // Calculate cumulative profit over time
   const chartData: ChartData[] = sessions
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
     .reduce((acc: ChartData[], session) => {
       const profit = session.entries?.reduce((sum, entry) => {
         return sum + (entry.cashOut - entry.buyIn);
@@ -23,9 +24,10 @@ const ProfitChart = ({ sessions }: ProfitChartProps) => {
 
       const previousCumulative = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
       const cumulative = previousCumulative + profit;
+      const localDate = parseLocalDate(session.date);
 
       acc.push({
-        date: new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         profit,
         cumulative,
       });

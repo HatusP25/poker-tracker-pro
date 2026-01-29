@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
 interface DayOfWeekChartProps {
@@ -11,7 +12,7 @@ const DayOfWeekChart = ({ sessions }: DayOfWeekChartProps) => {
 
   // Group sessions by day of week
   const dayData = sessions.reduce((acc: Record<number, { sessions: number; profit: number }>, session) => {
-    const date = new Date(session.date);
+    const date = parseLocalDate(session.date);
     const dayIndex = date.getDay();
 
     if (!acc[dayIndex]) {

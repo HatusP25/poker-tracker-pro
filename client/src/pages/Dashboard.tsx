@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Users, Calendar, DollarSign, TrendingUp, Plus, ArrowRight } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
 import { useDashboardStats } from '@/hooks/useStats';
+import { parseLocalDate } from '@/lib/dateUtils';
 import StatCardSkeleton from '@/components/skeletons/StatCardSkeleton';
 import CardSkeleton from '@/components/skeletons/CardSkeleton';
 import PlayerPerformanceChart from '@/components/dashboard/PlayerPerformanceChart';
@@ -77,7 +78,7 @@ const Dashboard = () => {
             <div className="text-2xl font-bold">{stats?.totalSessions || 0}</div>
             {stats?.lastSessionDate && (
               <p className="text-xs text-muted-foreground">
-                Last: {format(new Date(stats.lastSessionDate), 'MMM dd, yyyy')}
+                Last: {format(parseLocalDate(stats.lastSessionDate), 'MMM dd, yyyy')}
               </p>
             )}
           </CardContent>
@@ -213,7 +214,7 @@ const Dashboard = () => {
                   >
                     <div>
                       <p className="font-medium">
-                        {format(new Date(session.date), 'MMM dd, yyyy')}
+                        {format(parseLocalDate(session.date), 'MMM dd, yyyy')}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {session.playerCount} players • Winner: {session.winner}

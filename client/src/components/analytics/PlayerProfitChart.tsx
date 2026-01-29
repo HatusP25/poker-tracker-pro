@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
 interface PlayerProfitChartProps {
@@ -11,7 +12,7 @@ const PlayerProfitChart = ({ sessions, playerId }: PlayerProfitChartProps) => {
   // Filter sessions that include this player and calculate cumulative profit
   const chartData = sessions
     .filter(session => session.entries?.some(entry => entry.playerId === playerId))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
     .reduce((acc: any[], session) => {
       const entry = session.entries?.find(e => e.playerId === playerId);
       if (!entry) return acc;
@@ -19,9 +20,10 @@ const PlayerProfitChart = ({ sessions, playerId }: PlayerProfitChartProps) => {
       const profit = entry.cashOut - entry.buyIn;
       const previousCumulative = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
       const cumulative = previousCumulative + profit;
+      const localDate = parseLocalDate(session.date);
 
       acc.push({
-        date: new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         profit: Number(profit.toFixed(2)),
         cumulative: Number(cumulative.toFixed(2)),
       });

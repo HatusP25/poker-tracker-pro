@@ -8,6 +8,7 @@ import PlayerComparisonChart from '@/components/analytics/PlayerComparisonChart'
 import SessionSizeChart from '@/components/analytics/SessionSizeChart';
 import RecentActivity from '@/components/analytics/RecentActivity';
 import TopPerformances from '@/components/analytics/TopPerformances';
+import { parseLocalDate } from '@/lib/dateUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, DollarSign, Trophy } from 'lucide-react';
 
@@ -38,7 +39,7 @@ const Analytics = () => {
         return allSessions;
     }
 
-    return allSessions.filter(session => new Date(session.date) >= cutoffDate);
+    return allSessions.filter(session => parseLocalDate(session.date) >= cutoffDate);
   }, [allSessions, dateRange]);
 
   // Calculate summary statistics

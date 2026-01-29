@@ -11,7 +11,7 @@ interface RecentActivityProps {
 const RecentActivity = ({ sessions }: RecentActivityProps) => {
   // Get last 5 sessions
   const recentSessions = sessions
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
     .slice(0, 5);
 
   if (recentSessions.length === 0) {

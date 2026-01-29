@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
 interface SessionsChartProps {
@@ -16,7 +17,7 @@ interface ChartData {
 const SessionsChart = ({ sessions }: SessionsChartProps) => {
   // Group sessions by month
   const monthlyData = sessions.reduce((acc: Record<string, { sessions: number; wins: number; losses: number }>, session) => {
-    const date = new Date(session.date);
+    const date = parseLocalDate(session.date);
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 

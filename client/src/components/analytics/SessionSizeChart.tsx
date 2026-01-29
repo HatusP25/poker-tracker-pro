@@ -10,7 +10,7 @@ interface SessionSizeChartProps {
 const SessionSizeChart = ({ sessions }: SessionSizeChartProps) => {
   // Get last 10 sessions and calculate metrics
   const chartData = sessions
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
     .slice(0, 10)
     .reverse()
     .map(session => {

@@ -11,6 +11,7 @@ import SessionCard from '@/components/sessions/SessionCard';
 import ImportDialog from '@/components/import/ImportDialog';
 import SessionFilters, { type SessionFilterValues } from '@/components/filters/SessionFilters';
 import { exportSessionsCSV } from '@/lib/export';
+import { parseLocalDate } from '@/lib/dateUtils';
 import type { SessionImportData } from '@/lib/import';
 import SessionCardSkeleton from '@/components/skeletons/SessionCardSkeleton';
 
@@ -43,11 +44,11 @@ const Sessions = () => {
       }
 
       // Date range filter
-      const sessionDate = new Date(session.date);
-      if (filters.dateFrom && sessionDate < new Date(filters.dateFrom)) {
+      const sessionDate = parseLocalDate(session.date);
+      if (filters.dateFrom && sessionDate < parseLocalDate(filters.dateFrom)) {
         return false;
       }
-      if (filters.dateTo && sessionDate > new Date(filters.dateTo)) {
+      if (filters.dateTo && sessionDate > parseLocalDate(filters.dateTo)) {
         return false;
       }
 
