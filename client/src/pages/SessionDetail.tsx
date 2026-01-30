@@ -14,17 +14,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useGroupContext } from '@/context/GroupContext';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
+import { useSessionSummary } from '@/hooks/useSessionSummary';
 import BalanceIndicator from '@/components/sessions/BalanceIndicator';
+import RankingChangesSection from '@/components/session/RankingChangesSection';
+import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
+import StreaksSection from '@/components/session/StreaksSection';
 import { parseLocalDate } from '@/lib/dateUtils';
 
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { canEdit } = useRole();
+  const { selectedGroup } = useGroupContext();
   const { data: session, isLoading } = useSession(id || '');
+  const { data: summary, isLoading: summaryLoading } = useSessionSummary(
+    id || '',
+    selectedGroup?.id || ''
+  );
   const deleteSession = useDeleteSession();
   const restoreSession = useRestoreSession();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -215,6 +225,28 @@ const SessionDetail = () => {
 
         {/* Balance Check */}
         <BalanceIndicator totalBuyIn={totalBuyIn} totalCashOut={totalCashOut} threshold={1} />
+
+        {/* Session Analytics */}
+        {summaryLoading ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : summary ? (
+          <>
+            {/* Ranking Changes */}
+            <RankingChangesSection changes={summary.rankingChanges} />
+
+            {/* Session Highlights */}
+            <SessionHighlightsSection highlights={summary.highlights} />
+
+            {/* Streaks & Milestones */}
+            <StreaksSection streaks={summary.streaks} milestones={summary.milestones} />
+          </>
+        ) : null}
 
         {/* Player Entries Table */}
         <Card>
