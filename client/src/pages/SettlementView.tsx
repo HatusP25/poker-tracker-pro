@@ -2,15 +2,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowRight, CheckCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { useSession } from '@/hooks/useSessions';
+import { useGroupContext } from '@/context/GroupContext';
+import { useSessionSummary } from '@/hooks/useSessionSummary';
 import type { Settlement } from '@/types';
 import { cn } from '@/lib/utils';
+import RankingChangesSection from '@/components/session/RankingChangesSection';
+import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
+import StreaksSection from '@/components/session/StreaksSection';
 
 const SettlementView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { selectedGroup } = useGroupContext();
   const { data: session, isLoading } = useSession(sessionId || '');
+  const { data: summary, isLoading: summaryLoading } = useSessionSummary(
+    sessionId || '',
+    selectedGroup?.id || ''
+  );
 
   if (isLoading || !session) {
     return (
@@ -72,6 +82,28 @@ const SettlementView = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Session Analytics */}
+      {summaryLoading ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      ) : summary ? (
+        <>
+          {/* Ranking Changes */}
+          <RankingChangesSection changes={summary.rankingChanges} />
+
+          {/* Session Highlights */}
+          <SessionHighlightsSection highlights={summary.highlights} />
+
+          {/* Streaks & Milestones */}
+          <StreaksSection streaks={summary.streaks} milestones={summary.milestones} />
+        </>
+      ) : null}
 
       {/* Final Results */}
       <Card>

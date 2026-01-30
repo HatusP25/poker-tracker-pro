@@ -120,6 +120,10 @@ export const statsApi = {
       sessionProfit: number;
       cumulativeProfit: number;
     }>>(`/stats/players/${playerId}/performance-trend`),
+  getSessionSummary: (sessionId: string, groupId: string) =>
+    api.get(`/stats/sessions/${sessionId}/summary`, {
+      params: { groupId },
+    }),
 };
 
 // Backup

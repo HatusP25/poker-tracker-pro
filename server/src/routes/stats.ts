@@ -9,6 +9,7 @@ import {
   getPlayerStreaks,
   getAggregatedStats,
   getPlayerPerformanceTrend,
+  getSessionSummary,
 } from '../controllers/statsController';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get('/groups/:groupId/leaderboard', getLeaderboard);
 
 // Session stats
 router.get('/sessions/:id/stats', getSessionStats);
+router.get('/sessions/:sessionId/summary', getSessionSummary);
 
 // Dashboard stats
 router.get('/groups/:groupId/dashboard', getDashboardStats);

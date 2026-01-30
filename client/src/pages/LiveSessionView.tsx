@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,6 +14,7 @@ import { parseLocalDate } from '@/lib/dateUtils';
 
 const LiveSessionView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
   const { selectedGroup } = useGroupContext();
   const { data: sessionData, isLoading } = useLiveSession(sessionId || '');
   const { data: allPlayers = [] } = usePlayersByGroup(selectedGroup?.id || '');
@@ -92,7 +93,15 @@ const LiveSessionView = () => {
   };
 
   const handleEndSession = (endTime: string, cashOuts: Array<{ playerId: string; cashOut: number }>) => {
-    endSession.mutate({ sessionId: sessionId!, endTime, cashOuts });
+    endSession.mutate(
+      { sessionId: sessionId!, endTime, cashOuts },
+      {
+        onSuccess: () => {
+          // Navigate to settlement page which now includes session summary
+          navigate(`/live/${sessionId}/settlement`);
+        },
+      }
+    );
   };
 
   // Get players not in session

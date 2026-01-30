@@ -95,11 +95,47 @@ const main = async () => {
     return session;
   };
 
-  // Session 1: Recent game (Jan 4, 2026) - From your sample data
+  // Session 1: Most Recent (Jan 25, 2026) - Sets up for next session to create streak
+  await createSession(
+    '2026-01-25',
+    [
+      { player: lucho, buyIn: 5, cashOut: 25 },  // +20 (win)
+      { player: rauw, buyIn: 10, cashOut: 5 },   // -5 (loss)
+      { player: muel, buyIn: 15, cashOut: 0 },   // -15 (loss with rebuy)
+    ],
+    'Home',
+    'Lucho on a hot streak!'
+  );
+
+  // Session 2: Jan 18, 2026 - Building streaks
+  await createSession(
+    '2026-01-18',
+    [
+      { player: lucho, buyIn: 5, cashOut: 20 },  // +15 (win - streak building)
+      { player: rauw, buyIn: 10, cashOut: 5 },   // -5 (loss - streak building)
+      { player: muel, buyIn: 5, cashOut: 10 },   // +5 (win)
+      { player: hatus, buyIn: 10, cashOut: 0 },  // -10 (loss)
+    ],
+    'Garage',
+    'Lucho keeps winning!'
+  );
+
+  // Session 3: Jan 11, 2026 - More streak setup
+  await createSession(
+    '2026-01-11',
+    [
+      { player: lucho, buyIn: 10, cashOut: 30 },  // +20 (win - 3rd in row!)
+      { player: rauw, buyIn: 5, cashOut: 0 },     // -5 (loss - 3rd in row!)
+      { player: muel, buyIn: 15, cashOut: 0 },    // -15 (loss)
+    ],
+    'Home'
+  );
+
+  // Session 4: Jan 4, 2026
   await createSession(
     '2026-01-04',
     [
-      { player: lucho, buyIn: 5, cashOut: 50 },  // +45 (big win)
+      { player: lucho, buyIn: 5, cashOut: 50 },  // +45 (big win - 4th in row!)
       { player: hatus, buyIn: 35, cashOut: 0 },  // -35 (multiple rebuys, big loss)
       { player: muel, buyIn: 10, cashOut: 0 },   // -10 (1 rebuy)
     ],
@@ -107,13 +143,13 @@ const main = async () => {
     'Lucho dominated this session'
   );
 
-  // Session 2: Recent game (Jan 3, 2026) - From your sample data
+  // Session 5: Jan 3, 2026
   await createSession(
     '2026-01-03',
     [
       { player: muel, buyIn: 15, cashOut: 0 },   // -15
       { player: rauw, buyIn: 10, cashOut: 17 },  // +7
-      { player: lucho, buyIn: 20, cashOut: 28 }, // +8
+      { player: lucho, buyIn: 20, cashOut: 28 }, // +8 (win - 5th in row!)
     ],
     'Home',
     'Close game, Lucho and Rauw split'
@@ -236,7 +272,9 @@ const main = async () => {
     'Note: This session has a small imbalance for testing'
   );
 
-  console.log('✅ Created 12 sessions spanning 3 months');
+  console.log('✅ Created 15 sessions spanning 3 months');
+  console.log('   📈 Lucho has a 5-game win streak going into the next session!');
+  console.log('   📉 Rauw has a 3-game loss streak going into the next session!');
 
   // Add some player notes
   await prisma.playerNote.create({

@@ -140,3 +140,49 @@ export interface Settlement {
   to: string; // Player name
   amount: number;
 }
+
+// Session Summary Types
+export interface SessionSummary {
+  session: {
+    id: string;
+    date: string;
+    playerCount: number;
+    totalPot: number;
+  };
+  rankingChanges: RankingChange[];
+  highlights: SessionHighlights;
+  streaks: StreakUpdate[];
+  milestones: Milestone[];
+}
+
+export interface RankingChange {
+  playerId: string;
+  playerName: string;
+  oldRank: number;
+  newRank: number;
+  change: number; // positive = moved up, negative = moved down
+  profit: number;
+}
+
+export interface SessionHighlights {
+  biggestWinner: { playerId: string; name: string; profit: number };
+  biggestLoser: { playerId: string; name: string; profit: number };
+  mostRebuys?: { playerId: string; name: string; rebuys: number };
+  biggestComeback?: { playerId: string; name: string; description: string };
+}
+
+export interface StreakUpdate {
+  playerId: string;
+  playerName: string;
+  type: 'win' | 'loss';
+  count: number;
+  isNew: boolean; // true if this is a new streak, false if extended
+}
+
+export interface Milestone {
+  playerId: string;
+  playerName: string;
+  type: 'best_session' | 'total_games' | 'total_profit' | 'top_3';
+  description: string;
+  value?: number;
+}

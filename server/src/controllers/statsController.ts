@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { statsService } from '../services/statsService';
+import { sessionSummaryService } from '../services/sessionSummaryService';
 
 export const getPlayerStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -91,6 +92,22 @@ export const getPlayerPerformanceTrend = async (req: Request, res: Response, nex
     const { playerId } = req.params;
     const trend = await statsService.getPlayerPerformanceTrend(playerId);
     res.json(trend);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSessionSummary = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId } = req.params;
+    const { groupId } = req.query;
+
+    if (!groupId || typeof groupId !== 'string') {
+      return res.status(400).json({ error: 'groupId query parameter is required' });
+    }
+
+    const summary = await sessionSummaryService.getSessionSummary(sessionId, groupId);
+    res.json(summary);
   } catch (error) {
     next(error);
   }

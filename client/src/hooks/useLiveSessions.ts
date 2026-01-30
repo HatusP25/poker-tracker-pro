@@ -72,7 +72,6 @@ export const useAddPlayerToSession = () => {
 };
 
 export const useEndLiveSession = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -90,7 +89,7 @@ export const useEndLiveSession = () => {
       queryClient.invalidateQueries({ queryKey: ['live-session', variables.sessionId] });
       queryClient.invalidateQueries({ queryKey: ['live-sessions'] });
       toast.success('Session completed!');
-      navigate(`/live/${variables.sessionId}/settlement`);
+      // Note: Navigation is now handled by the component to allow for session summary modal
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Failed to end session');
