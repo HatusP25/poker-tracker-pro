@@ -1,5 +1,4 @@
 import { prisma } from '../lib/prisma';
-import { StatsService } from './statsService';
 
 interface RankingChange {
   playerId: string;
@@ -47,10 +46,8 @@ interface SessionSummary {
 }
 
 export class SessionSummaryService {
-  private statsService: StatsService;
-
   constructor() {
-    this.statsService = new StatsService();
+    // No dependencies needed - using Prisma directly
   }
 
   /**

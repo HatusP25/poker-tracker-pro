@@ -97,13 +97,14 @@ export const getPlayerPerformanceTrend = async (req: Request, res: Response, nex
   }
 };
 
-export const getSessionSummary = async (req: Request, res: Response, next: NextFunction) => {
+export const getSessionSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const { groupId } = req.query;
 
     if (!groupId || typeof groupId !== 'string') {
-      return res.status(400).json({ error: 'groupId query parameter is required' });
+      res.status(400).json({ error: 'groupId query parameter is required' });
+      return;
     }
 
     const summary = await sessionSummaryService.getSessionSummary(sessionId, groupId);
