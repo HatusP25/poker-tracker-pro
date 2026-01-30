@@ -217,6 +217,14 @@ export class SessionSummaryService {
    * Calculate session highlights
    */
   private calculateHighlights(entries: any[], defaultBuyIn: number): SessionHighlights {
+    // Handle edge case of empty entries
+    if (entries.length === 0) {
+      return {
+        biggestWinner: { playerId: '', name: 'N/A', profit: 0 },
+        biggestLoser: { playerId: '', name: 'N/A', profit: 0 },
+      };
+    }
+
     // Find biggest winner and loser
     let biggestWinner = entries[0];
     let biggestLoser = entries[0];
