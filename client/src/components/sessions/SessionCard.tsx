@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, MapPin, Users, TrendingUp, Radio } from 'lucide-react';
 import { parseLocalDate } from '@/lib/dateUtils';
 import type { Session } from '@/types';
 
@@ -13,6 +14,7 @@ const SessionCard = ({ session, onClick }: SessionCardProps) => {
   const totalBuyIn = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
   const totalCashOut = session.entries?.reduce((sum, e) => sum + e.cashOut, 0) || 0;
   const playerCount = session.entries?.length || 0;
+  const isLive = session.status === 'IN_PROGRESS';
 
   // Find winner (player with highest profit)
   const winner = session.entries?.reduce((max, entry) => {
@@ -31,7 +33,7 @@ const SessionCard = ({ session, onClick }: SessionCardProps) => {
 
   return (
     <Card
-      className="cursor-pointer hover:bg-accent/50 transition-colors"
+      className={`cursor-pointer hover:bg-accent/50 transition-colors ${isLive ? 'border-green-500/50 bg-green-500/5' : ''}`}
       onClick={onClick}
     >
       <CardHeader>
@@ -40,6 +42,12 @@ const SessionCard = ({ session, onClick }: SessionCardProps) => {
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-muted-foreground" />
               {formattedDate}
+              {isLive && (
+                <Badge variant="default" className="bg-green-600 hover:bg-green-600 text-white ml-1 gap-1">
+                  <Radio className="h-3 w-3 animate-pulse" />
+                  LIVE
+                </Badge>
+              )}
             </CardTitle>
             {formattedTime && (
               <p className="text-sm text-muted-foreground mt-1">{formattedTime}</p>
@@ -68,16 +76,24 @@ const SessionCard = ({ session, onClick }: SessionCardProps) => {
               <p className="text-lg font-semibold">${totalBuyIn.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Winner</p>
+              <p className="text-xs text-muted-foreground">
+                {isLive ? 'Status' : 'Winner'}
+              </p>
               <div className="flex items-center gap-1">
-                <p className="text-lg font-semibold truncate">
-                  {winner?.player?.name || 'N/A'}
-                </p>
-                {winnerProfit > 0 && (
-                  <span className="text-green-500 text-sm flex items-center">
-                    <TrendingUp className="h-3 w-3" />
-                    ${winnerProfit.toFixed(0)}
-                  </span>
+                {isLive ? (
+                  <p className="text-lg font-semibold text-green-500">In Progress</p>
+                ) : (
+                  <>
+                    <p className="text-lg font-semibold truncate">
+                      {winner?.player?.name || 'N/A'}
+                    </p>
+                    {winnerProfit > 0 && (
+                      <span className="text-green-500 text-sm flex items-center">
+                        <TrendingUp className="h-3 w-3" />
+                        ${winnerProfit.toFixed(0)}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
