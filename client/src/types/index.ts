@@ -40,6 +40,7 @@ export interface Session {
   createdAt: string;
   updatedAt: string;
   entries?: SessionEntry[];
+  rebuyEvents?: RebuyEvent[];
   group?: Group;
 }
 
@@ -57,6 +58,18 @@ export interface SessionEntry {
   };
   profit?: number;
   rebuys?: number;
+}
+
+export interface RebuyEvent {
+  id: string;
+  sessionId: string;
+  playerId: string;
+  amount: number;
+  createdAt: string;
+  player: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface PlayerStats {

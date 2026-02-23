@@ -35,9 +35,10 @@ model Player {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  group   Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  entries SessionEntry[]
-  notes   PlayerNote[]
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  entries     SessionEntry[]
+  notes       PlayerNote[]
+  rebuyEvents RebuyEvent[]
 
   @@unique([groupId, name])
   @@index([groupId])
@@ -61,8 +62,9 @@ model Session {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  group   Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  entries SessionEntry[]
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  entries     SessionEntry[]
+  rebuyEvents RebuyEvent[]
 
   @@index([groupId, date])
   @@index([groupId, status])
@@ -90,6 +92,22 @@ model SessionEntry {
   @@index([sessionId])
   @@index([playerId])
   @@map("session_entries")
+}
+
+// RebuyEvent - tracks individual rebuy events during live sessions
+model RebuyEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  playerId  String
+  amount    Float
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player  Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([playerId])
+  @@map("rebuy_events")
 }
 
 // PlayerNote - notes about players (tendencies, strategies)

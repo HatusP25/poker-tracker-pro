@@ -10,6 +10,7 @@ import { useLiveSession, useAddRebuy, useAddPlayerToSession, useEndLiveSession }
 import RebuyDialog from '@/components/live/RebuyDialog';
 import AddPlayerDialog from '@/components/live/AddPlayerDialog';
 import EndSessionDialog from '@/components/live/EndSessionDialog';
+import RebuyItinerary from '@/components/live/RebuyItinerary';
 import { parseLocalDate } from '@/lib/dateUtils';
 
 const LiveSessionView = () => {
@@ -175,6 +176,9 @@ const LiveSessionView = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Rebuy History */}
+      <RebuyItinerary rebuyEvents={session.rebuyEvents || []} />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

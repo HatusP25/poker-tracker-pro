@@ -76,6 +76,14 @@ export class LiveSessionService {
             player: true,
           },
         },
+        rebuyEvents: {
+          include: {
+            player: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
         group: true,
       },
     });
@@ -131,18 +139,30 @@ export class LiveSessionService {
       throw new Error('Player not in this session');
     }
 
-    // Update buy-in (add rebuy amount)
-    const updatedEntry = await prisma.sessionEntry.update({
-      where: { id: entry.id },
-      data: {
-        buyIn: entry.buyIn + amount,
-      },
-      include: {
-        player: true,
-      },
-    });
+    // Use transaction to update entry AND create rebuy event
+    const [updatedEntry, rebuyEvent] = await prisma.$transaction([
+      prisma.sessionEntry.update({
+        where: { id: entry.id },
+        data: {
+          buyIn: entry.buyIn + amount,
+        },
+        include: {
+          player: true,
+        },
+      }),
+      prisma.rebuyEvent.create({
+        data: {
+          sessionId,
+          playerId,
+          amount,
+        },
+        include: {
+          player: true,
+        },
+      }),
+    ]);
 
-    return updatedEntry;
+    return { entry: updatedEntry, rebuyEvent };
   }
 
   /**
