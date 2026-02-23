@@ -77,6 +77,19 @@ export class SessionService {
             },
           },
         },
+        rebuyEvents: {
+          include: {
+            player: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 

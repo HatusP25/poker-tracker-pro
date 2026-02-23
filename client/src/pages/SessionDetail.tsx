@@ -23,6 +23,7 @@ import BalanceIndicator from '@/components/sessions/BalanceIndicator';
 import RankingChangesSection from '@/components/session/RankingChangesSection';
 import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
 import StreaksSection from '@/components/session/StreaksSection';
+import RebuyItinerary from '@/components/live/RebuyItinerary';
 import { parseLocalDate } from '@/lib/dateUtils';
 
 const SessionDetail = () => {
@@ -247,6 +248,11 @@ const SessionDetail = () => {
             <StreaksSection streaks={summary.streaks} milestones={summary.milestones} />
           </>
         ) : null}
+
+        {/* Rebuy History */}
+        {session.rebuyEvents && session.rebuyEvents.length > 0 && (
+          <RebuyItinerary rebuyEvents={session.rebuyEvents} />
+        )}
 
         {/* Player Entries Table */}
         <Card>
