@@ -28,6 +28,11 @@ export class StatsService {
       where: { id: playerId },
       include: {
         entries: {
+          where: {
+            session: {
+              deletedAt: null,
+            },
+          },
           include: {
             session: true,
           },
@@ -139,10 +144,16 @@ export class StatsService {
    */
   async getLeaderboard(groupId: string, minGames = 0): Promise<LeaderboardEntry[]> {
     // Single optimized query - fetches all data at once
+    // Filter out entries from deleted sessions
     const players = await prisma.player.findMany({
       where: { groupId },
       include: {
         entries: {
+          where: {
+            session: {
+              deletedAt: null,
+            },
+          },
           include: {
             session: true,
           },
@@ -274,6 +285,9 @@ export class StatsService {
       include: {
         players: true,
         sessions: {
+          where: {
+            deletedAt: null,
+          },
           include: {
             entries: {
               include: {
@@ -452,6 +466,11 @@ export class StatsService {
       },
       include: {
         entries: {
+          where: {
+            session: {
+              deletedAt: null,
+            },
+          },
           include: {
             session: true,
           },
@@ -507,6 +526,11 @@ export class StatsService {
       where: { id: playerId },
       include: {
         entries: {
+          where: {
+            session: {
+              deletedAt: null,
+            },
+          },
           include: {
             session: true,
           },
