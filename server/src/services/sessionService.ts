@@ -187,6 +187,8 @@ export class SessionService {
       location?: string;
       notes?: string;
       photoUrls?: string[];
+      status?: string;
+      settlements?: string;
     }
   ) {
     if (data.date) {
@@ -210,6 +212,8 @@ export class SessionService {
         ...(data.location !== undefined && { location: data.location }),
         ...(data.notes !== undefined && { notes: data.notes }),
         ...(data.photoUrls && { photoUrls: JSON.stringify(data.photoUrls) }),
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.settlements !== undefined && { settlements: data.settlements }),
       },
       include: {
         entries: {

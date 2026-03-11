@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
-import { useGroupContext } from '@/context/GroupContext';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
 import BalanceIndicator from '@/components/sessions/BalanceIndicator';
@@ -30,11 +29,11 @@ const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { canEdit } = useRole();
-  const { selectedGroup } = useGroupContext();
   const { data: session, isLoading } = useSession(id || '');
+  // Use session's actual groupId to avoid mismatch with context's selectedGroup
   const { data: summary, isLoading: summaryLoading } = useSessionSummary(
     id || '',
-    selectedGroup?.id || ''
+    session?.groupId || ''
   );
   const deleteSession = useDeleteSession();
   const restoreSession = useRestoreSession();

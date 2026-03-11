@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { useSession } from '@/hooks/useSessions';
-import { useGroupContext } from '@/context/GroupContext';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
 import type { Settlement } from '@/types';
 import { cn } from '@/lib/utils';
@@ -15,11 +14,12 @@ import StreaksSection from '@/components/session/StreaksSection';
 const SettlementView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { selectedGroup } = useGroupContext();
   const { data: session, isLoading } = useSession(sessionId || '');
+  // Use the session's actual groupId instead of context's selectedGroup
+  // to avoid mismatch when viewing sessions from different groups
   const { data: summary, isLoading: summaryLoading } = useSessionSummary(
     sessionId || '',
-    selectedGroup?.id || ''
+    session?.groupId || ''
   );
 
   if (isLoading || !session) {
