@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import {
   isValidDate,
   isValidBuyIn,
@@ -7,8 +7,6 @@ import {
   ValidationError,
 } from '../utils/validators';
 import { calculateProfit, calculateRebuys } from '../utils/calculations';
-
-const prisma = new PrismaClient();
 
 interface SessionEntryInput {
   playerId: string;

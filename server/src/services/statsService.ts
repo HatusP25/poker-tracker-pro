@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import {
   PlayerStats,
   LeaderboardEntry,
@@ -18,8 +18,6 @@ import {
   calculateLongestLossStreak,
   round,
 } from '../utils/calculations';
-
-const prisma = new PrismaClient();
 
 export class StatsService {
   /**

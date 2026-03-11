@@ -8,10 +8,8 @@
  * - End sessions with settlements
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { calculateSessionSettlements } from './settlementService';
-
-const prisma = new PrismaClient();
 
 export class LiveSessionService {
   /**

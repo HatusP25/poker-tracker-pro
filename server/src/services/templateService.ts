@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { ValidationError } from '../utils/validators';
-
-const prisma = new PrismaClient();
 
 export class TemplateService {
   /**

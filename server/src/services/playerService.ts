@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { isValidPlayerName, ValidationError } from '../utils/validators';
-
-const prisma = new PrismaClient();
 
 export class PlayerService {
   /**
