@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { round } from '../utils/calculations';
 
 interface RankingChange {
   playerId: string;
@@ -199,7 +200,7 @@ export class SessionSummaryService {
         oldRank,
         newRank,
         change,
-        profit,
+        profit: round(profit),
       });
     }
 
@@ -258,12 +259,12 @@ export class SessionSummaryService {
       biggestWinner: {
         playerId: biggestWinner.playerId,
         name: biggestWinner.player.name,
-        profit: maxProfit,
+        profit: round(maxProfit),
       },
       biggestLoser: {
         playerId: biggestLoser.playerId,
         name: biggestLoser.player.name,
-        profit: minProfit,
+        profit: round(minProfit),
       },
     };
 
@@ -415,7 +416,7 @@ export class SessionSummaryService {
           playerName: entry.player.name,
           type: 'best_session',
           description: `Best session ever!`,
-          value: profit,
+          value: round(profit),
         });
       }
 

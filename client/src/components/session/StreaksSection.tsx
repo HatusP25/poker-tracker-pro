@@ -86,9 +86,9 @@ const StreaksSection = ({ streaks, milestones }: StreaksSectionProps) => {
                   {milestone.value !== undefined && (
                     <Badge className="ml-auto bg-yellow-600 hover:bg-yellow-700">
                       {milestone.type === 'total_profit'
-                        ? `$${milestone.value}`
+                        ? `$${Number(milestone.value).toFixed(2)}`
                         : milestone.type === 'best_session'
-                        ? `+$${milestone.value}`
+                        ? `+$${Number(milestone.value).toFixed(2)}`
                         : milestone.value}
                     </Badge>
                   )}
