@@ -210,8 +210,8 @@ const Rankings = () => {
                     </TableCell>
                     <TableCell className="text-right">{player.winRate.toFixed(1)}%</TableCell>
                     <TableCell className="text-right">
-                      <span className="text-green-500 font-medium">
-                        +${player.bestSession.toFixed(2)}
+                      <span className={`font-medium ${player.bestSession > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                        {player.bestSession > 0 ? `+$${player.bestSession.toFixed(2)}` : '$0.00'}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">

@@ -245,7 +245,9 @@ const PlayerDetail = () => {
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 Best Session
               </span>
-              <span className="font-medium text-green-500">+${stats.bestSession.toFixed(2)}</span>
+              <span className={`font-medium ${stats.bestSession > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                {stats.bestSession > 0 ? `+$${stats.bestSession.toFixed(2)}` : '$0.00'}
+              </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground flex items-center gap-2">
