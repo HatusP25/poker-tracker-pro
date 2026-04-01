@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGroupContext } from '@/context/GroupContext';
 import { useRole } from '@/context/RoleContext';
 import SessionForm from '@/components/sessions/SessionForm';
@@ -6,10 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play, FileText, Eye } from 'lucide-react';
 
+interface CloneFromState {
+  location?: string;
+  startTime?: string;
+  playerIds: string[];
+}
+
+interface LocationState {
+  cloneFrom?: CloneFromState;
+}
+
 const DataEntry = () => {
   const { selectedGroup } = useGroupContext();
   const { canEdit } = useRole();
   const navigate = useNavigate();
+  const location = useLocation();
+  const cloneFrom = (location.state as LocationState | null)?.cloneFrom;
 
   const handleSuccess = () => {
     // Show success message or navigate to sessions page
@@ -113,6 +125,7 @@ const DataEntry = () => {
         groupId={selectedGroup.id}
         defaultBuyIn={selectedGroup.defaultBuyIn}
         onSuccess={handleSuccess}
+        cloneFrom={cloneFrom}
       />
     </div>
   );

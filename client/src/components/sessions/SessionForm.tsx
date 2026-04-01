@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,10 +33,17 @@ const sessionSchema = z.object({
 
 type SessionFormData = z.infer<typeof sessionSchema>;
 
+interface CloneFromData {
+  location?: string;
+  startTime?: string;
+  playerIds: string[];
+}
+
 interface SessionFormProps {
   groupId: string;
   defaultBuyIn: number;
   onSuccess?: () => void;
+  cloneFrom?: CloneFromData;
 }
 
 interface EntryState {
@@ -46,7 +53,7 @@ interface EntryState {
   cashOut: number;
 }
 
-const SessionForm = ({ groupId, defaultBuyIn, onSuccess }: SessionFormProps) => {
+const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom }: SessionFormProps) => {
   const [entries, setEntries] = useState<EntryState[]>([
     { id: '1', playerId: '', buyIn: defaultBuyIn, cashOut: 0 },
     { id: '2', playerId: '', buyIn: defaultBuyIn, cashOut: 0 },
@@ -75,6 +82,31 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess }: SessionFormProps) => 
       notes: '',
     },
   });
+
+  // Handle clone data pre-fill
+  useEffect(() => {
+    if (cloneFrom) {
+      // Reset form with cloned session data
+      reset({
+        date: format(new Date(), 'yyyy-MM-dd'), // Always use today's date
+        startTime: cloneFrom.startTime || '',
+        endTime: '',
+        location: cloneFrom.location || '',
+        notes: '',
+      });
+
+      // Create entries from cloned player IDs
+      if (cloneFrom.playerIds.length > 0) {
+        const clonedEntries: EntryState[] = cloneFrom.playerIds.map((playerId, index) => ({
+          id: (index + 1).toString(),
+          playerId,
+          buyIn: defaultBuyIn,
+          cashOut: 0,
+        }));
+        setEntries(clonedEntries);
+      }
+    }
+  }, [cloneFrom, reset, defaultBuyIn]);
 
   const quickAmounts = [5, 10, 15, 20, 25, 30];
 

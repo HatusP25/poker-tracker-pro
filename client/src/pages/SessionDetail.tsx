@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2, Copy } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
@@ -118,14 +118,33 @@ const SessionDetail = () => {
                 {restoreSession.isPending ? 'Restoring...' : 'Restore Session'}
               </Button>
             ) : (
-              <Button
-                variant="destructive"
-                onClick={() => setShowDeleteDialog(true)}
-                disabled={deleteSession.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {deleteSession.isPending ? 'Deleting...' : 'Move to Trash'}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigate('/entry', {
+                      state: {
+                        cloneFrom: {
+                          location: session.location,
+                          startTime: session.startTime,
+                          playerIds: session.entries?.map(e => e.playerId) || [],
+                        },
+                      },
+                    });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Clone
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={deleteSession.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteSession.isPending ? 'Deleting...' : 'Move to Trash'}
+                </Button>
+              </>
             )}
           </div>
         )}
