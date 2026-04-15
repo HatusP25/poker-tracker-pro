@@ -196,7 +196,6 @@ const LiveSessionView = () => {
           variant="outline"
           onClick={() => setShowAddPlayerDialog(true)}
           className="h-20"
-          disabled={availablePlayers.length === 0}
         >
           <UserPlus className="mr-2 h-5 w-5" />
           Add Player
@@ -227,6 +226,7 @@ const LiveSessionView = () => {
         onOpenChange={setShowAddPlayerDialog}
         availablePlayers={availablePlayers}
         defaultBuyIn={session.group?.defaultBuyIn || 0}
+        groupId={session.groupId}
         onSubmit={handleAddPlayer}
       />
 
