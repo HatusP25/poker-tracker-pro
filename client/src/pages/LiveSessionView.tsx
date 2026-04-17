@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,6 +16,7 @@ import { parseLocalDate } from '@/lib/dateUtils';
 const LiveSessionView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { selectedGroup } = useGroupContext();
   const { data: sessionData, isLoading } = useLiveSession(sessionId || '');
   const { data: allPlayers = [] } = usePlayersByGroup(selectedGroup?.id || '');
@@ -57,6 +58,13 @@ const LiveSessionView = () => {
       return () => clearInterval(interval);
     }
   }, [session?.status, session?.startTime, session?.date]);
+
+  // Auto-open End Session dialog when navigated here with ?autoEnd=true
+  useEffect(() => {
+    if (searchParams.get('autoEnd') === 'true') {
+      setShowEndDialog(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading || !session) {
     return (
