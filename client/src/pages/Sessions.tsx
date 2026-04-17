@@ -7,6 +7,7 @@ import { useGroupContext } from '@/context/GroupContext';
 import { useRole } from '@/context/RoleContext';
 import { useSessionsByGroup, useCreateSession } from '@/hooks/useSessions';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
+import { useForceEndSession } from '@/hooks/useLiveSessions';
 import SessionCard from '@/components/sessions/SessionCard';
 import ImportDialog from '@/components/import/ImportDialog';
 import SessionFilters, { type SessionFilterValues } from '@/components/filters/SessionFilters';
@@ -32,6 +33,7 @@ const Sessions = () => {
   const { data: sessions, isLoading } = useSessionsByGroup(selectedGroup?.id || '');
   const { data: players } = usePlayersByGroup(selectedGroup?.id || '');
   const createSession = useCreateSession();
+  const forceEndSession = useForceEndSession();
 
   // Apply filters to sessions
   const filteredSessions = useMemo(() => {
@@ -211,7 +213,23 @@ const Sessions = () => {
             <SessionCard
               key={session.id}
               session={session}
-              onClick={() => navigate(`/sessions/${session.id}`)}
+              onClick={() => {
+                if (session.status === 'IN_PROGRESS') {
+                  navigate(`/live/${session.id}`);
+                } else {
+                  navigate(`/sessions/${session.id}`);
+                }
+              }}
+              onEndSession={
+                session.status === 'IN_PROGRESS'
+                  ? (id) => navigate(`/live/${id}?autoEnd=true`)
+                  : undefined
+              }
+              onForceEnd={
+                session.status === 'IN_PROGRESS'
+                  ? (id) => forceEndSession.mutate(id)
+                  : undefined
+              }
             />
           ))}
         </div>
