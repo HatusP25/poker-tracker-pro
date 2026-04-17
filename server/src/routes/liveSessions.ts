@@ -7,6 +7,7 @@ import {
   endLiveSession,
   reopenLiveSession,
   getActiveSessions,
+  forceEndLiveSession,
 } from '../controllers/liveSessionController';
 
 const router = Router();
@@ -25,6 +26,9 @@ router.post('/:sessionId/add-player', addPlayer);
 
 // End session and calculate settlements
 router.post('/:sessionId/end', endLiveSession);
+
+// Force-end session without cash-outs (emergency use)
+router.post('/:sessionId/force-end', forceEndLiveSession);
 
 // Reopen completed session for editing
 router.post('/:sessionId/reopen', reopenLiveSession);

@@ -96,3 +96,15 @@ export const getActiveSessions = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const forceEndLiveSession = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId } = req.params;
+
+    const result = await liveSessionService.forceEndSession(sessionId);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
