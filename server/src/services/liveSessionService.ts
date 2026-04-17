@@ -298,6 +298,46 @@ export class LiveSessionService {
   }
 
   /**
+   * Force-end a live session without recording cash-outs or settlements.
+   * Used as a last resort when a session is stuck in IN_PROGRESS.
+   */
+  async forceEndSession(sessionId: string) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'IN_PROGRESS') {
+      throw new Error('Session is not in progress');
+    }
+
+    // Get current local time as HH:MM string
+    const now = new Date();
+    const endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const updatedSession = await prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        status: 'COMPLETED',
+        endTime,
+        settlements: JSON.stringify([]),
+      },
+      include: {
+        entries: {
+          include: {
+            player: true,
+          },
+        },
+      },
+    });
+
+    return { session: updatedSession, settlements: [] };
+  }
+
+  /**
    * Reopen a completed session for editing
    * Only allowed within 24 hours of completion
    */
