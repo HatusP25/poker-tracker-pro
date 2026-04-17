@@ -221,15 +221,16 @@ const Sessions = () => {
                 }
               }}
               onEndSession={
-                session.status === 'IN_PROGRESS'
+                session.status === 'IN_PROGRESS' && canEdit
                   ? (id) => navigate(`/live/${id}?autoEnd=true`)
                   : undefined
               }
               onForceEnd={
-                session.status === 'IN_PROGRESS'
+                session.status === 'IN_PROGRESS' && canEdit
                   ? (id) => forceEndSession.mutate(id)
                   : undefined
               }
+              isForceEndPending={forceEndSession.isPending}
             />
           ))}
         </div>

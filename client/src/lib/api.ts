@@ -174,8 +174,10 @@ export const liveSessionsApi = {
   end: (sessionId: string, data: { endTime: string; cashOuts: Array<{ playerId: string; cashOut: number }> }) =>
     api.post(`/live-sessions/${sessionId}/end`, data),
   reopen: (sessionId: string) => api.post(`/live-sessions/${sessionId}/reopen`, {}),
-  forceEnd: (sessionId: string) =>
-    api.post(`/live-sessions/${sessionId}/force-end`, {}),
+  forceEnd: (sessionId: string, now: Date) => {
+    const endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return api.post(`/live-sessions/${sessionId}/force-end`, { endTime });
+  },
   getActive: (groupId: string) => api.get(`/live-sessions/groups/${groupId}/active`),
 };
 

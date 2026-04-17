@@ -301,7 +301,7 @@ export class LiveSessionService {
    * Force-end a live session without recording cash-outs or settlements.
    * Used as a last resort when a session is stuck in IN_PROGRESS.
    */
-  async forceEndSession(sessionId: string) {
+  async forceEndSession(sessionId: string, endTime?: string) {
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
     });
@@ -314,9 +314,11 @@ export class LiveSessionService {
       throw new Error('Session is not in progress');
     }
 
-    // Get current local time as HH:MM string
-    const now = new Date();
-    const endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Use client-provided endTime if available, otherwise fall back to server local time
+    if (!endTime) {
+      const now = new Date();
+      endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
 
     const updatedSession = await prisma.session.update({
       where: { id: sessionId },

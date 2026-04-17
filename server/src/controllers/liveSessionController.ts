@@ -100,8 +100,9 @@ export const getActiveSessions = async (req: Request, res: Response, next: NextF
 export const forceEndLiveSession = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;
+    const { endTime } = req.body;
 
-    const result = await liveSessionService.forceEndSession(sessionId);
+    const result = await liveSessionService.forceEndSession(sessionId, endTime);
 
     res.json(result);
   } catch (error) {

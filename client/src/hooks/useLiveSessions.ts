@@ -101,7 +101,7 @@ export const useForceEndSession = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (sessionId: string) => liveSessionsApi.forceEnd(sessionId),
+    mutationFn: (sessionId: string) => liveSessionsApi.forceEnd(sessionId, new Date()),
     onSuccess: (_, sessionId) => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       queryClient.invalidateQueries({ queryKey: ['live-session', sessionId] });

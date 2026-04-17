@@ -22,9 +22,10 @@ interface SessionCardProps {
   onClick: () => void;
   onEndSession?: (sessionId: string) => void;
   onForceEnd?: (sessionId: string) => void;
+  isForceEndPending?: boolean;
 }
 
-const SessionCard = ({ session, onClick, onEndSession, onForceEnd }: SessionCardProps) => {
+const SessionCard = ({ session, onClick, onEndSession, onForceEnd, isForceEndPending }: SessionCardProps) => {
   const [showForceEndConfirm, setShowForceEndConfirm] = useState(false);
 
   const totalBuyIn = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
@@ -166,6 +167,7 @@ const SessionCard = ({ session, onClick, onEndSession, onForceEnd }: SessionCard
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={isForceEndPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 onForceEnd?.(session.id);

@@ -60,11 +60,15 @@ const LiveSessionView = () => {
   }, [session?.status, session?.startTime, session?.date]);
 
   // Auto-open End Session dialog when navigated here with ?autoEnd=true
+  const autoEnd = searchParams.get('autoEnd') === 'true';
   useEffect(() => {
-    if (searchParams.get('autoEnd') === 'true') {
+    if (autoEnd) {
       setShowEndDialog(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('autoEnd');
+      navigate({ search: next.toString() }, { replace: true });
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoEnd]);
 
   if (isLoading || !session) {
     return (
