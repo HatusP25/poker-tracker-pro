@@ -97,6 +97,23 @@ export const useEndLiveSession = () => {
   });
 };
 
+export const useForceEndSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (sessionId: string) => liveSessionsApi.forceEnd(sessionId),
+    onSuccess: (_, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['live-session', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['live-sessions'] });
+      toast.success('Session force ended');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to force end session');
+    },
+  });
+};
+
 export const useReopenSession = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
