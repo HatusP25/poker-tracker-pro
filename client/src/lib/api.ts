@@ -174,6 +174,8 @@ export const liveSessionsApi = {
   end: (sessionId: string, data: { endTime: string; cashOuts: Array<{ playerId: string; cashOut: number }> }) =>
     api.post(`/live-sessions/${sessionId}/end`, data),
   reopen: (sessionId: string) => api.post(`/live-sessions/${sessionId}/reopen`, {}),
+  forceEnd: (sessionId: string) =>
+    api.post(`/live-sessions/${sessionId}/force-end`, {}),
   getActive: (groupId: string) => api.get(`/live-sessions/groups/${groupId}/active`),
 };
 
