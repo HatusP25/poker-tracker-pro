@@ -1,5 +1,7 @@
 import express, { Express, Request, Response } from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -14,30 +16,40 @@ import liveSessionRoutes from './routes/liveSessions';
 
 const app: Express = express();
 
-// Middleware
-// CORS - configure for production
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-  optionsSuccessStatus: 200
-};
+// Behind Railway's proxy: trust it so rate-limit / protocol detection use the
+// real client IP rather than the proxy's.
+app.set('trust proxy', 1);
+
+// Security headers. CSP is disabled because the SPA is served from the same
+// origin and a hand-tuned policy is out of scope here; every other helmet
+// default (nosniff, frameguard, referrer-policy, etc.) still applies.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// CORS - explicit allow-list. A credentialed wildcard ("*") is invalid per the
+// CORS spec, so we only enable credentials when an explicit origin list is set.
+const corsOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+const corsOptions: CorsOptions = corsOrigins.length
+  ? { origin: corsOrigins, credentials: true, optionsSuccessStatus: 200 }
+  : { origin: true, credentials: false, optionsSuccessStatus: 200 }; // dev: reflect origin, no creds
 app.use(cors(corsOptions));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Security headers for production
-if (process.env.NODE_ENV === 'production') {
-  app.use((_req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    next();
-  });
-}
+// Rate limiting for the API surface.
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: Number(process.env.RATE_LIMIT_MAX || 300),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too Many Requests', message: 'Rate limit exceeded, slow down.' },
+});
 
-// Health check endpoint
+// Health check endpoint (not rate limited so uptime probes never trip the limiter)
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'OK',
@@ -47,6 +59,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/api', apiLimiter);
 app.use('/api/groups', groupRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/sessions', sessionRoutes);

@@ -8,6 +8,27 @@ Each entry records: what changed, why, the backlog item, and the verification th
 
 ---
 
+## 2026-06-12 — PH-07/08/09: API security hardening
+
+**Changed**
+- **F-07**: replaced `origin:'*'` + `credentials:true` with an explicit allow-list parsed from
+  `CORS_ORIGIN`. Credentials are only enabled when an explicit origin list is configured; dev
+  reflects the request origin without credentials.
+- **F-08**: added `helmet` (CSP disabled — same-origin SPA, hand-tuned policy out of scope) and
+  `express-rate-limit` (300 req/min/IP, `RATE_LIMIT_MAX` override). Health check is exempt. Body
+  size capped at 1 MB. `trust proxy` set for Railway.
+- **F-06 / PH-09**: documented the single-tenant trust model and the client-only-authz limitation
+  in `docs/SECURITY.md`; server-side authz deferred to the auth epic (IMP-011).
+- 4 supertest API tests verifying helmet headers, rate-limit headers, health exemption, and CORS.
+
+**Verification** `npm test` → 27 passed · `npm run test:integration` → 8 passed ·
+`npm run build` → clean.
+
+**Files** `server/src/app.ts`, `server/package.json`, `server/tests/integration/api.test.ts`,
+`docs/SECURITY.md`.
+
+---
+
 ## 2026-06-12 — PH-04/05/06: live-session validation + atomic end
 
 **Changed**

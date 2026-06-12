@@ -26,9 +26,9 @@ Status: ⬜ todo · 🟡 in progress · ✅ done · ⏸ deferred
 
 | ID | Item | Status | Notes |
 |----|------|--------|-------|
-| PH-07 | Fix CORS allow-list (F-07) | ⬜ | No wildcard + credentials. |
-| PH-08 | Add `helmet` + `express-rate-limit` (F-08) | ⬜ | Sensible API limits. |
-| PH-09 | Decision + doc on server-side authz (F-06) | ⬜ | Document single-tenant trust model; defer to auth epic. |
+| PH-07 | Fix CORS allow-list (F-07) | ✅ | Allow-list from `CORS_ORIGIN`; credentials only with explicit origins. |
+| PH-08 | Add `helmet` + `express-rate-limit` (F-08) | ✅ | helmet (CSP off), 300 req/min/IP, 1 MB body cap; API tests. |
+| PH-09 | Decision + doc on server-side authz (F-06) | ✅ | `docs/SECURITY.md` — single-tenant trust model, deferred to auth epic (IMP-011). |
 | PH-10 | Fix `reopenSession` window timestamp (F-09) | ⬜ | Use a dedicated completedAt or store settlement time. |
 
 ## P1 — Verification
