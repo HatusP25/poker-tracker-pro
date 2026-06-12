@@ -5,6 +5,8 @@
  * Uses greedy algorithm to minimize number of transactions
  */
 
+import { ValidationError } from '../utils/validators';
+
 interface PlayerBalance {
   playerId: string;
   playerName: string;
@@ -20,9 +22,12 @@ export interface Settlement {
 /**
  * Calculate settlements using greedy algorithm
  * Minimizes the number of transactions needed to settle all debts
+ *
+ * Note: works entirely on cloned balances so the caller's input is never mutated.
  */
 export function calculateSettlements(balances: PlayerBalance[]): Settlement[] {
-  // Create working copies to avoid mutating input
+  // Create working copies to avoid mutating input — both sides must be cloned
+  // because the loop below decrements their `balance` fields.
   const debtors = balances
     .filter(b => b.balance < 0)
     .map(b => ({ ...b, balance: Math.abs(b.balance) }))
@@ -30,6 +35,7 @@ export function calculateSettlements(balances: PlayerBalance[]): Settlement[] {
 
   const creditors = balances
     .filter(b => b.balance > 0)
+    .map(b => ({ ...b }))
     .sort((a, b) => b.balance - a.balance); // Largest credits first
 
   const settlements: Settlement[] = [];
@@ -54,26 +60,49 @@ export function calculateSettlements(balances: PlayerBalance[]): Settlement[] {
     debtor.balance -= amount;
     creditor.balance -= amount;
 
-    // Move to next debtor/creditor if current one is settled
-    if (debtor.balance === 0) i++;
-    if (creditor.balance === 0) j++;
+    // Move to next debtor/creditor if current one is settled.
+    // Use an epsilon rather than exact equality to absorb floating-point dust.
+    if (debtor.balance < 0.005) i++;
+    if (creditor.balance < 0.005) j++;
   }
 
   return settlements;
 }
 
 /**
- * Validate that settlements are zero-sum (total in = total out)
+ * Validate that a settlement set actually reconciles a set of balances.
+ *
+ * For each player, (money received - money paid) must equal their balance. A
+ * correct, zero-sum settlement set drives every player's net to their original
+ * balance. Returns false if any player is off by more than a cent.
  */
-export function validateSettlements(settlements: Settlement[]): boolean {
-  if (settlements.length === 0) return true;
+export function validateSettlements(
+  balances: PlayerBalance[],
+  settlements: Settlement[]
+): boolean {
+  const net = new Map<string, number>();
+  for (const b of balances) {
+    net.set(b.playerName, 0);
+  }
 
-  const totalIn = settlements.reduce((sum, s) => sum + s.amount, 0);
-  const totalOut = settlements.reduce((sum, s) => sum + s.amount, 0);
+  for (const s of settlements) {
+    if (!net.has(s.from) || !net.has(s.to)) {
+      return false; // settlement references a player not in the balances
+    }
+    if (s.amount <= 0) {
+      return false; // transfers must be positive
+    }
+    net.set(s.from, net.get(s.from)! - s.amount);
+    net.set(s.to, net.get(s.to)! + s.amount);
+  }
 
-  // They should be equal (both represent the same money moving)
-  // Allow for small floating-point errors
-  return Math.abs(totalIn - totalOut) < 0.01;
+  for (const b of balances) {
+    if (Math.abs(net.get(b.playerName)! - b.balance) > 0.01) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -92,7 +121,12 @@ function round(value: number, decimals: number = 2): number {
 }
 
 /**
- * Calculate settlements from session entries
+ * Calculate settlements from session entries.
+ *
+ * Throws a ValidationError (HTTP 400) when the table does not reconcile to zero,
+ * surfacing the exact discrepancy so the user can correct a cash-out. This is a
+ * routine end-of-night condition (chip counts rarely match to the cent), not an
+ * internal server error.
  */
 export function calculateSessionSettlements(
   entries: Array<{
@@ -111,8 +145,24 @@ export function calculateSessionSettlements(
 
   // Validate zero-sum before calculating settlements
   if (!validateZeroSum(balances)) {
-    throw new Error('Session is not zero-sum. Total buy-ins must equal total cash-outs.');
+    const totalBuyIn = entries.reduce((sum, e) => sum + e.buyIn, 0);
+    const totalCashOut = entries.reduce((sum, e) => sum + e.cashOut, 0);
+    const discrepancy = round(totalCashOut - totalBuyIn, 2);
+    const sign = discrepancy > 0 ? 'over' : 'short';
+    throw new ValidationError(
+      `Cash-outs don't reconcile: total buy-in is ${round(totalBuyIn, 2)} but ` +
+        `total cash-out is ${round(totalCashOut, 2)} (${Math.abs(discrepancy)} ${sign}). ` +
+        `Adjust a cash-out so they match before settling.`
+    );
   }
 
-  return calculateSettlements(balances);
+  const settlements = calculateSettlements(balances);
+
+  // Post-condition: the computed settlements must reconcile the balances.
+  // This guards against any regression in the greedy algorithm itself.
+  if (!validateSettlements(balances, settlements)) {
+    throw new Error('Internal error: computed settlements do not reconcile balances');
+  }
+
+  return settlements;
 }
