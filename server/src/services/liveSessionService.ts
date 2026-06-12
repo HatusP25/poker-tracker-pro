@@ -10,6 +10,7 @@
 
 import { prisma } from '../lib/prisma';
 import { calculateSessionSettlements } from './settlementService';
+import { isValidBuyIn, isValidCashOut, ValidationError } from '../utils/validators';
 
 export class LiveSessionService {
   /**
@@ -24,14 +25,21 @@ export class LiveSessionService {
   }) {
     // Validate at least 2 players
     if (data.players.length < 2) {
-      throw new Error('At least 2 players required to start a session');
+      throw new ValidationError('At least 2 players required to start a session');
+    }
+
+    // Validate each buy-in
+    for (const p of data.players) {
+      if (!isValidBuyIn(p.buyIn)) {
+        throw new ValidationError('Invalid buy-in amount');
+      }
     }
 
     // Check for duplicate players
     const playerIds = data.players.map(p => p.playerId);
     const uniquePlayerIds = new Set(playerIds);
     if (playerIds.length !== uniquePlayerIds.size) {
-      throw new Error('Duplicate players not allowed');
+      throw new ValidationError('Duplicate players not allowed');
     }
 
     // Create session with IN_PROGRESS status
@@ -110,6 +118,11 @@ export class LiveSessionService {
    * Add a rebuy for an existing player
    */
   async addRebuy(sessionId: string, playerId: string, amount: number) {
+    // Validate rebuy amount before touching the database
+    if (!isValidBuyIn(amount)) {
+      throw new ValidationError('Invalid rebuy amount');
+    }
+
     // Validate session is in progress
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
@@ -167,6 +180,11 @@ export class LiveSessionService {
    * Add a new player to an in-progress session
    */
   async addPlayer(sessionId: string, playerId: string, buyIn: number) {
+    // Validate buy-in before touching the database
+    if (!isValidBuyIn(buyIn)) {
+      throw new ValidationError('Invalid buy-in amount');
+    }
+
     // Validate session is in progress
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
@@ -235,60 +253,56 @@ export class LiveSessionService {
       throw new Error('Session is not in progress');
     }
 
-    // Validate all players have cash-outs
+    // Validate all players have a valid cash-out
     const cashOutMap = new Map(data.cashOuts.map(c => [c.playerId, c.cashOut]));
 
     for (const entry of session.entries) {
       if (!cashOutMap.has(entry.playerId)) {
-        throw new Error(`Missing cash-out for player: ${entry.player.name}`);
+        throw new ValidationError(`Missing cash-out for player: ${entry.player.name}`);
+      }
+      if (!isValidCashOut(cashOutMap.get(entry.playerId)!)) {
+        throw new ValidationError(`Invalid cash-out for player: ${entry.player.name}`);
       }
     }
 
-    // Update all entries with cash-outs
-    await Promise.all(
-      session.entries.map(entry =>
-        prisma.sessionEntry.update({
-          where: { id: entry.id },
-          data: {
-            cashOut: cashOutMap.get(entry.playerId)!,
-          },
-        })
-      )
-    );
-
-    // Fetch updated entries for settlement calculation
-    const updatedEntries = await prisma.sessionEntry.findMany({
-      where: { sessionId },
-      include: {
-        player: true,
-      },
-    });
-
-    // Calculate settlements
+    // Compute settlements from the about-to-be-saved cash-outs. This validates
+    // zero-sum (throws ValidationError -> 400) BEFORE we persist anything, so a
+    // non-reconciling table never leaves the session half-written.
     const settlements = calculateSessionSettlements(
-      updatedEntries.map(e => ({
+      session.entries.map(e => ({
         playerId: e.playerId,
         playerName: e.player.name,
         buyIn: e.buyIn,
-        cashOut: e.cashOut,
+        cashOut: cashOutMap.get(e.playerId)!,
       }))
     );
 
-    // Update session status and store settlements
-    const updatedSession = await prisma.session.update({
-      where: { id: sessionId },
-      data: {
-        status: 'COMPLETED',
-        endTime: data.endTime,
-        settlements: JSON.stringify(settlements),
-      },
-      include: {
-        entries: {
-          include: {
-            player: true,
+    // Persist cash-outs and the status flip atomically.
+    const updatedSession = await prisma.$transaction(async tx => {
+      await Promise.all(
+        session.entries.map(entry =>
+          tx.sessionEntry.update({
+            where: { id: entry.id },
+            data: { cashOut: cashOutMap.get(entry.playerId)! },
+          })
+        )
+      );
+
+      return tx.session.update({
+        where: { id: sessionId },
+        data: {
+          status: 'COMPLETED',
+          endTime: data.endTime,
+          settlements: JSON.stringify(settlements),
+        },
+        include: {
+          entries: {
+            include: {
+              player: true,
+            },
           },
         },
-      },
+      });
     });
 
     return {

@@ -8,6 +8,30 @@ Each entry records: what changed, why, the backlog item, and the verification th
 
 ---
 
+## 2026-06-12 — PH-04/05/06: live-session validation + atomic end
+
+**Changed**
+- **F-02**: `liveSessionService` now validates amounts up front and throws `ValidationError`
+  (→400) on bad input — `startSession` buy-ins, `addRebuy` amount, `addPlayer` buy-in,
+  `endSession` cash-outs. Previously negative/NaN values were written straight to the DB.
+- **F-03/F-04**: `endSession` now computes settlements (incl. the zero-sum check) *before*
+  persisting, then writes cash-outs and the `COMPLETED` flip inside a single `$transaction`. A
+  non-reconciling table is rejected with no partial write; the session stays `IN_PROGRESS`.
+- Added a DB-backed integration harness: `vitest.integration.config.ts` (points at
+  `poker_tracker_test`, resets tables per test, refuses to run against a non-test DB) and
+  `npm run test:integration`. Unit `npm test` stays DB-free.
+- 4 integration tests covering the full live lifecycle, the no-partial-write guarantee, and
+  input rejection.
+
+**Verification** `npm test` → 27 passed · `npm run test:integration` → 4 passed ·
+`npm run build` → clean.
+
+**Files** `server/src/services/liveSessionService.ts`, `server/vitest.config.ts`,
+`server/vitest.integration.config.ts`, `server/tests/integration/{setup,liveSession.test}.ts`,
+`server/package.json`.
+
+---
+
 ## 2026-06-12 — PH-01/02/03: test harness + settlement fixes
 
 **Changed**

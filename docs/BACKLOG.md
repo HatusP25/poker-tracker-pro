@@ -18,9 +18,9 @@ Status: ⬜ todo · 🟡 in progress · ✅ done · ⏸ deferred
 | PH-01 | Stand up server test harness (Vitest) | ✅ | `npm test` → vitest. |
 | PH-02 | Unit tests for money logic (calculations + settlement) | ✅ | 27 tests, green. |
 | PH-03 | Fix `validateSettlements` no-op (F-01) + input-mutation bug (F-10) | ✅ | Reconciliation validator + clone both sides; zero-sum → 400 w/ discrepancy (covers F-06/F-04 service side). |
-| PH-04 | Validate live-session amounts: rebuy/addPlayer/endSession (F-02) | ⬜ | Reject ≤0, NaN, over-max. |
-| PH-05 | Make `endSession` transactional (F-03) | ⬜ | Wrap cash-out writes + status flip in `$transaction`. |
-| PH-06 | Zero-sum mismatch → 400 with discrepancy (F-04) | ⬜ | Typed error, surfaced in UI. |
+| PH-04 | Validate live-session amounts: rebuy/addPlayer/endSession (F-02) | ✅ | Guards in start/addRebuy/addPlayer/endSession; integration-tested. |
+| PH-05 | Make `endSession` transactional (F-03) | ✅ | Cash-out writes + status flip in `$transaction`; settlement computed pre-persist. |
+| PH-06 | Zero-sum mismatch → 400 with discrepancy (F-04) | ✅ | Service throws `ValidationError` (→400) before any write; no partial state. UI surfacing tracked separately if needed. |
 
 ## P1 — Security & robustness
 
