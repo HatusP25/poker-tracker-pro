@@ -8,6 +8,25 @@ Each entry records: what changed, why, the backlog item, and the verification th
 
 ---
 
+## 2026-06-12 — PH-13: CI pipeline
+
+**Changed**
+- Added `.github/workflows/ci.yml` — on every PR and push to `main`, spins up a Postgres 16
+  service, installs all three packages, generates the Prisma client, creates + migrates the test
+  and e2e databases, then runs: server typecheck, client build, unit tests, integration tests,
+  and Playwright E2E. Uploads the Playwright report on failure. This enforces "don't merge if
+  red" (closes IMP-015).
+- The test configs already honour `TEST_DATABASE_URL` / `E2E_DATABASE_URL`, so CI just points
+  them at the service Postgres.
+
+**Verification** Command chain verified locally (server `tsc --noEmit` OK, `build:client` OK,
+unit 27 / integration 8 / e2e 2 all green). The workflow runs on GitHub Actions; first run will
+confirm the runner wiring.
+
+**Files** `.github/workflows/ci.yml`, `docs/BACKLOG.md`.
+
+---
+
 ## 2026-06-12 — PH-11/12: Playwright E2E (production stack)
 
 **Changed**

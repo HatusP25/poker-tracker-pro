@@ -37,7 +37,7 @@ Status: ⬜ todo · 🟡 in progress · ✅ done · ⏸ deferred
 |----|------|--------|-------|
 | PH-11 | Playwright E2E: production stack boot smoke | ✅ | Builds SPA, serves via prod server, API health + shell render. |
 | PH-12 | Playwright E2E: live session start→rebuy→end→settlement | ✅ | Full browser flow covering F-02/03/04; settlement asserted. |
-| PH-13 | CI workflow (typecheck + unit + integration + E2E) | ⬜ | Enforce "don't merge if red" (IMP-015). |
+| PH-13 | CI workflow (typecheck + unit + integration + E2E) | ✅ | `.github/workflows/ci.yml` with Postgres service; runs on PRs + main. |
 
 ## P2 — Product gaps (carried from IMP backlog)
 
