@@ -126,6 +126,7 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
                       value={cashOuts[entry.playerId] || ''}
                       onChange={(e) => handleCashOutChange(entry.playerId, e.target.value)}
                       className="w-28"
+                      data-testid={`cashout-input-${entry.player?.name}`}
                     />
                   </div>
                   {cashOutValue > 0 && (

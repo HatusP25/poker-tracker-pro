@@ -70,6 +70,16 @@ Thumbs.db
 # Git worktrees
 .worktrees/
 
+# E2E / Playwright
+/server/public/
+/test-results/
+/playwright-report/
+/blob-report/
+.last-run.json
+
+# Visual brainstorming sessions
+.superpowers/
+
 # Vercel
 .vercel
 

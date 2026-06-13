@@ -178,6 +178,7 @@ const SettlementView = () => {
                 <div
                   key={idx}
                   className="flex items-center justify-between p-4 bg-muted rounded-lg"
+                  data-testid="settlement-row"
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className="font-bold text-lg">{settlement.from}</div>

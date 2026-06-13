@@ -15,6 +15,8 @@
     "db:seed": "cd server && npm run db:seed",
     "db:studio": "cd server && npm run db:studio",
     "db:generate": "cd server && npm run db:generate",
+    "e2e:build": "npm run build:client && rm -rf server/public && cp -r client/dist server/public && npm run build:server",
+    "test:e2e": "npm run e2e:build && playwright test",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install",
     "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist",
     "docker:build": "docker build -t poker-tracker-pro .",
@@ -27,6 +29,7 @@
     "npm": ">=10.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "concurrently": "^8.2.2"
   },
   "keywords": [
