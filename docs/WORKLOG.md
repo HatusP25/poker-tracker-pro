@@ -8,6 +8,29 @@ Each entry records: what changed, why, the backlog item, and the verification th
 
 ---
 
+## 2026-06-12 — PH-11/12: Playwright E2E (production stack)
+
+**Changed**
+- Added Playwright E2E that runs against the **production artifact**: client built into
+  `server/public`, served by the Express server in `NODE_ENV=production`, backed by a disposable
+  `poker_tracker_e2e` database (reset via `psql TRUNCATE` in `e2e/global-setup.ts`, with a guard
+  that refuses any non-e2e DB).
+- `e2e/live-session.spec.ts` — full money flow in a real browser: start live session → add a
+  rebuy (Radix select) → end with balanced cash-outs → assert the rendered settlement
+  (`Alice → Bob $200.00`, zero-sum validated). Covers F-02/F-03/F-04 end to end.
+- `e2e/smoke.spec.ts` — API health + SPA shell render.
+- Added stable `data-testid`s: `cashout-input-<name>` (EndSessionDialog), `settlement-row`
+  (SettlementView).
+- Root scripts `e2e:build` / `test:e2e`; `playwright.config.ts`; gitignored build/report dirs.
+
+**Verification** `npm run test:e2e` → 2 passed (live flow + smoke). Unit (27) and integration (8)
+remain green.
+
+**Files** `playwright.config.ts`, `e2e/*`, `package.json`, `.gitignore`,
+`client/src/components/live/EndSessionDialog.tsx`, `client/src/pages/SettlementView.tsx`.
+
+---
+
 ## 2026-06-12 — PH-07/08/09: API security hardening
 
 **Changed**
