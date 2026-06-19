@@ -106,6 +106,17 @@ const CommandPalette = () => {
                   <div className="command-shortcut">G A</div>
                 </div>
               </Command.Item>
+
+              <Command.Item
+                onSelect={() => handleNavigate('/insights')}
+                className="command-item"
+              >
+                <span className="command-icon">✨</span>
+                <div className="command-content">
+                  <div className="command-title">Insights</div>
+                  <div className="command-shortcut">G I</div>
+                </div>
+              </Command.Item>
             </Command.Group>
 
             {selectedGroup && (

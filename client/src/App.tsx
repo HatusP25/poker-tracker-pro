@@ -14,6 +14,7 @@ import Players from '@/pages/Players';
 import PlayerDetail from '@/pages/PlayerDetail';
 import Rankings from '@/pages/Rankings';
 import Analytics from '@/pages/Analytics';
+import Insights from '@/pages/Insights';
 import Settings from '@/pages/Settings';
 import LiveSessionStart from '@/pages/LiveSessionStart';
 import LiveSessionView from '@/pages/LiveSessionView';
@@ -50,6 +51,7 @@ const App = () => {
                 <Route path="/players/:id" element={<PlayerDetail />} />
                 <Route path="/rankings" element={<Rankings />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/insights" element={<Insights />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/live/start" element={<LiveSessionStart />} />
                 <Route path="/live/:sessionId" element={<LiveSessionView />} />

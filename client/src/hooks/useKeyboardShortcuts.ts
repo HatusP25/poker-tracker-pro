@@ -49,6 +49,9 @@ export const useKeyboardShortcuts = () => {
           case 'a':
             navigate('/analytics');
             break;
+          case 'i':
+            navigate('/insights');
+            break;
           case 'g':
             navigate('/groups');
             break;
