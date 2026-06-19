@@ -46,6 +46,7 @@ Status: ⬜ todo · 🟡 in progress · ✅ done · ⏸ deferred
 | PH-14 | Surface player notes in PlayerDetail (IMP-003) | ⬜ | Schema exists, no UI. |
 | PH-15 | Profit by location / day-of-week analytics (IMP-001/002) | ⬜ | Day-of-week chart partly present. |
 | PH-16 | Undo/edit rebuy in live session (IMP-008) | ⬜ | Needs RebuyEvent edit/delete + buyIn recalc. |
+| PH-17 | Money-input guardrails (block nonsensical input) | ✅ | Cash-out ≥0 (clamp on blur), buy-in/rebuy >0, caps; inline errors + disabled submit. Client Vitest + E2E. Spec: `docs/superpowers/specs/2026-06-16-...`. |
 
 ---
 

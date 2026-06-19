@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { validateRebuy, MAX_BUY_IN } from '@/lib/moneyValidation';
 import type { Player } from '@/types';
 
 interface RebuyDialogProps {
@@ -18,8 +19,11 @@ const RebuyDialog = ({ open, onOpenChange, players, defaultBuyIn, onSubmit }: Re
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [amount, setAmount] = useState(defaultBuyIn.toString());
 
+  const amountValidity = validateRebuy(parseFloat(amount));
+  const showAmountError = amount.trim() !== '' && !amountValidity.valid;
+
   const handleSubmit = () => {
-    if (selectedPlayerId && parseFloat(amount) > 0) {
+    if (selectedPlayerId && amountValidity.valid) {
       onSubmit(selectedPlayerId, parseFloat(amount));
       setSelectedPlayerId('');
       setAmount(defaultBuyIn.toString());
@@ -61,6 +65,7 @@ const RebuyDialog = ({ open, onOpenChange, players, defaultBuyIn, onSubmit }: Re
               type="number"
               step="0.01"
               min="0"
+              max={MAX_BUY_IN}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               onKeyDown={(e) => {
@@ -69,6 +74,9 @@ const RebuyDialog = ({ open, onOpenChange, players, defaultBuyIn, onSubmit }: Re
                 }
               }}
             />
+            {showAmountError && (
+              <p className="text-sm text-destructive">{amountValidity.message}</p>
+            )}
           </div>
 
           {/* Quick amount buttons */}
@@ -104,7 +112,7 @@ const RebuyDialog = ({ open, onOpenChange, players, defaultBuyIn, onSubmit }: Re
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!selectedPlayerId || parseFloat(amount) <= 0}>
+          <Button onClick={handleSubmit} disabled={!selectedPlayerId || !amountValidity.valid}>
             Add Rebuy
           </Button>
         </DialogFooter>

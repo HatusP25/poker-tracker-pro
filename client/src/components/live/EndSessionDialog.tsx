@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { validateCashOut, clampCashOut } from '@/lib/moneyValidation';
 import type { SessionEntry } from '@/types';
 
 interface EndSessionDialogProps {
@@ -34,6 +35,20 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
     });
     setError(null);
   };
+
+  // Snap a nonsensical cash-out (e.g. negative) into its valid range on blur.
+  const handleCashOutBlur = (playerId: string) => {
+    const raw = cashOuts[playerId] ?? '';
+    if (raw.trim() === '') return;
+    setCashOuts((prev) => ({
+      ...prev,
+      [playerId]: String(clampCashOut(parseFloat(raw))),
+    }));
+  };
+
+  const anyCashOutInvalid = entries.some(
+    (entry) => !validateCashOut(parseFloat(cashOuts[entry.playerId] ?? '')).valid
+  );
 
   const handleSubmit = () => {
     setError(null);
@@ -101,42 +116,49 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
           <div className="space-y-3">
             <Label>Player Cash-Outs</Label>
             {entries.map((entry) => {
-              const cashOutValue = parseFloat(cashOuts[entry.playerId] || '0');
+              const raw = cashOuts[entry.playerId] ?? '';
+              const cashOutValue = parseFloat(raw || '0');
               const profit = cashOutValue - entry.buyIn;
+              const validity = validateCashOut(parseFloat(raw));
+              const showError = raw.trim() !== '' && !validity.valid;
 
               return (
-                <div
-                  key={entry.id}
-                  className="flex items-center gap-4 p-3 rounded-lg border bg-card"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{entry.player?.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Buy-in: ${entry.buyIn.toFixed(2)}
+                <div key={entry.id} className="space-y-1">
+                  <div className="flex items-center gap-4 p-3 rounded-lg border bg-card">
+                    <div className="flex-1">
+                      <div className="font-medium">{entry.player?.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Buy-in: ${entry.buyIn.toFixed(2)}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                      Cash-out:
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={cashOuts[entry.playerId] || ''}
-                      onChange={(e) => handleCashOutChange(entry.playerId, e.target.value)}
-                      className="w-28"
-                      data-testid={`cashout-input-${entry.player?.name}`}
-                    />
-                  </div>
-                  {cashOutValue > 0 && (
-                    <div
-                      className={`text-sm font-medium w-20 text-right ${
-                        profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {profit > 0 && '+'}${profit.toFixed(2)}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                        Cash-out:
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={10000}
+                        value={cashOuts[entry.playerId] || ''}
+                        onChange={(e) => handleCashOutChange(entry.playerId, e.target.value)}
+                        onBlur={() => handleCashOutBlur(entry.playerId)}
+                        className="w-28"
+                        data-testid={`cashout-input-${entry.player?.name}`}
+                      />
                     </div>
+                    {cashOutValue > 0 && (
+                      <div
+                        className={`text-sm font-medium w-20 text-right ${
+                          profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {profit > 0 && '+'}${profit.toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                  {showError && (
+                    <p className="text-sm text-destructive pl-3">{validity.message}</p>
                   )}
                 </div>
               );
@@ -176,7 +198,10 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={Math.abs(difference) > totalBuyIn * 0.01}>
+          <Button
+            onClick={handleSubmit}
+            disabled={anyCashOutInvalid || Math.abs(difference) > totalBuyIn * 0.01}
+          >
             End Session
           </Button>
         </DialogFooter>

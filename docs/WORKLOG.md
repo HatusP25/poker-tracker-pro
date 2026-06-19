@@ -8,6 +8,37 @@ Each entry records: what changed, why, the backlog item, and the verification th
 
 ---
 
+## 2026-06-16 — PH-17: money-input guardrails
+
+**Why** A cash-out could be typed negative (nonsensical — floor is $0). Hardened all money
+inputs at the point of entry to mirror the server's existing limits. Design:
+`docs/superpowers/specs/2026-06-16-money-input-guardrails-design.md`.
+
+**Changed**
+- New `client/src/lib/moneyValidation.ts` — single source of truth for buy-in (>0, ≤1000),
+  cash-out (≥0, ≤10000), rebuy (>0, ≤1000), plus `clampCashOut`. Built test-first (16 unit tests).
+- Set up Vitest in `client/` (`npm test`); was previously test-free.
+- Wired the helper into every money input with inline error messages + `min`/`max`, and folded
+  validity into the action's disabled state:
+  - `EndSessionDialog` — per-player cash-out error; **clamps negatives to 0 on blur**; End Session
+    disabled while any cash-out is invalid.
+  - `EntryRow` + `SessionForm` — buy-in/cash-out errors; Create Session disabled when a player row
+    holds an invalid value; cash-out blur-clamp.
+  - `RebuyDialog` — rebuy amount error; Add Rebuy disabled when invalid.
+  - `LiveSessionStart` — buy-in entry now uses the shared rule (rejects ≤0 / over-cap).
+- Playwright E2E (`e2e/money-guardrails.spec.ts`): negative cash-out shows the message, disables
+  End Session, and clamps to 0 on blur; entry form blocks a negative buy-in.
+- CI now also runs the client unit tests.
+
+**Verification** server unit 27 ✓ · integration 8 ✓ · client unit 16 ✓ · E2E 4 ✓ · both builds ✓ ·
+typecheck ✓.
+
+**Files** `client/src/lib/moneyValidation.ts(+test)`, `client/vitest.config.ts`,
+`client/package.json`, `client/src/components/{live/EndSessionDialog,live/RebuyDialog,sessions/EntryRow,sessions/SessionForm}.tsx`,
+`client/src/pages/LiveSessionStart.tsx`, `e2e/money-guardrails.spec.ts`, `.github/workflows/ci.yml`.
+
+---
+
 ## 2026-06-12 — PH-13: CI pipeline
 
 **Changed**

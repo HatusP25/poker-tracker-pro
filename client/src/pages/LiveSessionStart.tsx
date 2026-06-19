@@ -10,6 +10,7 @@ import { useGroupContext } from '@/context/GroupContext';
 import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { useStartLiveSession } from '@/hooks/useLiveSessions';
+import { validateBuyIn, MAX_BUY_IN } from '@/lib/moneyValidation';
 import { Play, Eye } from 'lucide-react';
 
 const LiveSessionStart = () => {
@@ -84,7 +85,8 @@ const LiveSessionStart = () => {
 
   const handleBuyInChange = (playerId: string, value: string) => {
     const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue > 0) {
+    // Only accept valid buy-ins (> $0, within the cap); ignore nonsensical input.
+    if (validateBuyIn(numValue).valid) {
       setSelectedPlayers({
         ...selectedPlayers,
         [playerId]: numValue,
@@ -195,6 +197,7 @@ const LiveSessionStart = () => {
                       type="number"
                       step="0.01"
                       min="0"
+                      max={MAX_BUY_IN}
                       value={selectedPlayers[player.id]}
                       onChange={(e) => handleBuyInChange(player.id, e.target.value)}
                       className="w-24"
