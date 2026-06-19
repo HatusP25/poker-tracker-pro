@@ -128,3 +128,36 @@ describe('computeHeadToHead', () => {
     expect(alice.bogey).toMatchObject({ playerName: 'Bob', lossesTo: 1 });
   });
 });
+
+import { computeForm } from './insightsService';
+
+describe('computeForm', () => {
+  it('returns recent results oldest->newest, trajectory and badges', () => {
+    // 4 straight wins -> heater badge, up trajectory
+    const sessions = ['2026-01-01', '2026-01-08', '2026-01-15', '2026-01-22'].map((d, i) =>
+      makeSession(`s${i}`, `${d}T00:00:00.000Z`, [
+        { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 20, rebuys: 0 }, // +10 each
+      ])
+    );
+    const form = computeForm(sessions, ['a']);
+    const alice = form.find((f) => f.playerId === 'a')!;
+    expect(alice.recentResults).toEqual([10, 10, 10, 10]);
+    expect(alice.recentGames).toBe(4);
+    expect(alice.recentWins).toBe(4);
+    expect(alice.currentStreak).toBe(4);
+    expect(alice.streakType).toBe('win');
+    expect(alice.badge).toBe('heater');
+  });
+
+  it('only includes the requested active players and handles no games', () => {
+    const sessions = [
+      makeSession('s1', '2026-01-01T00:00:00.000Z', [{ playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 20, rebuys: 0 }]),
+    ];
+    const form = computeForm(sessions, ['a', 'z']);
+    expect(form.map((f) => f.playerId).sort()).toEqual(['a', 'z']);
+    const z = form.find((f) => f.playerId === 'z')!;
+    expect(z.recentGames).toBe(0);
+    expect(z.badge).toBeNull();
+    expect(z.trajectory).toBe('flat');
+  });
+});

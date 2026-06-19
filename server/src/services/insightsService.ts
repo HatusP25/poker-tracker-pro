@@ -286,3 +286,66 @@ export function computeHeadToHead(
 
   return { pair, biggestRivalry, playerInsights };
 }
+
+// ---- Module 3: Form & Momentum (pure) ----
+// playerNames maps id -> name so requested players with zero games still appear.
+export function computeForm(
+  sessions: SessionRow[],
+  activePlayerIds: string[],
+  playerNames?: Map<string, string>
+): PlayerForm[] {
+  const ordered = [...sessions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  const names = playerNames ?? new Map<string, string>();
+  const seriesByPlayer = new Map<string, { profit: number; date: Date }[]>();
+  for (const id of activePlayerIds) seriesByPlayer.set(id, []);
+
+  for (const s of ordered) {
+    for (const e of s.entries) {
+      if (!names.has(e.playerId)) names.set(e.playerId, e.playerName);
+      if (!seriesByPlayer.has(e.playerId)) continue; // not in requested set
+      seriesByPlayer.get(e.playerId)!.push({
+        profit: calculateProfit(e.cashOut, e.buyIn),
+        date: new Date(s.date),
+      });
+    }
+  }
+
+  return activePlayerIds.map((id) => {
+    const series = seriesByPlayer.get(id) ?? [];
+    const recent = series.slice(-RECENT_WINDOW);
+    const recentResults = recent.map((r) => r.profit);
+    const recentWins = recentResults.filter((p) => p > 0).length;
+    const streak = calculateStreak(series);
+
+    // Trajectory: compare average of the second half vs the first half of the window.
+    let trajectory: 'up' | 'down' | 'flat' = 'flat';
+    if (recentResults.length >= 2) {
+      const mid = Math.floor(recentResults.length / 2);
+      const firstHalf = recentResults.slice(0, mid);
+      const secondHalf = recentResults.slice(recentResults.length - mid);
+      const avg = (arr: number[]) => arr.reduce((s, v) => s + v, 0) / arr.length;
+      const diff = avg(secondHalf) - avg(firstHalf);
+      if (diff > 0) trajectory = 'up';
+      else if (diff < 0) trajectory = 'down';
+    }
+
+    let badge: 'heater' | 'slump' | null = null;
+    if (streak.type === 'win' && streak.count >= STREAK_BADGE_THRESHOLD) badge = 'heater';
+    else if (streak.type === 'loss' && streak.count >= STREAK_BADGE_THRESHOLD) badge = 'slump';
+
+    return {
+      playerId: id,
+      playerName: names.get(id) ?? '',
+      recentResults,
+      recentWins,
+      recentGames: recentResults.length,
+      trajectory,
+      currentStreak: streak.count,
+      streakType: streak.type,
+      badge,
+    };
+  });
+}
