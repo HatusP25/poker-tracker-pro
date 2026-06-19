@@ -1,0 +1,78 @@
+import { describe, it, expect } from 'vitest';
+import { computeRecords, type SessionRow } from './insightsService';
+
+// Helper to build a session row. rebuys = number of rebuy events for that player.
+const makeSession = (
+  id: string,
+  date: string,
+  entries: { playerId: string; playerName: string; buyIn: number; cashOut: number; rebuys: number }[]
+): SessionRow => ({
+  id,
+  date,
+  entries: entries.map((e) => ({
+    playerId: e.playerId,
+    playerName: e.playerName,
+    buyIn: e.buyIn,
+    cashOut: e.cashOut,
+    rebuyCount: e.rebuys,
+  })),
+});
+
+describe('computeRecords', () => {
+  it('returns all-null records for an empty group', () => {
+    const records = computeRecords([]);
+    expect(records.biggestWin).toBeNull();
+    expect(records.biggestPot).toBeNull();
+    expect(records.longestWinStreak).toBeNull();
+  });
+
+  it('finds the biggest single-night win and loss', () => {
+    const sessions = [
+      makeSession('s1', '2026-01-01T00:00:00.000Z', [
+        { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 40, rebuys: 0 }, // +30
+        { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 0, rebuys: 0 }, // -10
+      ]),
+      makeSession('s2', '2026-01-08T00:00:00.000Z', [
+        { playerId: 'a', playerName: 'Alice', buyIn: 30, cashOut: 0, rebuys: 2 }, // -30
+        { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 70, rebuys: 0 }, // +60
+      ]),
+    ];
+    const records = computeRecords(sessions);
+    expect(records.biggestWin).toMatchObject({ playerName: 'Bob', value: 60, sessionId: 's2' });
+    expect(records.biggestLoss).toMatchObject({ value: -30, sessionId: 's2' });
+  });
+
+  it('finds biggest comeback (>=2 rebuys and positive profit)', () => {
+    const sessions = [
+      makeSession('s1', '2026-01-01T00:00:00.000Z', [
+        { playerId: 'a', playerName: 'Alice', buyIn: 30, cashOut: 80, rebuys: 2 }, // +50, comeback
+        { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 90, rebuys: 0 }, // +80 but no rebuys
+      ]),
+    ];
+    const records = computeRecords(sessions);
+    expect(records.biggestComeback).toMatchObject({ playerName: 'Alice', value: 50 });
+  });
+
+  it('finds most rebuys and biggest pot', () => {
+    const sessions = [
+      makeSession('s1', '2026-01-01T00:00:00.000Z', [
+        { playerId: 'a', playerName: 'Alice', buyIn: 40, cashOut: 0, rebuys: 3 },
+        { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 50, rebuys: 0 },
+      ]),
+    ];
+    const records = computeRecords(sessions);
+    expect(records.mostRebuys).toMatchObject({ playerName: 'Alice', value: 3 });
+    expect(records.biggestPot).toMatchObject({ sessionId: 's1', total: 50 }); // 40 + 10
+  });
+
+  it('computes longest win and loss streaks across sessions in date order', () => {
+    const sessions = [
+      makeSession('s1', '2026-01-01T00:00:00.000Z', [{ playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 20, rebuys: 0 }]),
+      makeSession('s2', '2026-01-08T00:00:00.000Z', [{ playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 20, rebuys: 0 }]),
+      makeSession('s3', '2026-01-15T00:00:00.000Z', [{ playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 0, rebuys: 0 }]),
+    ];
+    const records = computeRecords(sessions);
+    expect(records.longestWinStreak).toMatchObject({ playerName: 'Alice', count: 2 });
+    expect(records.longestLossStreak).toMatchObject({ playerName: 'Alice', count: 1 });
+  });
+});
