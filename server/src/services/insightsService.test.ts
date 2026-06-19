@@ -76,3 +76,55 @@ describe('computeRecords', () => {
     expect(records.longestLossStreak).toMatchObject({ playerName: 'Alice', count: 1 });
   });
 });
+
+import { computeHeadToHead } from './insightsService';
+
+describe('computeHeadToHead', () => {
+  const sessions = [
+    makeSession('s1', '2026-01-01T00:00:00.000Z', [
+      { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 30, rebuys: 0 }, // +20
+      { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 5, rebuys: 0 }, // -5  => A higher
+    ]),
+    makeSession('s2', '2026-01-08T00:00:00.000Z', [
+      { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 25, rebuys: 0 }, // +15
+      { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 0, rebuys: 0 }, // -10 => A higher
+    ]),
+    makeSession('s3', '2026-01-15T00:00:00.000Z', [
+      { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 0, rebuys: 0 }, // -10
+      { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 40, rebuys: 0 }, // +30 => B higher
+    ]),
+  ];
+
+  it('computes pairwise record, differential and current streak', () => {
+    const res = computeHeadToHead(sessions, 'a', 'b');
+    expect(res.pair).toMatchObject({
+      playerAName: 'Alice',
+      playerBName: 'Bob',
+      sharedSessions: 3,
+      aWins: 2,
+      bWins: 1,
+      ties: 0,
+    });
+    // differential = (20 - -5) + (15 - -10) + (-10 - 30) = 25 + 25 - 40 = 10
+    expect(res.pair!.profitDifferential).toBe(10);
+    // Most recent shared session: Bob higher -> Bob currently on a 1-session streak
+    expect(res.pair!.currentStreakHolder).toBe('Bob');
+    expect(res.pair!.currentStreakCount).toBe(1);
+  });
+
+  it('returns null pair when players share no sessions', () => {
+    const solo = [
+      makeSession('s1', '2026-01-01T00:00:00.000Z', [{ playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 20, rebuys: 0 }]),
+      makeSession('s2', '2026-01-08T00:00:00.000Z', [{ playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 20, rebuys: 0 }]),
+    ];
+    expect(computeHeadToHead(solo, 'a', 'b').pair).toBeNull();
+  });
+
+  it('surfaces the biggest rivalry and per-player bogey/favorite victim', () => {
+    const res = computeHeadToHead(sessions);
+    expect(res.biggestRivalry).toMatchObject({ sharedSessions: 3 });
+    const alice = res.playerInsights.find((p) => p.playerId === 'a')!;
+    expect(alice.favoriteVictim).toMatchObject({ playerName: 'Bob', winsOver: 2 });
+    expect(alice.bogey).toMatchObject({ playerName: 'Bob', lossesTo: 1 });
+  });
+});

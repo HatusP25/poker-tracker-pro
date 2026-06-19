@@ -145,3 +145,144 @@ function computeStreakRecord(
   }
   return best;
 }
+
+// ---- Module 2: Head-to-Head (pure) ----
+interface ProfitByPlayer {
+  [playerId: string]: { name: string; profit: number };
+}
+
+function sessionProfits(s: SessionRow): ProfitByPlayer {
+  const out: ProfitByPlayer = {};
+  for (const e of s.entries) {
+    out[e.playerId] = { name: e.playerName, profit: calculateProfit(e.cashOut, e.buyIn) };
+  }
+  return out;
+}
+
+function pairStats(
+  ordered: SessionRow[],
+  aId: string,
+  bId: string
+): PairStats | null {
+  let aName = '';
+  let bName = '';
+  let aWins = 0;
+  let bWins = 0;
+  let ties = 0;
+  let differential = 0;
+  // results in chronological order: 'a' | 'b' | 'tie'
+  const series: ('a' | 'b' | 'tie')[] = [];
+
+  for (const s of ordered) {
+    const p = sessionProfits(s);
+    if (!p[aId] || !p[bId]) continue;
+    aName = p[aId].name;
+    bName = p[bId].name;
+    differential += p[aId].profit - p[bId].profit;
+    if (p[aId].profit > p[bId].profit) {
+      aWins++;
+      series.push('a');
+    } else if (p[bId].profit > p[aId].profit) {
+      bWins++;
+      series.push('b');
+    } else {
+      ties++;
+      series.push('tie');
+    }
+  }
+
+  const shared = aWins + bWins + ties;
+  if (shared === 0) return null;
+
+  // Current streak: walk backwards while the same player keeps finishing higher.
+  let streakHolder: string | null = null;
+  let streakCount = 0;
+  for (let i = series.length - 1; i >= 0; i--) {
+    const r = series[i];
+    if (r === 'tie') break;
+    const holder = r === 'a' ? aName : bName;
+    if (streakHolder === null) {
+      streakHolder = holder;
+      streakCount = 1;
+    } else if (streakHolder === holder) {
+      streakCount++;
+    } else {
+      break;
+    }
+  }
+
+  return {
+    playerAId: aId,
+    playerAName: aName,
+    playerBId: bId,
+    playerBName: bName,
+    sharedSessions: shared,
+    aWins,
+    bWins,
+    ties,
+    profitDifferential: round(differential),
+    currentStreakHolder: streakHolder,
+    currentStreakCount: streakCount,
+  };
+}
+
+export function computeHeadToHead(
+  sessions: SessionRow[],
+  playerA?: string,
+  playerB?: string
+): HeadToHeadResponse {
+  const ordered = [...sessions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  // Collect all player ids/names seen.
+  const names = new Map<string, string>();
+  for (const s of ordered) for (const e of s.entries) names.set(e.playerId, e.playerName);
+  const ids = [...names.keys()];
+
+  // Requested pair.
+  const pair = playerA && playerB ? pairStats(ordered, playerA, playerB) : null;
+
+  // All pairs -> biggest rivalry + per-player tallies.
+  let biggestRivalry: PairStats | null = null;
+  const winsOver = new Map<string, Map<string, number>>(); // playerId -> oppId -> wins
+  const lossesTo = new Map<string, Map<string, number>>(); // playerId -> oppId -> losses
+  const ensure = (m: Map<string, Map<string, number>>, k: string) => {
+    if (!m.has(k)) m.set(k, new Map());
+    return m.get(k)!;
+  };
+
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const ps = pairStats(ordered, ids[i], ids[j]);
+      if (!ps) continue;
+      if (!biggestRivalry || ps.sharedSessions > biggestRivalry.sharedSessions) {
+        biggestRivalry = ps;
+      }
+      const a = ids[i];
+      const b = ids[j];
+      ensure(winsOver, a).set(b, ps.aWins);
+      ensure(lossesTo, a).set(b, ps.bWins);
+      ensure(winsOver, b).set(a, ps.bWins);
+      ensure(lossesTo, b).set(a, ps.aWins);
+    }
+  }
+
+  const playerInsights: PlayerRivalryInsight[] = ids.map((id) => {
+    let favoriteVictim: PlayerRivalryInsight['favoriteVictim'] = null;
+    let bogey: PlayerRivalryInsight['bogey'] = null;
+    for (const [oppId, wins] of winsOver.get(id) ?? []) {
+      if (wins > 0 && (!favoriteVictim || wins > favoriteVictim.winsOver)) {
+        favoriteVictim = { playerId: oppId, playerName: names.get(oppId)!, winsOver: wins };
+      }
+    }
+    for (const [oppId, losses] of lossesTo.get(id) ?? []) {
+      if (losses > 0 && (!bogey || losses > bogey.lossesTo)) {
+        bogey = { playerId: oppId, playerName: names.get(oppId)!, lossesTo: losses };
+      }
+    }
+    return { playerId: id, playerName: names.get(id)!, bogey, favoriteVictim };
+  });
+
+  return { pair, biggestRivalry, playerInsights };
+}
