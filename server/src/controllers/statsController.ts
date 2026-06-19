@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { statsService } from '../services/statsService';
 import { sessionSummaryService } from '../services/sessionSummaryService';
+import { insightsService } from '../services/insightsService';
 
 export const getPlayerStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -109,6 +110,49 @@ export const getSessionSummary = async (req: Request, res: Response, next: NextF
 
     const summary = await sessionSummaryService.getSessionSummary(sessionId, groupId);
     res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGroupRecords = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const records = await insightsService.getRecords(groupId);
+    res.json(records);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGroupHeadToHead = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const playerA = typeof req.query.playerA === 'string' ? req.query.playerA : undefined;
+    const playerB = typeof req.query.playerB === 'string' ? req.query.playerB : undefined;
+    const result = await insightsService.getHeadToHead(groupId, playerA, playerB);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGroupForm = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const form = await insightsService.getForm(groupId);
+    res.json(form);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSeasonRecap = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+    const recap = await insightsService.getSeasonRecap(groupId, year);
+    res.json(recap);
   } catch (error) {
     next(error);
   }
