@@ -171,6 +171,22 @@ After each session (live or historical), view:
 - 7 interactive charts on Analytics page
 - Individual player performance pages
 
+### Insights — The Story of Your Game
+
+A narrative-first area (`/insights`, shortcut `G + I`) separate from the Analytics
+toolbox. All modules are read-only and derived from existing data (no schema changes):
+
+- **Hall of Fame & Records**: biggest win/loss/comeback, longest streaks, most rebuys,
+  best ROI night, biggest pot — each links to the session where it happened.
+- **Rivalries / Head-to-Head**: pick two players for their record, profit differential,
+  and current streak; auto-surfaced biggest rivalry plus per-player bogey / favorite victim.
+- **Form & Momentum**: hot/cold board with trajectory arrows, heater/slump badges, and
+  per-player momentum sparklines.
+- **Season Recap ("Poker Wrapped")**: champion, biggest mover, attendance king, best
+  single night, and most rebuys for a chosen year.
+- **Signature visuals**: a rank-over-time "Race for #1" bump chart and momentum sparklines,
+  on a shared upgraded chart theme.
+
 ### Role-Based Access Control
 
 - **VIEWER Mode**: Read-only access, buttons hidden
@@ -188,6 +204,7 @@ After each session (live or historical), view:
 | G + P | Go to Players |
 | G + R | Go to Rankings |
 | G + A | Go to Analytics |
+| G + I | Go to Insights |
 | N + S | New Session |
 | N + P | New Player |
 
@@ -301,6 +318,10 @@ User Action → React Component → TanStack Query Mutation
 | GET | `/stats/groups/:groupId/leaderboard` | Get leaderboard |
 | GET | `/stats/groups/:groupId/dashboard` | Get dashboard stats |
 | GET | `/stats/sessions/:sessionId/summary` | Get session summary analytics |
+| GET | `/stats/groups/:groupId/records` | Get Hall of Fame records |
+| GET | `/stats/groups/:groupId/head-to-head` | Get rivalries / head-to-head (optional `playerA`, `playerB`) |
+| GET | `/stats/groups/:groupId/form` | Get form & momentum board |
+| GET | `/stats/groups/:groupId/season` | Get season recap (optional `year`) |
 
 ---
 
@@ -449,11 +470,13 @@ DATABASE_URL="postgresql://..." npm run migrate:import
 
 ## Future Features
 
+### Completed
+- [x] Player vs Player Head-to-Head Stats (Insights → Rivalries)
+- [x] Advanced Analytics Dashboard (Insights area)
+
 ### High Priority
-- [ ] Player vs Player Head-to-Head Stats
 - [ ] Session Templates & Quick Start
 - [ ] Settlement Payment Tracking (mark as paid/pending)
-- [ ] Advanced Analytics Dashboard
 
 ### Medium Priority
 - [ ] Achievement System (badges, unlockables)

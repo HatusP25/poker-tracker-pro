@@ -14,6 +14,7 @@ A comprehensive poker session tracking and analytics application for home game e
 - **Settlement Calculator**: Minimizes transactions when settling up
 - **Player Statistics**: ROI, win rate, streaks, and comprehensive metrics
 - **7 Interactive Charts**: Profit trends, player comparisons, and more
+- **Insights**: Hall of Fame records, rivalries, form & momentum, season recap
 - **Role-Based Access**: VIEWER (read-only) and EDITOR modes
 - **Keyboard Shortcuts**: Vim-style navigation (G+D, G+S, etc.)
 - **CSV Import/Export**: Bulk data operations
@@ -59,6 +60,7 @@ npm run dev
 | G + S | Sessions |
 | G + P | Players |
 | G + R | Rankings |
+| G + I | Insights |
 | N + S | New Session |
 | N + P | New Player |
 
