@@ -64,8 +64,11 @@ jobs:
       - name: Build client (typecheck + bundle)
         run: npm run build:client
 
-      - name: Unit tests
+      - name: Unit tests (server)
         run: npm test --prefix server
+
+      - name: Unit tests (client)
+        run: npm test --prefix client
 
       - name: Integration tests
         run: npm run test:integration --prefix server

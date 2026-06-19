@@ -13,6 +13,7 @@ import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { useCreateTemplate } from '@/hooks/useTemplates';
 import EntryRow from './EntryRow';
 import BalanceIndicator from './BalanceIndicator';
+import { validateBuyIn, validateCashOut } from '@/lib/moneyValidation';
 import QuickEntryButtons from './QuickEntryButtons';
 import TemplateSelector from '@/components/templates/TemplateSelector';
 import SaveTemplateDialog from '@/components/templates/SaveTemplateDialog';
@@ -149,6 +150,11 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom }: SessionFor
 
   const totalBuyIn = entries.reduce((sum, e) => sum + (e.buyIn || 0), 0);
   const totalCashOut = entries.reduce((sum, e) => sum + (e.cashOut || 0), 0);
+
+  // Block submit if any player row holds a nonsensical money value.
+  const moneyInvalid = entries.some(
+    (e) => e.playerId && (!validateBuyIn(e.buyIn).valid || !validateCashOut(e.cashOut).valid)
+  );
 
   const handleLoadTemplate = (template: SessionTemplate) => {
     const playerIds = JSON.parse(template.playerIds) as string[];
@@ -380,7 +386,7 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom }: SessionFor
         >
           Reset
         </Button>
-        <Button type="submit" disabled={createSession.isPending}>
+        <Button type="submit" disabled={createSession.isPending || moneyInvalid}>
           {createSession.isPending ? 'Creating Session...' : 'Create Session'}
         </Button>
       </div>

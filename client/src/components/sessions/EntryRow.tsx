@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2, Copy } from 'lucide-react';
+import { validateBuyIn, validateCashOut, clampCashOut, MAX_BUY_IN, MAX_CASH_OUT } from '@/lib/moneyValidation';
 import type { Player } from '@/types';
 
 interface EntryRowProps {
@@ -37,7 +38,14 @@ const EntryRow = ({
 
   const availablePlayers = players.filter((p) => p.isActive);
 
+  // Only flag a field once it has a value; an untouched (0/empty) row isn't an error.
+  const buyInValidity = validateBuyIn(buyIn);
+  const cashOutValidity = validateCashOut(cashOut);
+  const showBuyInError = buyIn !== 0 && !buyInValidity.valid;
+  const showCashOutError = cashOut !== 0 && !cashOutValidity.valid;
+
   return (
+    <div className="space-y-1">
     <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 gap-1 sm:gap-2 items-center">
       {/* Player Select */}
       <div className="col-span-6 sm:col-span-3 lg:col-span-4">
@@ -60,6 +68,8 @@ const EntryRow = ({
         <Input
           type="number"
           step="0.01"
+          min="0"
+          max={MAX_BUY_IN}
           placeholder="Buy-in"
           value={buyIn || ''}
           onChange={(e) => onBuyInChange(parseFloat(e.target.value) || 0)}
@@ -71,9 +81,12 @@ const EntryRow = ({
         <Input
           type="number"
           step="0.01"
+          min="0"
+          max={MAX_CASH_OUT}
           placeholder="Cash-out"
           value={cashOut || ''}
           onChange={(e) => onCashOutChange(parseFloat(e.target.value) || 0)}
+          onBlur={() => { if (cashOut !== clampCashOut(cashOut)) onCashOutChange(clampCashOut(cashOut)); }}
         />
       </div>
 
@@ -111,6 +124,13 @@ const EntryRow = ({
           </Button>
         </div>
       </div>
+    </div>
+    {(showBuyInError || showCashOutError) && (
+      <div className="flex flex-wrap gap-x-4 text-sm text-destructive">
+        {showBuyInError && <span data-testid="buyin-error">{buyInValidity.message}</span>}
+        {showCashOutError && <span data-testid="cashout-error">{cashOutValidity.message}</span>}
+      </div>
+    )}
     </div>
   );
 };
