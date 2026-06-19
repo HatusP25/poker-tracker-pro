@@ -161,3 +161,49 @@ describe('computeForm', () => {
     expect(z.trajectory).toBe('flat');
   });
 });
+
+import { computeSeasonRecap } from './insightsService';
+
+describe('computeSeasonRecap', () => {
+  const current = [
+    makeSession('s1', '2026-02-01T00:00:00.000Z', [
+      { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 40, rebuys: 0 }, // +30
+      { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 0, rebuys: 1 }, // -10
+    ]),
+    makeSession('s2', '2026-03-01T00:00:00.000Z', [
+      { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 5, rebuys: 0 }, // -5
+      { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 30, rebuys: 0 }, // +20
+    ]),
+  ];
+
+  it('crowns champion by total profit and attendance king by games played', () => {
+    const recap = computeSeasonRecap(current, [], '2026');
+    expect(recap.period).toBe('2026');
+    expect(recap.totalSessions).toBe(2);
+    expect(recap.totalPot).toBe(40); // (10+10) + (10+10)
+    expect(recap.champion).toMatchObject({ playerName: 'Alice', value: 25 }); // +30 -5
+    expect(recap.attendanceKing!.value).toBe(2); // both played 2
+    expect(recap.bestSingleNight).toMatchObject({ playerName: 'Alice', value: 30 });
+    expect(recap.mostRebuys).toMatchObject({ playerName: 'Bob', value: 1 });
+  });
+
+  it('computes biggest mover vs the previous period ranking', () => {
+    // Previous period: Bob was champion (rank 1), Alice rank 2.
+    const previous = [
+      makeSession('p1', '2025-05-01T00:00:00.000Z', [
+        { playerId: 'a', playerName: 'Alice', buyIn: 10, cashOut: 0, rebuys: 0 }, // -10 rank2
+        { playerId: 'b', playerName: 'Bob', buyIn: 10, cashOut: 30, rebuys: 0 }, // +20 rank1
+      ]),
+    ];
+    const recap = computeSeasonRecap(current, previous, '2026');
+    // Current ranking: Alice rank1 (+25), Bob rank2 (+10). Alice moved 2->1 = +1.
+    expect(recap.biggestMover).toMatchObject({ playerName: 'Alice', positionsGained: 1 });
+  });
+
+  it('returns nulls for an empty period', () => {
+    const recap = computeSeasonRecap([], [], '2026');
+    expect(recap.totalSessions).toBe(0);
+    expect(recap.champion).toBeNull();
+    expect(recap.biggestMover).toBeNull();
+  });
+});

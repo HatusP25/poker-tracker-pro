@@ -349,3 +349,97 @@ export function computeForm(
     };
   });
 }
+
+// ---- Module 4: Season Recap (pure) ----
+interface PlayerTotals {
+  playerId: string;
+  playerName: string;
+  totalProfit: number;
+  games: number;
+}
+
+function rankByProfit(sessions: SessionRow[]): PlayerTotals[] {
+  const totals = new Map<string, PlayerTotals>();
+  for (const s of sessions) {
+    for (const e of s.entries) {
+      const t =
+        totals.get(e.playerId) ??
+        { playerId: e.playerId, playerName: e.playerName, totalProfit: 0, games: 0 };
+      t.totalProfit += calculateProfit(e.cashOut, e.buyIn);
+      t.games += 1;
+      totals.set(e.playerId, t);
+    }
+  }
+  return [...totals.values()].sort((a, b) => b.totalProfit - a.totalProfit);
+}
+
+export function computeSeasonRecap(
+  periodSessions: SessionRow[],
+  previousSessions: SessionRow[],
+  period: string
+): SeasonRecap {
+  const base: SeasonRecap = {
+    period,
+    totalSessions: periodSessions.length,
+    totalPot: round(
+      periodSessions.reduce(
+        (sum, s) => sum + s.entries.reduce((es, e) => es + e.buyIn, 0),
+        0
+      )
+    ),
+    champion: null,
+    attendanceKing: null,
+    biggestMover: null,
+    bestSingleNight: null,
+    mostRebuys: null,
+  };
+  if (periodSessions.length === 0) return base;
+
+  const ranking = rankByProfit(periodSessions);
+
+  const champion: SeasonSuperlative | null = ranking.length
+    ? { playerId: ranking[0].playerId, playerName: ranking[0].playerName, value: round(ranking[0].totalProfit) }
+    : null;
+
+  const byGames = [...ranking].sort((a, b) => b.games - a.games);
+  const attendanceKing: SeasonSuperlative | null = byGames.length
+    ? { playerId: byGames[0].playerId, playerName: byGames[0].playerName, value: byGames[0].games }
+    : null;
+
+  // Reuse records computation for best single night + most rebuys within the period.
+  const records = computeRecords(periodSessions);
+  const bestSingleNight = records.biggestWin;
+  const mostRebuys: SeasonSuperlative | null = records.mostRebuys
+    ? {
+        playerId: records.mostRebuys.playerId,
+        playerName: records.mostRebuys.playerName,
+        value: records.mostRebuys.value,
+      }
+    : null;
+
+  // Biggest mover: improvement in rank vs previous period (players present in both).
+  let biggestMover: SeasonRecap['biggestMover'] = null;
+  if (previousSessions.length) {
+    const prevRanking = rankByProfit(previousSessions);
+    const prevRank = new Map(prevRanking.map((p, i) => [p.playerId, i + 1]));
+    const currRank = new Map(ranking.map((p, i) => [p.playerId, i + 1]));
+    for (const p of ranking) {
+      const before = prevRank.get(p.playerId);
+      const now = currRank.get(p.playerId);
+      if (before === undefined || now === undefined) continue;
+      const gained = before - now; // positive => improved
+      if (gained > 0 && (!biggestMover || gained > biggestMover.positionsGained)) {
+        biggestMover = { playerId: p.playerId, playerName: p.playerName, positionsGained: gained };
+      }
+    }
+  }
+
+  return {
+    ...base,
+    champion,
+    attendanceKing,
+    biggestMover,
+    bestSingleNight,
+    mostRebuys,
+  };
+}
