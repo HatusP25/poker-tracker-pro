@@ -443,3 +443,83 @@ export function computeSeasonRecap(
     mostRebuys,
   };
 }
+
+// ---- Data access ----
+// Fetch non-deleted sessions for a group as SessionRow[] with rebuy counts.
+async function fetchSessionRows(
+  groupId: string,
+  where: { gte?: Date; lte?: Date } = {}
+): Promise<SessionRow[]> {
+  const dateFilter =
+    where.gte || where.lte
+      ? { date: { ...(where.gte && { gte: where.gte }), ...(where.lte && { lte: where.lte }) } }
+      : {};
+
+  const sessions = await prisma.session.findMany({
+    where: { groupId, deletedAt: null, ...dateFilter },
+    include: {
+      entries: { include: { player: true } },
+      rebuyEvents: true,
+    },
+    orderBy: { date: 'asc' },
+  });
+
+  return sessions.map((s) => {
+    const rebuysByPlayer = new Map<string, number>();
+    for (const r of s.rebuyEvents) {
+      rebuysByPlayer.set(r.playerId, (rebuysByPlayer.get(r.playerId) ?? 0) + 1);
+    }
+    return {
+      id: s.id,
+      date: s.date.toISOString(),
+      entries: s.entries.map((e) => ({
+        playerId: e.playerId,
+        playerName: e.player.name,
+        buyIn: e.buyIn,
+        cashOut: e.cashOut,
+        rebuyCount: rebuysByPlayer.get(e.playerId) ?? 0,
+      })),
+    };
+  });
+}
+
+export class InsightsService {
+  async getRecords(groupId: string): Promise<GroupRecords> {
+    const rows = await fetchSessionRows(groupId);
+    return computeRecords(rows);
+  }
+
+  async getHeadToHead(
+    groupId: string,
+    playerA?: string,
+    playerB?: string
+  ): Promise<HeadToHeadResponse> {
+    const rows = await fetchSessionRows(groupId);
+    return computeHeadToHead(rows, playerA, playerB);
+  }
+
+  async getForm(groupId: string): Promise<PlayerForm[]> {
+    const rows = await fetchSessionRows(groupId);
+    const players = await prisma.player.findMany({
+      where: { groupId, isActive: true },
+      select: { id: true, name: true },
+    });
+    const names = new Map(players.map((p) => [p.id, p.name]));
+    return computeForm(rows, players.map((p) => p.id), names);
+  }
+
+  async getSeasonRecap(groupId: string, year: number): Promise<SeasonRecap> {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59);
+    const prevStart = new Date(year - 1, 0, 1);
+    const prevEnd = new Date(year - 1, 11, 31, 23, 59, 59);
+
+    const [periodRows, previousRows] = await Promise.all([
+      fetchSessionRows(groupId, { gte: start, lte: end }),
+      fetchSessionRows(groupId, { gte: prevStart, lte: prevEnd }),
+    ]);
+    return computeSeasonRecap(periodRows, previousRows, String(year));
+  }
+}
+
+export const insightsService = new InsightsService();
