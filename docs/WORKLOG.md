@@ -6,6 +6,34 @@ Newest entries at the top. Backlog: [BACKLOG.md](./BACKLOG.md). Review:
 
 Each entry records: what changed, why, the backlog item, and the verification that it is green.
 
+Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CHANGELOG.md](../CHANGELOG.md).
+
+---
+
+## 2026-06-19 — Insights: The Story of Your Game
+
+**Why** Find feature gaps that add real value to a *home* poker group. Chosen direction: social,
+bragging-rights analytics (not grinder/bankroll metrics — see [DECISIONS.md](./DECISIONS.md) D-001/D-002).
+
+**Changed** New read-only `/insights` area (`G+I`), separate from Analytics ([DECISIONS](./DECISIONS.md) D-003).
+Four modules — Hall of Fame & Records, Rivalries/Head-to-Head, Form & Momentum, Season Recap
+("Poker Wrapped") — plus a shared chart layer (theme, momentum sparklines, rank-over-time "Race for
+#1" bump chart). All derived from existing data, **no schema changes**, nothing touches money/settlement
+logic ([DECISIONS](./DECISIONS.md) D-004).
+
+**Files** Backend: `server/src/services/insightsService.ts(+test)`, `server/src/types/insights.ts`,
+4 controllers + routes in `statsController.ts`/`routes/stats.ts`, integration tests in
+`tests/integration/api.test.ts`. Frontend: `client/src/pages/Insights.tsx`,
+`client/src/components/insights/**` (4 modules + `charts/`), `client/src/hooks/useInsights.ts`,
+`insightsApi` in `lib/api.ts`, mirrored types, route/nav/shortcut/palette wiring. E2E:
+`e2e/insights.spec.ts`. Docs: spec + plan under `docs/superpowers/`, `DOCS.md`, `README.md`.
+
+**Verification** server unit 40 ✓ · integration 12 ✓ · client typecheck ✓ · E2E 6 ✓ · build ✓.
+Merged to `main` and deployed.
+
+**Follow-up flagged** Client bundle ~1.1 MB / ~318 kB gzip (Vite >500 kB warning) — pre-existing,
+tracked in `docs/follow-ups/2026-06-19-bundle-code-splitting.md`.
+
 ---
 
 ## 2026-06-16 — PH-17: money-input guardrails

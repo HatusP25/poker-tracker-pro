@@ -1,8 +1,13 @@
 # Backlog
 
-The single prioritized list of future work. When asked "what's next", pull from here.
+The single **live** prioritized list of future work. When asked "what's next", pull from here.
 When an item ships, remove it and add a [CHANGELOG.md](CHANGELOG.md) entry. When an item is
 deferred mid-flight, give it a self-contained file in `docs/follow-ups/` and link it here.
+
+> **Sources folded in here:** the production-hardening backlog
+> ([docs/BACKLOG.md](docs/BACKLOG.md), PH-* — kept as history) and the detailed feature backlog
+> ([docs/ai-audit/improvement-backlog.md](docs/ai-audit/improvement-backlog.md), IMP-*). Open items
+> from those are listed below with their original IDs. This root file is the one to keep current.
 
 **Filter every idea through the product north star:** this is a *fun, social home poker game app*
 for a recurring friend group — not a debt tracker, not a grinder/bankroll tool. See
@@ -25,13 +30,22 @@ Legend: `P1` now-ish · `P2` soon · `P3` someday. Effort: S/M/L.
 
 ## P2 — Worth doing, not urgent
 
-- **[P2·M] Session Templates & Quick Start.** Models already exist (`SessionTemplate`). Wire up UI to
-  save a recurring lineup/location/time and start a session in one tap.
-- **[P2·S] Player Notes & Tags surfacing.** `PlayerNote` (with tags) exists in the schema but is
-  underused in the UI. Surface notes/tags on player pages.
+- **[P2·M] Session Templates & Quick Start** (PH carryover). Models already exist (`SessionTemplate`).
+  Wire up UI to save a recurring lineup/location/time and start a session in one tap.
+- **[P2·S] Surface player notes & tags** (PH-14 / IMP-003). `PlayerNote` (with tags) exists in the
+  schema but is underused in the UI. Surface notes/tags on `PlayerDetail`.
+- **[P2·S] Undo/edit rebuy in live session** (PH-16 / IMP-008). Needs `RebuyEvent` edit/delete plus
+  buy-in recalculation.
+- **[P2·S] Profit by location / day-of-week analytics** (PH-15 / IMP-001/002). Day-of-week chart is
+  partly present; add location breakdown.
 - **[P2·M] Photo gallery per session.** `Session.photoUrls` already stored; build a gallery view.
 - **[P2·S] Insights polish.** Make the Season Recap card one-tap screenshot/shareable; consider a
   configurable "season" date range beyond calendar year.
+
+## P1.5 — Known correctness nit (small)
+
+- **[P1·S] Fix `reopenSession` window timestamp** (PH-10). Use a dedicated `completedAt` / stored
+  settlement time rather than the current window timestamp.
 
 ## P3 — Someday / ideas
 

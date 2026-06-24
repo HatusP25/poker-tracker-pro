@@ -1,9 +1,10 @@
 # Changelog
 
-All notable changes to Poker Tracker Pro are recorded here. Newest first.
-Format loosely follows [Keep a Changelog](https://keepachangelog.com/); the project uses
-continuous deployment (push to `main` → Railway prod), so entries are dated rather than
-strictly versioned. Add an entry whenever something ships.
+High-level record of what shipped, newest first. Continuous deployment (push to `main` → Railway
+prod), so entries are dated rather than versioned. Add an entry whenever something ships.
+
+> For **engineering detail** (files touched, verification output) of each change, see the detailed
+> log at [docs/WORKLOG.md](docs/WORKLOG.md). This file is the summary view of the same events.
 
 ---
 

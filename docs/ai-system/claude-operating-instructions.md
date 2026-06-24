@@ -1,5 +1,10 @@
 # Claude Code Operating Instructions
 
+> **Superseded as the entry point.** The master agent guide is now [/CLAUDE.md](../../CLAUDE.md)
+> (auto-loaded), and product direction is governed by [docs/DECISIONS.md](../DECISIONS.md). Where
+> this file conflicts with those — notably the "bankroll insights" product focus below, which
+> DECISIONS D-002 rejects for this home-game app — those win. Kept for its production-safety principles.
+
 This repository contains a production Poker Tracker application.
 
 Claude Code must behave as a production-minded software engineer.
