@@ -69,13 +69,21 @@ server/
   tests/integration/        Supertest API tests (real test DB)
 e2e/                        Playwright specs + helpers.ts (seedGroup, selectGroupInBrowser)
 docs/
+  DECISIONS.md              Product/architecture decision log (authoritative for direction)
+  WORKLOG.md                Detailed engineering change log (newest first)
+  BACKLOG.md                Historical PH-* production-hardening backlog (see root BACKLOG.md for live)
+  SECURITY.md               Trust model / authz decisions
   superpowers/specs/        Design specs (one per feature)
   superpowers/plans/        Implementation plans (one per feature)
   follow-ups/               Tracked deferred work, each self-contained & pickup-cold
-  DECISIONS.md              Product/architecture decision log
-CLAUDE.md                   This file
-CHANGELOG.md                What shipped, newest first
-BACKLOG.md                  Prioritized future work
+  ai-audit/                 Long-term project memory: project-overview, architecture-notes,
+                            domain-model, feature-inventory, production-risk-audit,
+                            change-safety-notes, product-gap-analysis, improvement-backlog (IMP-*),
+                            improvement-roadmap, open-questions, session-log
+  ai-system/                Older agent instructions (superseded where they conflict with this file)
+CLAUDE.md                   This file — master entry point (auto-loaded)
+CHANGELOG.md                High-level "what shipped", newest first
+BACKLOG.md                  Live prioritized future work
 DOCS.md                     Detailed project/feature/API reference
 README.md                   Public-facing overview + quick start
 ```
@@ -146,11 +154,25 @@ CI (`.github/workflows/ci.yml`) runs the whole suite on every PR and push to `ma
 
 ## 8. The documentation system (keep these current)
 
-- **CHANGELOG.md** — append an entry every time something ships. Newest first.
-- **BACKLOG.md** — the single prioritized list of future work. Pull from here when asked "what's next".
+This repo has a layered doc system. **This `CLAUDE.md` is the master entry point** and is the only
+agent guide that's auto-loaded — start here, then drill in. Precedence when docs conflict:
+**`docs/DECISIONS.md` (product/arch decisions) > this file > everything else.** Older framings in
+`docs/ai-system/` and `docs/ai-audit/` are superseded where they disagree (e.g. they mention
+"bankroll insights"; DECISIONS D-002 rejects grinder/bankroll metrics — DECISIONS wins).
+
+Living docs — update as you work:
+- **CHANGELOG.md** (root) — high-level "what shipped", one entry per ship, newest first.
+- **docs/WORKLOG.md** — detailed engineering log (files touched, verification). Add an entry for
+  substantive changes; CHANGELOG is the summary view of the same events.
+- **BACKLOG.md** (root) — the single **live** prioritized list. Pull from here for "what's next".
+  (`docs/BACKLOG.md` = PH-* hardening history; `docs/ai-audit/improvement-backlog.md` = IMP-* detail.)
 - **docs/DECISIONS.md** — append when a product/architecture decision is made or reversed.
-- **docs/follow-ups/** — deferred work, one file each, written to be actioned with zero prior context.
-- **DOCS.md** — deeper reference (architecture, full API, stats formulas). Update when behavior changes.
+- **docs/follow-ups/** — deferred work, one self-contained file each (actionable with zero context).
+
+Reference docs — update when behavior changes:
+- **DOCS.md** — architecture, full API, stats formulas.
+- **docs/ai-audit/** — long-term project memory (domain model, risk audit, gap analysis, etc.).
+- **docs/SECURITY.md** — trust model / authz.
 
 If you (the agent) learn something durable about how the user wants you to work, also persist it to
 your private memory (`~/.claude/.../memory/`), not just here.

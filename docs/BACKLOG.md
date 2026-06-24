@@ -1,4 +1,8 @@
-# Backlog (Triaged) — Production Hardening
+# Backlog (Triaged) — Production Hardening *(history)*
+
+> **The live backlog is now [/BACKLOG.md](../BACKLOG.md).** This file is retained as the history of
+> the PH-* production-hardening engagement; its still-open items have been folded into the root
+> backlog with their PH IDs. Don't add new work here — add it to the root backlog.
 
 Source review: [REVIEW-2026-06-12.md](./REVIEW-2026-06-12.md). Change history:
 [WORKLOG.md](./WORKLOG.md). Older feature backlog: `docs/ai-audit/improvement-backlog.md` (IMP-*).
