@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Calendar, Users, Trophy, BarChart3, RefreshCw, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Calendar, Users, Trophy, BarChart3, Sparkles, RefreshCw, Settings as SettingsIcon } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ const routes = [
   { path: '/players', label: 'Players', icon: Users },
   { path: '/rankings', label: 'Rankings', icon: Trophy },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/insights', label: 'Insights', icon: Sparkles },
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Group, Player, Session, PlayerStats, LeaderboardEntry, DashboardStats } from '@/types';
+import type { Group, Player, Session, PlayerStats, LeaderboardEntry, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap } from '@/types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -124,6 +124,20 @@ export const statsApi = {
     api.get(`/stats/sessions/${sessionId}/summary`, {
       params: { groupId },
     }),
+};
+
+// Insights
+export const insightsApi = {
+  getRecords: (groupId: string) =>
+    api.get<GroupRecords>(`/stats/groups/${groupId}/records`),
+  getHeadToHead: (groupId: string, playerA?: string, playerB?: string) =>
+    api.get<HeadToHeadResponse>(`/stats/groups/${groupId}/head-to-head`, {
+      params: { playerA, playerB },
+    }),
+  getForm: (groupId: string) =>
+    api.get<PlayerForm[]>(`/stats/groups/${groupId}/form`),
+  getSeasonRecap: (groupId: string, year: number) =>
+    api.get<SeasonRecap>(`/stats/groups/${groupId}/season`, { params: { year } }),
 };
 
 // Backup

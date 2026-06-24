@@ -10,6 +10,10 @@ import {
   getAggregatedStats,
   getPlayerPerformanceTrend,
   getSessionSummary,
+  getGroupRecords,
+  getGroupHeadToHead,
+  getGroupForm,
+  getSeasonRecap,
 } from '../controllers/statsController';
 
 const router = Router();
@@ -35,5 +39,11 @@ router.get('/sessions/:id/balance-check', checkSessionBalance);
 router.get('/groups/:groupId/trends', getProfitTrend);
 router.get('/groups/:groupId/streaks', getPlayerStreaks);
 router.get('/groups/:groupId/aggregates', getAggregatedStats);
+
+// Insights endpoints
+router.get('/groups/:groupId/records', getGroupRecords);
+router.get('/groups/:groupId/head-to-head', getGroupHeadToHead);
+router.get('/groups/:groupId/form', getGroupForm);
+router.get('/groups/:groupId/season', getSeasonRecap);
 
 export default router;

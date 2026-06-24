@@ -199,3 +199,82 @@ export interface Milestone {
   description: string;
   value?: number;
 }
+
+// ---- Insights ----
+export interface RecordEntry {
+  playerId: string;
+  playerName: string;
+  sessionId: string;
+  date: string;
+  value: number;
+}
+export interface StreakRecord {
+  playerId: string;
+  playerName: string;
+  count: number;
+}
+export interface PotRecord {
+  sessionId: string;
+  date: string;
+  total: number;
+}
+export interface GroupRecords {
+  biggestWin: RecordEntry | null;
+  biggestLoss: RecordEntry | null;
+  biggestComeback: RecordEntry | null;
+  longestWinStreak: StreakRecord | null;
+  longestLossStreak: StreakRecord | null;
+  mostRebuys: RecordEntry | null;
+  bestRoiNight: RecordEntry | null;
+  biggestPot: PotRecord | null;
+}
+export interface PairStats {
+  playerAId: string;
+  playerAName: string;
+  playerBId: string;
+  playerBName: string;
+  sharedSessions: number;
+  aWins: number;
+  bWins: number;
+  ties: number;
+  profitDifferential: number;
+  currentStreakHolder: string | null;
+  currentStreakCount: number;
+}
+export interface PlayerRivalryInsight {
+  playerId: string;
+  playerName: string;
+  bogey: { playerId: string; playerName: string; lossesTo: number } | null;
+  favoriteVictim: { playerId: string; playerName: string; winsOver: number } | null;
+}
+export interface HeadToHeadResponse {
+  pair: PairStats | null;
+  biggestRivalry: PairStats | null;
+  playerInsights: PlayerRivalryInsight[];
+}
+export interface PlayerForm {
+  playerId: string;
+  playerName: string;
+  recentResults: number[];
+  recentWins: number;
+  recentGames: number;
+  trajectory: 'up' | 'down' | 'flat';
+  currentStreak: number;
+  streakType: 'win' | 'loss' | 'none';
+  badge: 'heater' | 'slump' | null;
+}
+export interface SeasonSuperlative {
+  playerId: string;
+  playerName: string;
+  value: number;
+}
+export interface SeasonRecap {
+  period: string;
+  totalSessions: number;
+  totalPot: number;
+  champion: SeasonSuperlative | null;
+  attendanceKing: SeasonSuperlative | null;
+  biggestMover: { playerId: string; playerName: string; positionsGained: number } | null;
+  bestSingleNight: RecordEntry | null;
+  mostRebuys: SeasonSuperlative | null;
+}
