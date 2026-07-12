@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { statsService } from '../services/statsService';
 import { sessionSummaryService } from '../services/sessionSummaryService';
 import { insightsService } from '../services/insightsService';
+import { LeaderboardTimeframe } from '../types';
+
+const VALID_LEADERBOARD_TIMEFRAMES: LeaderboardTimeframe[] = ['all', 'year', 'month', 'week'];
 
 export const getPlayerStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -17,7 +20,20 @@ export const getLeaderboard = async (req: Request, res: Response, next: NextFunc
   try {
     const { groupId } = req.params;
     const minGames = req.query.minGames ? parseInt(req.query.minGames as string) : 0;
-    const leaderboard = await statsService.getLeaderboard(groupId, minGames);
+    const timeframeParam = (req.query.timeframe as string) || 'all';
+
+    if (!VALID_LEADERBOARD_TIMEFRAMES.includes(timeframeParam as LeaderboardTimeframe)) {
+      res.status(400).json({
+        error: `Invalid timeframe. Must be one of: ${VALID_LEADERBOARD_TIMEFRAMES.join(', ')}`,
+      });
+      return;
+    }
+
+    const leaderboard = await statsService.getLeaderboard(
+      groupId,
+      minGames,
+      timeframeParam as LeaderboardTimeframe
+    );
     res.json(leaderboard);
   } catch (error) {
     next(error);

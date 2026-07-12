@@ -11,6 +11,7 @@
 import { prisma } from '../lib/prisma';
 import { calculateSessionSettlements } from './settlementService';
 import { isValidBuyIn, isValidCashOut, ValidationError } from '../utils/validators';
+import { adjustBuyInForRebuyChange, round } from '../utils/calculations';
 
 export class LiveSessionService {
   /**
@@ -177,6 +178,130 @@ export class LiveSessionService {
   }
 
   /**
+   * Edit a rebuy that was recorded for the wrong amount. Adjusts the owning
+   * SessionEntry's buyIn by the delta (newAmount - oldAmount) atomically with the
+   * RebuyEvent update, so the two never drift apart.
+   */
+  async updateRebuy(sessionId: string, rebuyId: string, amount: number) {
+    if (!isValidBuyIn(amount)) {
+      throw new ValidationError('Invalid rebuy amount');
+    }
+
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'IN_PROGRESS') {
+      throw new Error('Can only edit rebuys on in-progress sessions');
+    }
+
+    const rebuyEvent = await prisma.rebuyEvent.findUnique({
+      where: { id: rebuyId },
+    });
+
+    if (!rebuyEvent || rebuyEvent.sessionId !== sessionId) {
+      throw new Error('Rebuy not found for this session');
+    }
+
+    const entry = await prisma.sessionEntry.findUnique({
+      where: {
+        sessionId_playerId: {
+          sessionId,
+          playerId: rebuyEvent.playerId,
+        },
+      },
+    });
+
+    if (!entry) {
+      throw new Error('Player not in this session');
+    }
+
+    const delta = round(amount - rebuyEvent.amount);
+    const newBuyIn = adjustBuyInForRebuyChange(entry.buyIn, delta);
+
+    if (newBuyIn <= 0) {
+      throw new ValidationError('Editing this rebuy would leave the player with a buy-in of $0 or less');
+    }
+
+    const [updatedEntry, updatedRebuyEvent] = await prisma.$transaction([
+      prisma.sessionEntry.update({
+        where: { id: entry.id },
+        data: { buyIn: newBuyIn },
+        include: { player: true },
+      }),
+      prisma.rebuyEvent.update({
+        where: { id: rebuyId },
+        data: { amount },
+        include: { player: true },
+      }),
+    ]);
+
+    return { entry: updatedEntry, rebuyEvent: updatedRebuyEvent };
+  }
+
+  /**
+   * Undo a fat-fingered rebuy entirely. Removes the RebuyEvent and reverses its
+   * amount out of the owning SessionEntry's buyIn atomically.
+   */
+  async deleteRebuy(sessionId: string, rebuyId: string) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'IN_PROGRESS') {
+      throw new Error('Can only delete rebuys on in-progress sessions');
+    }
+
+    const rebuyEvent = await prisma.rebuyEvent.findUnique({
+      where: { id: rebuyId },
+    });
+
+    if (!rebuyEvent || rebuyEvent.sessionId !== sessionId) {
+      throw new Error('Rebuy not found for this session');
+    }
+
+    const entry = await prisma.sessionEntry.findUnique({
+      where: {
+        sessionId_playerId: {
+          sessionId,
+          playerId: rebuyEvent.playerId,
+        },
+      },
+    });
+
+    if (!entry) {
+      throw new Error('Player not in this session');
+    }
+
+    const newBuyIn = adjustBuyInForRebuyChange(entry.buyIn, -rebuyEvent.amount);
+
+    if (newBuyIn <= 0) {
+      throw new ValidationError('Deleting this rebuy would leave the player with a buy-in of $0 or less');
+    }
+
+    const [updatedEntry] = await prisma.$transaction([
+      prisma.sessionEntry.update({
+        where: { id: entry.id },
+        data: { buyIn: newBuyIn },
+        include: { player: true },
+      }),
+      prisma.rebuyEvent.delete({
+        where: { id: rebuyId },
+      }),
+    ]);
+
+    return { entry: updatedEntry };
+  }
+
+  /**
    * Add a new player to an in-progress session
    */
   async addPlayer(sessionId: string, playerId: string, buyIn: number) {
@@ -294,6 +419,7 @@ export class LiveSessionService {
           status: 'COMPLETED',
           endTime: data.endTime,
           settlements: JSON.stringify(settlements),
+          completedAt: new Date(),
         },
         include: {
           entries: {
@@ -340,6 +466,7 @@ export class LiveSessionService {
         status: 'COMPLETED',
         endTime,
         settlements: JSON.stringify([]),
+        completedAt: new Date(),
       },
       include: {
         entries: {
@@ -370,8 +497,11 @@ export class LiveSessionService {
       throw new Error('Can only reopen completed sessions');
     }
 
-    // Check if within 24 hours
-    const completedAt = session.updatedAt;
+    // Check if within 24 hours of completion. Use completedAt (set precisely when the
+    // session transitioned to COMPLETED) rather than updatedAt, which any later edit
+    // (notes, photos, entry tweaks) would bump and silently re-extend this window.
+    // Fall back to updatedAt for legacy rows written before completedAt existed.
+    const completedAt = session.completedAt ?? session.updatedAt;
     const now = new Date();
     const hoursSinceCompletion =
       (now.getTime() - completedAt.getTime()) / 1000 / 60 / 60;
@@ -386,6 +516,7 @@ export class LiveSessionService {
       data: {
         status: 'IN_PROGRESS',
         settlements: null, // Clear previous settlements
+        completedAt: null,
       },
       include: {
         entries: {

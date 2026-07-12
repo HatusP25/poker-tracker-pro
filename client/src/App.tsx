@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -5,20 +6,25 @@ import { Toaster } from 'sonner';
 import { GroupProvider } from '@/context/GroupContext';
 import { RoleProvider } from '@/context/RoleContext';
 import AppLayout from '@/components/layout/AppLayout';
+import RouteLoader from '@/components/RouteLoader';
+
+// Eager imports (shell, layout, group selection)
 import GroupSelection from '@/pages/GroupSelection';
-import Dashboard from '@/pages/Dashboard';
-import DataEntry from '@/pages/DataEntry';
-import Sessions from '@/pages/Sessions';
-import SessionDetail from '@/pages/SessionDetail';
-import Players from '@/pages/Players';
-import PlayerDetail from '@/pages/PlayerDetail';
-import Rankings from '@/pages/Rankings';
-import Analytics from '@/pages/Analytics';
-import Insights from '@/pages/Insights';
-import Settings from '@/pages/Settings';
-import LiveSessionStart from '@/pages/LiveSessionStart';
-import LiveSessionView from '@/pages/LiveSessionView';
-import SettlementView from '@/pages/SettlementView';
+
+// Lazy imports (route pages)
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const DataEntry = lazy(() => import('@/pages/DataEntry'));
+const Sessions = lazy(() => import('@/pages/Sessions'));
+const SessionDetail = lazy(() => import('@/pages/SessionDetail'));
+const Players = lazy(() => import('@/pages/Players'));
+const PlayerDetail = lazy(() => import('@/pages/PlayerDetail'));
+const Rankings = lazy(() => import('@/pages/Rankings'));
+const Analytics = lazy(() => import('@/pages/Analytics'));
+const Insights = lazy(() => import('@/pages/Insights'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const LiveSessionStart = lazy(() => import('@/pages/LiveSessionStart'));
+const LiveSessionView = lazy(() => import('@/pages/LiveSessionView'));
+const SettlementView = lazy(() => import('@/pages/SettlementView'));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -43,19 +49,110 @@ const App = () => {
 
               {/* Main app with layout */}
               <Route element={<AppLayout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/entry" element={<DataEntry />} />
-                <Route path="/sessions" element={<Sessions />} />
-                <Route path="/sessions/:id" element={<SessionDetail />} />
-                <Route path="/players" element={<Players />} />
-                <Route path="/players/:id" element={<PlayerDetail />} />
-                <Route path="/rankings" element={<Rankings />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/insights" element={<Insights />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/live/start" element={<LiveSessionStart />} />
-                <Route path="/live/:sessionId" element={<LiveSessionView />} />
-                <Route path="/live/:sessionId/settlement" element={<SettlementView />} />
+                <Route
+                  path="/"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Dashboard />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/entry"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <DataEntry />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/sessions"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Sessions />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/sessions/:id"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <SessionDetail />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/players"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Players />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/players/:id"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <PlayerDetail />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/rankings"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Rankings />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/analytics"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Analytics />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/insights"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Insights />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <Settings />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/live/start"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <LiveSessionStart />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/live/:sessionId"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <LiveSessionView />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/live/:sessionId/settlement"
+                  element={
+                    <Suspense fallback={<RouteLoader />}>
+                      <SettlementView />
+                    </Suspense>
+                  }
+                />
               </Route>
             </Routes>
           </BrowserRouter>

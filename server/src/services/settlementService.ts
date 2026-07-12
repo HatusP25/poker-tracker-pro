@@ -17,6 +17,7 @@ export interface Settlement {
   from: string; // Player name who pays
   to: string; // Player name who receives
   amount: number; // Amount to transfer
+  paid?: boolean; // Per-session paid/pending status; absent/false = unpaid. Display state only, never affects the money math above.
 }
 
 /**
@@ -165,4 +166,47 @@ export function calculateSessionSettlements(
   }
 
   return settlements;
+}
+
+/**
+ * Flip the `paid` flag on a single settlement transfer within a session's
+ * serialized settlements JSON, returning the updated JSON string.
+ *
+ * Pure function: does not touch the database or know about sessions — the
+ * caller (sessionService) is responsible for confirming the session exists
+ * and is COMPLETED before calling this. Never alters `from`/`to`/`amount`;
+ * `paid` is display-only state layered on top of the money math.
+ */
+export function setSettlementPaid(
+  settlementsJson: string | null | undefined,
+  index: number,
+  paid: boolean
+): string {
+  if (typeof paid !== 'boolean') {
+    throw new ValidationError('paid must be a boolean');
+  }
+
+  if (!Number.isInteger(index)) {
+    throw new ValidationError('Settlement index must be an integer');
+  }
+
+  if (!settlementsJson) {
+    throw new ValidationError('Session has no settlements to update');
+  }
+
+  let settlements: Settlement[];
+  try {
+    settlements = JSON.parse(settlementsJson);
+  } catch {
+    throw new ValidationError('Session settlements are corrupted and could not be parsed');
+  }
+
+  if (!Array.isArray(settlements) || index < 0 || index >= settlements.length) {
+    throw new ValidationError(
+      `Settlement index ${index} is out of range (session has ${Array.isArray(settlements) ? settlements.length : 0} settlements)`
+    );
+  }
+
+  const updated = settlements.map((s, i) => (i === index ? { ...s, paid } : s));
+  return JSON.stringify(updated);
 }

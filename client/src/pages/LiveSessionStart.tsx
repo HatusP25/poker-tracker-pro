@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +11,12 @@ import { useGroupContext } from '@/context/GroupContext';
 import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { useStartLiveSession } from '@/hooks/useLiveSessions';
+import { useCreateTemplate } from '@/hooks/useTemplates';
 import { validateBuyIn, MAX_BUY_IN } from '@/lib/moneyValidation';
+import TemplateSelector from '@/components/templates/TemplateSelector';
+import SaveTemplateDialog from '@/components/templates/SaveTemplateDialog';
 import { Play, Eye } from 'lucide-react';
+import type { SessionTemplate } from '@/types';
 
 const LiveSessionStart = () => {
   const { selectedGroup } = useGroupContext();
@@ -19,12 +24,14 @@ const LiveSessionStart = () => {
   const navigate = useNavigate();
   const { data: players = [] } = usePlayersByGroup(selectedGroup?.id || '');
   const startSession = useStartLiveSession();
+  const createTemplate = useCreateTemplate();
 
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState(format(new Date(), 'HH:mm'));
   const [location, setLocation] = useState('');
   const [selectedPlayers, setSelectedPlayers] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
 
   if (!selectedGroup) {
     return (
@@ -83,6 +90,45 @@ const LiveSessionStart = () => {
     setError(null);
   };
 
+  const handleLoadTemplate = (template: SessionTemplate) => {
+    const templatePlayerIds = JSON.parse(template.playerIds) as string[];
+    const activePlayerIds = new Set(players.filter((p) => p.isActive).map((p) => p.id));
+    const validPlayerIds = templatePlayerIds.filter((id) => activePlayerIds.has(id));
+    const skippedCount = templatePlayerIds.length - validPlayerIds.length;
+
+    const newSelectedPlayers: Record<string, number> = {};
+    validPlayerIds.forEach((playerId) => {
+      newSelectedPlayers[playerId] = selectedGroup.defaultBuyIn;
+    });
+
+    setSelectedPlayers(newSelectedPlayers);
+    if (template.location) {
+      setLocation(template.location);
+    }
+    if (template.defaultTime) {
+      setStartTime(template.defaultTime);
+    }
+    setError(null);
+
+    if (skippedCount > 0) {
+      toast.warning(
+        `Loaded "${template.name}" — skipped ${skippedCount} player${skippedCount === 1 ? '' : 's'} no longer active`
+      );
+    } else {
+      toast.success(`Loaded "${template.name}"`);
+    }
+  };
+
+  const handleSaveTemplate = (name: string) => {
+    createTemplate.mutate({
+      groupId: selectedGroup.id,
+      name,
+      location: location || undefined,
+      defaultTime: startTime || undefined,
+      playerIds: Object.keys(selectedPlayers),
+    });
+  };
+
   const handleBuyInChange = (playerId: string, value: string) => {
     const numValue = parseFloat(value);
     // Only accept valid buy-ins (> $0, within the cap); ignore nonsensical input.
@@ -124,6 +170,17 @@ const LiveSessionStart = () => {
         <h1 className="text-3xl font-bold">Start Live Session</h1>
         <p className="text-muted-foreground">Begin tracking a poker game in real-time</p>
       </div>
+
+      <TemplateSelector
+        groupId={selectedGroup.id}
+        onLoadTemplate={handleLoadTemplate}
+        onSaveTemplate={() => setSaveTemplateDialogOpen(true)}
+        currentFormData={{
+          location,
+          startTime,
+          playerIds: Object.keys(selectedPlayers),
+        }}
+      />
 
       <Card>
         <CardHeader>
@@ -236,6 +293,12 @@ const LiveSessionStart = () => {
           Cancel
         </Button>
       </div>
+
+      <SaveTemplateDialog
+        open={saveTemplateDialogOpen}
+        onOpenChange={setSaveTemplateDialogOpen}
+        onSave={handleSaveTemplate}
+      />
     </div>
   );
 };

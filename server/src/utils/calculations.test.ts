@@ -10,6 +10,7 @@ import {
   calculateLongestWinStreak,
   calculateLongestLossStreak,
   round,
+  adjustBuyInForRebuyChange,
 } from './calculations';
 
 describe('calculateProfit', () => {
@@ -114,5 +115,25 @@ describe('round', () => {
     expect(round(1.005 * 100) / 100).toBeDefined();
     expect(round(10.126)).toBe(10.13);
     expect(round(10.124)).toBe(10.12);
+  });
+});
+
+describe('adjustBuyInForRebuyChange', () => {
+  it('applies a positive delta when a rebuy amount increases', () => {
+    // Rebuy edited from 50 -> 80: delta = +30
+    expect(adjustBuyInForRebuyChange(200, 30)).toBe(230);
+  });
+
+  it('applies a negative delta when a rebuy amount decreases', () => {
+    // Rebuy edited from 80 -> 50: delta = -30
+    expect(adjustBuyInForRebuyChange(230, -30)).toBe(200);
+  });
+
+  it('applies a negative delta equal to the full amount when a rebuy is deleted', () => {
+    expect(adjustBuyInForRebuyChange(200, -100)).toBe(100);
+  });
+
+  it('rounds to 2 decimals to avoid floating point drift', () => {
+    expect(adjustBuyInForRebuyChange(100.1, 0.2)).toBe(100.3);
   });
 });

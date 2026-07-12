@@ -7,6 +7,10 @@ import {
   togglePlayerActive,
   deletePlayer,
   searchPlayers,
+  getPlayerNotes,
+  createPlayerNote,
+  updatePlayerNote,
+  deletePlayerNote,
 } from '../controllers/playerController';
 
 const router = Router();
@@ -21,5 +25,11 @@ router.post('/', createPlayer);
 router.patch('/:id', updatePlayer);
 router.patch('/:id/toggle-active', togglePlayerActive);
 router.delete('/:id', deletePlayer);
+
+// Player notes
+router.get('/:playerId/notes', getPlayerNotes);
+router.post('/:playerId/notes', createPlayerNote);
+router.patch('/notes/:noteId', updatePlayerNote);
+router.delete('/notes/:noteId', deletePlayerNote);
 
 export default router;

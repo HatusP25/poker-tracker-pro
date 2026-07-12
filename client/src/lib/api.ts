@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Group, Player, Session, PlayerStats, LeaderboardEntry, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap } from '@/types';
+import type { Group, Player, PlayerNote, Session, PlayerStats, LeaderboardEntry, LeaderboardTimeframe, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap } from '@/types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -36,6 +36,12 @@ export const playersApi = {
     api.get<Player[]>(`/players/groups/${groupId}/players/search`, {
       params: { q: query },
     }),
+  getNotes: (playerId: string) => api.get<PlayerNote[]>(`/players/${playerId}/notes`),
+  createNote: (playerId: string, data: { note: string; tags?: string[] }) =>
+    api.post<PlayerNote>(`/players/${playerId}/notes`, data),
+  updateNote: (noteId: string, data: { note?: string; tags?: string[] }) =>
+    api.patch<PlayerNote>(`/players/notes/${noteId}`, data),
+  deleteNote: (noteId: string) => api.delete(`/players/notes/${noteId}`),
 };
 
 // Sessions
@@ -75,14 +81,16 @@ export const sessionsApi = {
   updateEntry: (entryId: string, data: { buyIn?: number; cashOut?: number }) =>
     api.patch(`/sessions/entries/${entryId}`, data),
   deleteEntry: (entryId: string) => api.delete(`/sessions/entries/${entryId}`),
+  updateSettlementPaid: (sessionId: string, index: number, paid: boolean) =>
+    api.patch<Session>(`/sessions/${sessionId}/settlements/${index}`, { paid }),
 };
 
 // Stats
 export const statsApi = {
   getPlayerStats: (playerId: string) => api.get<PlayerStats>(`/stats/players/${playerId}/stats`),
-  getLeaderboard: (groupId: string, minGames?: number) =>
+  getLeaderboard: (groupId: string, minGames?: number, timeframe?: LeaderboardTimeframe) =>
     api.get<LeaderboardEntry[]>(`/stats/groups/${groupId}/leaderboard`, {
-      params: { minGames },
+      params: { minGames, timeframe },
     }),
   getDashboard: (groupId: string) =>
     api.get<DashboardStats>(`/stats/groups/${groupId}/dashboard`),
@@ -183,6 +191,10 @@ export const liveSessionsApi = {
   get: (sessionId: string) => api.get(`/live-sessions/${sessionId}`),
   addRebuy: (sessionId: string, data: { playerId: string; amount: number }) =>
     api.post(`/live-sessions/${sessionId}/rebuy`, data),
+  updateRebuy: (sessionId: string, rebuyId: string, data: { amount: number }) =>
+    api.patch(`/live-sessions/${sessionId}/rebuys/${rebuyId}`, data),
+  deleteRebuy: (sessionId: string, rebuyId: string) =>
+    api.delete(`/live-sessions/${sessionId}/rebuys/${rebuyId}`),
   addPlayer: (sessionId: string, data: { playerId: string; buyIn: number }) =>
     api.post(`/live-sessions/${sessionId}/add-player`, data),
   end: (sessionId: string, data: { endTime: string; cashOuts: Array<{ playerId: string; cashOut: number }> }) =>

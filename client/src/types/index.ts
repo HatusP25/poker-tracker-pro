@@ -25,6 +25,15 @@ export interface Player {
   };
 }
 
+export interface PlayerNote {
+  id: string;
+  playerId: string;
+  note: string;
+  tags: string | null; // JSON array of tags
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Session {
   id: string;
   groupId: string;
@@ -36,6 +45,7 @@ export interface Session {
   photoUrls: string | null;
   status?: string; // "IN_PROGRESS" | "COMPLETED"
   settlements?: string | null; // JSON string
+  completedAt?: string | null; // When status transitioned to COMPLETED (distinct from updatedAt)
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -97,6 +107,8 @@ export interface PlayerStats {
   longestLossStreak: number;
 }
 
+export type LeaderboardTimeframe = 'all' | 'year' | 'month' | 'week';
+
 export interface LeaderboardEntry {
   rank: number;
   playerId: string;
@@ -152,6 +164,7 @@ export interface Settlement {
   from: string; // Player name
   to: string; // Player name
   amount: number;
+  paid?: boolean; // Per-session paid/pending status; absent/false = unpaid
 }
 
 // Session Summary Types

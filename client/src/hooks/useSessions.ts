@@ -98,6 +98,31 @@ export const useDeleteSession = () => {
   });
 };
 
+export const useUpdateSettlementPaid = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      index,
+      paid,
+    }: {
+      sessionId: string;
+      index: number;
+      paid: boolean;
+    }) => sessionsApi.updateSettlementPaid(sessionId, index, paid),
+    onSuccess: (response) => {
+      const session = response.data;
+      queryClient.invalidateQueries({ queryKey: ['sessions', session.groupId] });
+      queryClient.invalidateQueries({ queryKey: ['sessions', session.id] });
+      toast.success('Settlement updated');
+    },
+    onError: () => {
+      toast.error('Failed to update settlement');
+    },
+  });
+};
+
 export const useRestoreSession = () => {
   const queryClient = useQueryClient();
 

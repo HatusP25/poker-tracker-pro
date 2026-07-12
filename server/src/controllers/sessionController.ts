@@ -91,3 +91,14 @@ export const restoreSession = async (req: Request, res: Response, next: NextFunc
     next(error);
   }
 };
+
+export const updateSettlementPaid = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId, index } = req.params;
+    const { paid } = req.body;
+    const session = await sessionService.updateSettlementPaid(sessionId, Number(index), paid);
+    res.json(session);
+  } catch (error) {
+    next(error);
+  }
+};

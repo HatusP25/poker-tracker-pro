@@ -6,14 +6,17 @@ import { usePlayerStats } from '@/hooks/useStats';
 import { usePlayer } from '@/hooks/usePlayers';
 import { useSessionsByGroup } from '@/hooks/useSessions';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import { exportPlayerStatsCSV } from '@/lib/export';
 import PlayerProfitChart from '@/components/analytics/PlayerProfitChart';
 import PlayerSessionHistoryChart from '@/components/analytics/PlayerSessionHistoryChart';
+import PlayerNotes from '@/components/players/PlayerNotes';
 
 const PlayerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedGroup } = useGroupContext();
+  const { canEdit } = useRole();
   const { data: stats, isLoading } = usePlayerStats(id || '');
   const { data: player } = usePlayer(id || '');
   const { data: sessions } = useSessionsByGroup(selectedGroup?.id || '');
@@ -327,6 +330,9 @@ const PlayerDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Notes */}
+      <PlayerNotes playerId={id || ''} canEdit={canEdit} />
 
       {/* Performance Charts */}
       {sessions && sessions.length > 0 && (

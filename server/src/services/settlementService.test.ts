@@ -4,7 +4,9 @@ import {
   calculateSessionSettlements,
   validateSettlements,
   validateZeroSum,
+  setSettlementPaid,
 } from './settlementService';
+import { ValidationError } from '../utils/validators';
 
 describe('calculateSettlements', () => {
   it('settles a simple two-player game in one transaction', () => {
@@ -108,5 +110,49 @@ describe('calculateSessionSettlements', () => {
         { playerId: 'b', playerName: 'Bob', buyIn: 100, cashOut: 60 },
       ])
     ).toThrow(/zero-sum|reconcile|balance/i);
+  });
+});
+
+describe('setSettlementPaid', () => {
+  const twoSettlements = JSON.stringify([
+    { from: 'Bob', to: 'Alice', amount: 50 },
+    { from: 'Carol', to: 'Alice', amount: 20 },
+  ]);
+
+  it('marks a settlement paid, leaving from/to/amount and the other entry untouched', () => {
+    const result = JSON.parse(setSettlementPaid(twoSettlements, 0, true));
+    expect(result).toEqual([
+      { from: 'Bob', to: 'Alice', amount: 50, paid: true },
+      { from: 'Carol', to: 'Alice', amount: 20 },
+    ]);
+  });
+
+  it('marks a paid settlement back to unpaid', () => {
+    const paidJson = JSON.stringify([
+      { from: 'Bob', to: 'Alice', amount: 50, paid: true },
+    ]);
+    const result = JSON.parse(setSettlementPaid(paidJson, 0, false));
+    expect(result).toEqual([{ from: 'Bob', to: 'Alice', amount: 50, paid: false }]);
+  });
+
+  it('rejects an out-of-range index', () => {
+    expect(() => setSettlementPaid(twoSettlements, 2, true)).toThrow(ValidationError);
+    expect(() => setSettlementPaid(twoSettlements, -1, true)).toThrow(ValidationError);
+  });
+
+  it('rejects a non-integer index', () => {
+    expect(() => setSettlementPaid(twoSettlements, 1.5, true)).toThrow(ValidationError);
+  });
+
+  it('rejects a non-boolean paid value', () => {
+    expect(() => setSettlementPaid(twoSettlements, 0, 'true' as unknown as boolean)).toThrow(
+      ValidationError
+    );
+  });
+
+  it('rejects when there are no settlements to update', () => {
+    expect(() => setSettlementPaid(null, 0, true)).toThrow(ValidationError);
+    expect(() => setSettlementPaid('', 0, true)).toThrow(ValidationError);
+    expect(() => setSettlementPaid('[]', 0, true)).toThrow(ValidationError);
   });
 });

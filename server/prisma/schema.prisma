@@ -58,6 +58,7 @@ model Session {
   photoUrls   String? // JSON array of URLs
   status      String    @default("COMPLETED") // "IN_PROGRESS" | "COMPLETED"
   settlements String? // JSON array: [{ from, to, amount }]
+  completedAt DateTime? // When the session transitioned to COMPLETED (distinct from updatedAt, which any edit bumps)
   deletedAt   DateTime? // Soft delete timestamp
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

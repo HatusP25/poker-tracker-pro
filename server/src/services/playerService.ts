@@ -166,6 +166,79 @@ export class PlayerService {
   }
 
   /**
+   * List notes for a player, newest first
+   */
+  async getPlayerNotes(playerId: string) {
+    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    return prisma.playerNote.findMany({
+      where: { playerId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Create a note for a player
+   */
+  async createPlayerNote(playerId: string, data: { note: string; tags?: string[] }) {
+    const player = await prisma.player.findUnique({ where: { id: playerId } });
+    if (!player) {
+      throw new Error('Player not found');
+    }
+
+    if (!data.note || !data.note.trim()) {
+      throw new ValidationError('Note content cannot be empty');
+    }
+
+    return prisma.playerNote.create({
+      data: {
+        playerId,
+        note: data.note.trim(),
+        tags: data.tags && data.tags.length > 0 ? JSON.stringify(data.tags) : null,
+      },
+    });
+  }
+
+  /**
+   * Update a player note
+   */
+  async updatePlayerNote(noteId: string, data: { note?: string; tags?: string[] }) {
+    const existing = await prisma.playerNote.findUnique({ where: { id: noteId } });
+    if (!existing) {
+      throw new Error('Player note not found');
+    }
+
+    if (data.note !== undefined && !data.note.trim()) {
+      throw new ValidationError('Note content cannot be empty');
+    }
+
+    return prisma.playerNote.update({
+      where: { id: noteId },
+      data: {
+        ...(data.note !== undefined && { note: data.note.trim() }),
+        ...(data.tags !== undefined && {
+          tags: data.tags.length > 0 ? JSON.stringify(data.tags) : null,
+        }),
+      },
+    });
+  }
+
+  /**
+   * Delete a player note
+   */
+  async deletePlayerNote(noteId: string) {
+    const existing = await prisma.playerNote.findUnique({ where: { id: noteId } });
+    if (!existing) {
+      throw new Error('Player note not found');
+    }
+
+    return prisma.playerNote.delete({ where: { id: noteId } });
+  }
+
+  /**
    * Search players by name
    */
   async searchPlayers(groupId: string, query: string) {

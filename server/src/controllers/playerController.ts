@@ -71,3 +71,43 @@ export const searchPlayers = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const getPlayerNotes = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { playerId } = req.params;
+    const notes = await playerService.getPlayerNotes(playerId);
+    res.json(notes);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createPlayerNote = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { playerId } = req.params;
+    const note = await playerService.createPlayerNote(playerId, req.body);
+    res.status(201).json(note);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePlayerNote = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { noteId } = req.params;
+    const note = await playerService.updatePlayerNote(noteId, req.body);
+    res.json(note);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePlayerNote = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { noteId } = req.params;
+    await playerService.deletePlayerNote(noteId);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};

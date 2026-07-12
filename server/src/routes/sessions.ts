@@ -9,6 +9,7 @@ import {
   deleteSessionEntry,
   addSessionEntry,
   restoreSession,
+  updateSettlementPaid,
 } from '../controllers/sessionController';
 
 const router = Router();
@@ -27,5 +28,8 @@ router.patch('/:id/restore', restoreSession);
 router.post('/:sessionId/entries', addSessionEntry);
 router.patch('/entries/:entryId', updateSessionEntry);
 router.delete('/entries/:entryId', deleteSessionEntry);
+
+// Settlement paid/pending status
+router.patch('/:sessionId/settlements/:index', updateSettlementPaid);
 
 export default router;

@@ -153,3 +153,14 @@ export const calculateLongestLossStreak = (
 export const round = (num: number, decimals = 2): number => {
   return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals);
 };
+
+/**
+ * Recompute a SessionEntry's buyIn after a rebuy amount changes.
+ *
+ * `delta` is the signed change to apply: (newAmount - oldAmount) when editing a
+ * rebuy, or (-amount) when deleting one. Rounds to 2 decimals to avoid floating
+ * point drift accumulating across repeated edits.
+ */
+export const adjustBuyInForRebuyChange = (currentBuyIn: number, delta: number): number => {
+  return round(currentBuyIn + delta);
+};
