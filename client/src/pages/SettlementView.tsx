@@ -2,18 +2,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
+import { useRole } from '@/context/RoleContext';
 import type { Settlement } from '@/types';
 import { cn } from '@/lib/utils';
 import RankingChangesSection from '@/components/session/RankingChangesSection';
 import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
 import StreaksSection from '@/components/session/StreaksSection';
+import SettlementList from '@/components/session/SettlementList';
 
 const SettlementView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { canEdit } = useRole();
   const { data: session, isLoading } = useSession(sessionId || '');
   // Use the session's actual groupId instead of context's selectedGroup
   // to avoid mismatch when viewing sessions from different groups
@@ -166,38 +169,11 @@ const SettlementView = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {settlements.length === 0 ? (
-            <div className="text-center py-12">
-              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <p className="text-lg font-medium">Perfect! Everyone broke even.</p>
-              <p className="text-muted-foreground">No payments needed. 🎉</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {settlements.map((settlement, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-4 bg-muted rounded-lg"
-                  data-testid="settlement-row"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="font-bold text-lg">{settlement.from}</div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    <div className="font-bold text-lg">{settlement.to}</div>
-                  </div>
-                  <div className="text-2xl font-bold text-primary">
-                    ${settlement.amount.toFixed(2)}
-                  </div>
-                </div>
-              ))}
-
-              {/* Validation Badge */}
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-6">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span>Zero-sum validated ✓</span>
-              </div>
-            </div>
-          )}
+          <SettlementList
+            sessionId={session.id}
+            settlements={settlements}
+            canEdit={canEdit}
+          />
         </CardContent>
       </Card>
 

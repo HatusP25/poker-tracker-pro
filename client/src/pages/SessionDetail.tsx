@@ -23,7 +23,9 @@ import RankingChangesSection from '@/components/session/RankingChangesSection';
 import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
 import StreaksSection from '@/components/session/StreaksSection';
 import RebuyItinerary from '@/components/live/RebuyItinerary';
+import SettlementList from '@/components/session/SettlementList';
 import { parseLocalDate } from '@/lib/dateUtils';
+import type { Settlement } from '@/types';
 
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -98,6 +100,8 @@ const SessionDetail = () => {
   );
 
   const isDeleted = session.deletedAt !== null;
+  const settlements: Settlement[] = session.settlements ? JSON.parse(session.settlements) : [];
+  const isCompleted = session.status === 'COMPLETED';
 
   return (
     <div>
@@ -311,6 +315,22 @@ const SessionDetail = () => {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Settlement */}
+        {isCompleted && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>💰</span>
+                Settlement
+              </CardTitle>
+              <CardDescription>Who owes whom for this session</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SettlementList sessionId={session.id} settlements={settlements} canEdit={canEdit} />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}

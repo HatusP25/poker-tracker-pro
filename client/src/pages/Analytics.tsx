@@ -6,6 +6,7 @@ import DateRangeSelector, { type DateRange } from '@/components/analytics/DateRa
 import ProfitChart from '@/components/analytics/ProfitChart';
 import PlayerComparisonChart from '@/components/analytics/PlayerComparisonChart';
 import SessionSizeChart from '@/components/analytics/SessionSizeChart';
+import ProfitByLocationChart from '@/components/analytics/ProfitByLocationChart';
 import RecentActivity from '@/components/analytics/RecentActivity';
 import TopPerformances from '@/components/analytics/TopPerformances';
 import { parseLocalDate } from '@/lib/dateUtils';
@@ -189,6 +190,9 @@ const Analytics = () => {
         <ProfitChart sessions={filteredSessions} />
         <RecentActivity sessions={filteredSessions} />
       </div>
+
+      {/* Location Breakdown */}
+      <ProfitByLocationChart sessions={filteredSessions} />
 
       {filteredSessions.length === 0 && (
         <Card>

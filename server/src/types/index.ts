@@ -24,6 +24,8 @@ export interface PlayerStats {
   longestLossStreak: number;
 }
 
+export type LeaderboardTimeframe = 'all' | 'year' | 'month' | 'week';
+
 export interface LeaderboardEntry {
   rank: number;
   playerId: string;

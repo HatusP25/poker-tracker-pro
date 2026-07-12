@@ -55,6 +55,40 @@ export const useAddRebuy = () => {
   });
 };
 
+export const useUpdateRebuy = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, rebuyId, amount }: { sessionId: string; rebuyId: string; amount: number }) =>
+      liveSessionsApi.updateRebuy(sessionId, rebuyId, { amount }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['live-session', variables.sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('Rebuy updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to update rebuy');
+    },
+  });
+};
+
+export const useDeleteRebuy = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, rebuyId }: { sessionId: string; rebuyId: string }) =>
+      liveSessionsApi.deleteRebuy(sessionId, rebuyId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['live-session', variables.sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('Rebuy removed');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to remove rebuy');
+    },
+  });
+};
+
 export const useAddPlayerToSession = () => {
   const queryClient = useQueryClient();
 

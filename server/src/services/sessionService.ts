@@ -7,6 +7,7 @@ import {
   ValidationError,
 } from '../utils/validators';
 import { calculateProfit, calculateRebuys } from '../utils/calculations';
+import { setSettlementPaid } from './settlementService';
 
 interface SessionEntryInput {
   playerId: string;
@@ -145,7 +146,10 @@ export class SessionService {
       throw new ValidationError('Duplicate players in session');
     }
 
-    // Create session with entries
+    // Create session with entries. Status defaults to COMPLETED (schema default) since
+    // this path is for directly-entered historical sessions, not the live-session flow.
+    // Stamp completedAt so the reopen 24h window (liveSessionService.reopenSession) has
+    // a real completion timestamp to work from, distinct from updatedAt.
     return prisma.session.create({
       data: {
         groupId: data.groupId,
@@ -155,6 +159,7 @@ export class SessionService {
         location: data.location,
         notes: data.notes,
         photoUrls: data.photoUrls ? JSON.stringify(data.photoUrls) : null,
+        completedAt: new Date(),
         entries: {
           create: data.entries.map(entry => ({
             playerId: entry.playerId,
@@ -211,6 +216,10 @@ export class SessionService {
         ...(data.notes !== undefined && { notes: data.notes }),
         ...(data.photoUrls && { photoUrls: JSON.stringify(data.photoUrls) }),
         ...(data.status !== undefined && { status: data.status }),
+        // Keep completedAt in sync whenever this generic update path flips status:
+        // stamp it on a transition to COMPLETED, clear it on a transition back to IN_PROGRESS.
+        ...(data.status === 'COMPLETED' && { completedAt: new Date() }),
+        ...(data.status === 'IN_PROGRESS' && { completedAt: null }),
         ...(data.settlements !== undefined && { settlements: data.settlements }),
       },
       include: {
@@ -354,6 +363,39 @@ export class SessionService {
       },
       include: {
         player: true,
+      },
+    });
+  }
+
+  /**
+   * Mark a single settlement transfer within a completed session's settlements
+   * as paid or pending. Per-session display state only — never touches
+   * from/to/amount (see docs/DECISIONS.md D-001: no cross-session ledger).
+   */
+  async updateSettlementPaid(sessionId: string, index: number, paid: boolean) {
+    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'COMPLETED') {
+      throw new ValidationError('Can only update settlements on a completed session');
+    }
+
+    // setSettlementPaid validates paid is boolean, index is an in-range integer,
+    // and that settlements exist — throwing ValidationError (400) otherwise.
+    const updatedSettlements = setSettlementPaid(session.settlements, index, paid);
+
+    return prisma.session.update({
+      where: { id: sessionId },
+      data: { settlements: updatedSettlements },
+      include: {
+        entries: {
+          include: {
+            player: true,
+          },
+        },
       },
     });
   }

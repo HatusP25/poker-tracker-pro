@@ -3,19 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
 import { useLeaderboard } from '@/hooks/useStats';
 import { exportRankingsCSV } from '@/lib/export';
 import TableSkeleton from '@/components/skeletons/TableSkeleton';
+import type { LeaderboardTimeframe } from '@/types';
+
+const TIMEFRAME_LABELS: Record<LeaderboardTimeframe, string> = {
+  all: 'All Time',
+  year: 'This Year',
+  month: 'This Month',
+  week: 'This Week',
+};
 
 const Rankings = () => {
   const { selectedGroup } = useGroupContext();
   const navigate = useNavigate();
   const [sortColumn, setSortColumn] = useState<string>('balance');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [timeframe, setTimeframe] = useState<LeaderboardTimeframe>('all');
 
-  const { data: leaderboard, isLoading } = useLeaderboard(selectedGroup?.id || '');
+  const { data: leaderboard, isLoading } = useLeaderboard(selectedGroup?.id || '', undefined, timeframe);
 
   if (!selectedGroup) {
     return (
@@ -127,12 +137,28 @@ const Rankings = () => {
           <h1 className="text-3xl font-bold">Leaderboard</h1>
           <p className="text-muted-foreground">Rankings for {selectedGroup.name}</p>
         </div>
-        {leaderboard && leaderboard.length > 0 && (
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Select value={timeframe} onValueChange={(v) => setTimeframe(v as LeaderboardTimeframe)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.entries(TIMEFRAME_LABELS) as [LeaderboardTimeframe, string][]).map(
+                ([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                )
+              )}
+            </SelectContent>
+          </Select>
+          {leaderboard && leaderboard.length > 0 && (
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>

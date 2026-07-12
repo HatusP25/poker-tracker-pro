@@ -10,7 +10,40 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
-Nothing in flight. See [BACKLOG.md](BACKLOG.md) for what's next.
+In the working tree, verified green, awaiting review/commit (2026-07-12):
+
+### Added
+- **Leaderboard timeframes** — Rankings can now be filtered to All Time / This Year / This Month /
+  This Week (`?timeframe=` on the leaderboard endpoint). Metric formulas unchanged; default stays all-time.
+- **Edit/undo rebuy in live session** (PH-16/IMP-008) — inline edit and delete (with confirmation)
+  for rebuys during a live session, with atomic buy-in recalculation. EDITOR-only.
+- **Settlement paid tracking** (BACKLOG P1) — mark each settlement transfer paid/pending within a
+  night ("N of M settled"), in the post-game settlement view and a new Settlement card on session
+  detail. Per-session only (DECISIONS D-001); stored in the existing settlements JSON, no migration.
+
+### Fixed
+- **Reopen-window timestamp** (PH-10) — sessions now record `completedAt` (additive migration);
+  editing a completed session no longer silently re-extends its 24h reopen window.
+- **Role-gating consistency** — live-session Add Rebuy / Add Player / End Session actions are now
+  hidden for VIEWER, matching the rest of the app.
+
+### Added (second batch, 2026-07-12)
+- **Template quick-start** — load a saved template on the live-session start page to prefill
+  lineup/location/time in one tap (inactive/removed players skipped with a warning); save the
+  current setup as a template from the same page.
+- **Player notes & tags** (PH-14/IMP-003) — full CRUD API for the previously-orphaned `PlayerNote`
+  model plus a Notes card on player detail: banter/reads with tag chips, EDITOR-only editing.
+- **Pot by location chart** (PH-15/IMP-001) — average pot per session by location on Analytics,
+  client-side aggregation respecting the page's date-range filter.
+
+### Performance
+- **Client code-splitting** (P1 follow-up) — route-level `React.lazy` + vendor `manualChunks`;
+  initial chunk ~1,118 kB → ~170 kB (gzip ~54 kB), Recharts loads only on chart routes, Vite
+  >500 kB warning gone.
+
+### Tests
+- +17 server unit tests (57 total), +28 integration tests (45 total), +5 client unit tests
+  (21 total). Full suite green including E2E against the code-split production artifact.
 
 ---
 

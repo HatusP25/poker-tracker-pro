@@ -44,6 +44,31 @@ export const addRebuy = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
+export const updateRebuy = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId, rebuyId } = req.params;
+    const { amount } = req.body;
+
+    const result = await liveSessionService.updateRebuy(sessionId, rebuyId, amount);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRebuy = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId, rebuyId } = req.params;
+
+    const result = await liveSessionService.deleteRebuy(sessionId, rebuyId);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const addPlayer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;

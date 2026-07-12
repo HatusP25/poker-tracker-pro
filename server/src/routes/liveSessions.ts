@@ -3,6 +3,8 @@ import {
   startLiveSession,
   getLiveSession,
   addRebuy,
+  updateRebuy,
+  deleteRebuy,
   addPlayer,
   endLiveSession,
   reopenLiveSession,
@@ -20,6 +22,10 @@ router.get('/:sessionId', getLiveSession);
 
 // Add rebuy to existing player
 router.post('/:sessionId/rebuy', addRebuy);
+
+// Edit or undo a rebuy
+router.patch('/:sessionId/rebuys/:rebuyId', updateRebuy);
+router.delete('/:sessionId/rebuys/:rebuyId', deleteRebuy);
 
 // Add new player mid-game
 router.post('/:sessionId/add-player', addPlayer);

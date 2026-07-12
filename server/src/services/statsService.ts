@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import {
   PlayerStats,
   LeaderboardEntry,
+  LeaderboardTimeframe,
   SessionStats,
   DashboardStats,
   BalanceCheck,
@@ -18,6 +19,35 @@ import {
   calculateLongestLossStreak,
   round,
 } from '../utils/calculations';
+
+/**
+ * Compute the inclusive start date for a leaderboard timeframe, relative to `now`.
+ * Returns null for 'all' (no filtering).
+ *
+ * - 'year'  -> Jan 1 of the current year (YTD)
+ * - 'month' -> 1st of the current month
+ * - 'week'  -> start of the current week, Sunday-based (matches the weekly
+ *              bucketing convention used in getProfitTrend below)
+ *
+ * Pure function, no DB access, so it's unit-testable in isolation.
+ */
+export function getTimeframeStart(timeframe: LeaderboardTimeframe, now: Date): Date | null {
+  switch (timeframe) {
+    case 'year':
+      return new Date(now.getFullYear(), 0, 1);
+    case 'month':
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    case 'week': {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      return weekStart;
+    }
+    case 'all':
+    default:
+      return null;
+  }
+}
 
 export class StatsService {
   /**
@@ -142,9 +172,16 @@ export class StatsService {
    * OPTIMIZED: Single query with includes - NO N+1 problem
    * Fetches all players with their entries and sessions in one database call
    */
-  async getLeaderboard(groupId: string, minGames = 0): Promise<LeaderboardEntry[]> {
+  async getLeaderboard(
+    groupId: string,
+    minGames = 0,
+    timeframe: LeaderboardTimeframe = 'all'
+  ): Promise<LeaderboardEntry[]> {
+    const timeframeStart = getTimeframeStart(timeframe, new Date());
+
     // Single optimized query - fetches all data at once
-    // Filter out entries from deleted sessions
+    // Filter out entries from deleted sessions (and, when a timeframe is
+    // given, sessions dated before the timeframe's start).
     const players = await prisma.player.findMany({
       where: { groupId },
       include: {
@@ -152,6 +189,7 @@ export class StatsService {
           where: {
             session: {
               deletedAt: null,
+              ...(timeframeStart ? { date: { gte: timeframeStart } } : {}),
             },
           },
           include: {

@@ -5,8 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, UserPlus, StopCircle } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
+import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
-import { useLiveSession, useAddRebuy, useAddPlayerToSession, useEndLiveSession } from '@/hooks/useLiveSessions';
+import {
+  useLiveSession,
+  useAddRebuy,
+  useUpdateRebuy,
+  useDeleteRebuy,
+  useAddPlayerToSession,
+  useEndLiveSession,
+} from '@/hooks/useLiveSessions';
 import RebuyDialog from '@/components/live/RebuyDialog';
 import AddPlayerDialog from '@/components/live/AddPlayerDialog';
 import EndSessionDialog from '@/components/live/EndSessionDialog';
@@ -18,9 +26,12 @@ const LiveSessionView = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { selectedGroup } = useGroupContext();
+  const { canEdit } = useRole();
   const { data: sessionData, isLoading } = useLiveSession(sessionId || '');
   const { data: allPlayers = [] } = usePlayersByGroup(selectedGroup?.id || '');
   const addRebuy = useAddRebuy();
+  const updateRebuy = useUpdateRebuy();
+  const deleteRebuy = useDeleteRebuy();
   const addPlayer = useAddPlayerToSession();
   const endSession = useEndLiveSession();
 
@@ -99,6 +110,14 @@ const LiveSessionView = () => {
 
   const handleAddRebuy = (playerId: string, amount: number) => {
     addRebuy.mutate({ sessionId: sessionId!, playerId, amount });
+  };
+
+  const handleEditRebuy = (rebuyId: string, amount: number) => {
+    updateRebuy.mutate({ sessionId: sessionId!, rebuyId, amount });
+  };
+
+  const handleDeleteRebuy = (rebuyId: string) => {
+    deleteRebuy.mutate({ sessionId: sessionId!, rebuyId });
   };
 
   const handleAddPlayer = (playerId: string, buyIn: number) => {
@@ -190,39 +209,46 @@ const LiveSessionView = () => {
       </Card>
 
       {/* Rebuy History */}
-      <RebuyItinerary rebuyEvents={session.rebuyEvents || []} />
+      <RebuyItinerary
+        rebuyEvents={session.rebuyEvents || []}
+        editable={canEdit}
+        onEdit={handleEditRebuy}
+        onDelete={handleDeleteRebuy}
+      />
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button
-          size="lg"
-          onClick={() => setShowRebuyDialog(true)}
-          className="h-20"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Add Rebuy
-        </Button>
+      {canEdit && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Button
+            size="lg"
+            onClick={() => setShowRebuyDialog(true)}
+            className="h-20"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Add Rebuy
+          </Button>
 
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={() => setShowAddPlayerDialog(true)}
-          className="h-20"
-        >
-          <UserPlus className="mr-2 h-5 w-5" />
-          Add Player
-        </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => setShowAddPlayerDialog(true)}
+            className="h-20"
+          >
+            <UserPlus className="mr-2 h-5 w-5" />
+            Add Player
+          </Button>
 
-        <Button
-          size="lg"
-          variant="destructive"
-          onClick={() => setShowEndDialog(true)}
-          className="h-20"
-        >
-          <StopCircle className="mr-2 h-5 w-5" />
-          End Session
-        </Button>
-      </div>
+          <Button
+            size="lg"
+            variant="destructive"
+            onClick={() => setShowEndDialog(true)}
+            className="h-20"
+          >
+            <StopCircle className="mr-2 h-5 w-5" />
+            End Session
+          </Button>
+        </div>
+      )}
 
       {/* Dialogs */}
       <RebuyDialog

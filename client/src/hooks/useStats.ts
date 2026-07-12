@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { statsApi } from '@/lib/api';
+import type { LeaderboardTimeframe } from '@/types';
 
 export const usePlayerStats = (playerId: string) => {
   return useQuery({
@@ -12,11 +13,15 @@ export const usePlayerStats = (playerId: string) => {
   });
 };
 
-export const useLeaderboard = (groupId: string, minGames?: number) => {
+export const useLeaderboard = (
+  groupId: string,
+  minGames?: number,
+  timeframe: LeaderboardTimeframe = 'all'
+) => {
   return useQuery({
-    queryKey: ['stats', 'leaderboard', groupId, minGames],
+    queryKey: ['stats', 'leaderboard', groupId, minGames, timeframe],
     queryFn: async () => {
-      const response = await statsApi.getLeaderboard(groupId, minGames);
+      const response = await statsApi.getLeaderboard(groupId, minGames, timeframe);
       return response.data;
     },
     enabled: !!groupId,
