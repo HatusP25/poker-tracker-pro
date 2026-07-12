@@ -19,33 +19,14 @@ Legend: `P1` now-ish · `P2` soon · `P3` someday. Effort: S/M/L.
 
 ## P1 — High value, ready to pick up
 
-- **[P1·M] Client code-splitting / bundle size.** Single ~1.1 MB chunk (~318 kB gzip); Vite warns
-  >500 kB. Route-level `React.lazy` + vendor `manualChunks`. Performance-only, no UI change.
-  → Full brief: [docs/follow-ups/2026-06-19-bundle-code-splitting.md](docs/follow-ups/2026-06-19-bundle-code-splitting.md)
-
-- **[P1·M] Settlement payment tracking.** Mark each computed settlement transfer as paid/pending so
-  the group can see what's been squared up *within a night's settlement*. NOTE: keep this as
-  per-session settlement status only — do **not** turn it into a cross-session debt ledger
-  (explicitly out of scope, see DECISIONS). Needs a schema change (settlement paid state).
+*(empty — previous P1 items shipped 2026-07-12, see CHANGELOG)*
 
 ## P2 — Worth doing, not urgent
 
-- **[P2·M] Session Templates & Quick Start** (PH carryover). Models already exist (`SessionTemplate`).
-  Wire up UI to save a recurring lineup/location/time and start a session in one tap.
-- **[P2·S] Surface player notes & tags** (PH-14 / IMP-003). `PlayerNote` (with tags) exists in the
-  schema but is underused in the UI. Surface notes/tags on `PlayerDetail`.
-- **[P2·S] Undo/edit rebuy in live session** (PH-16 / IMP-008). Needs `RebuyEvent` edit/delete plus
-  buy-in recalculation.
-- **[P2·S] Profit by location / day-of-week analytics** (PH-15 / IMP-001/002). Day-of-week chart is
-  partly present; add location breakdown.
 - **[P2·M] Photo gallery per session.** `Session.photoUrls` already stored; build a gallery view.
+  NOTE: needs an upload/attach mechanism first — a gallery alone has no way to get photos in.
 - **[P2·S] Insights polish.** Make the Season Recap card one-tap screenshot/shareable; consider a
   configurable "season" date range beyond calendar year.
-
-## P1.5 — Known correctness nit (small)
-
-- **[P1·S] Fix `reopenSession` window timestamp** (PH-10). Use a dedicated `completedAt` / stored
-  settlement time rather than the current window timestamp.
 
 ## P3 — Someday / ideas
 

@@ -10,6 +10,74 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-07-12 (batch 2) — Template quick-start, player notes, location chart, code-splitting
+
+**Why** Continue closing backlog items after the correctness batch below. All P1/P2 feature items
+now shipped except the photo gallery (blocked on an upload mechanism).
+**Uncommitted by request** — left in the working tree for review alongside batch 1.
+
+**Changed**
+- **Template quick-start (P2)** — `LiveSessionStart.tsx` now embeds `TemplateSelector` (prefills
+  active players at group default buy-in, location, start time; skipped inactive/deleted players
+  surfaced via toast) and `SaveTemplateDialog` wired to `useCreateTemplate`.
+- **Player notes & tags (PH-14/IMP-003)** — `PlayerNote` model had no API/UI. Added
+  `GET/POST /players/:playerId/notes`, `PATCH/DELETE /players/notes/:noteId` (service validation:
+  trimmed non-empty content; tags stored as JSON string per the `photoUrls` convention). New
+  `usePlayerNotes.ts` hooks, `PlayerNotes.tsx` card on `PlayerDetail` (tag Badge chips, inline
+  edit/delete EDITOR-only), new shadcn `textarea.tsx`. TDD: 12 integration tests written failing-first.
+- **Pot by location chart (PH-15/IMP-001)** — pure `aggregateProfitByLocation()` in
+  `client/src/lib/locationStats.ts` (+5 unit tests; case-insensitive grouping, "Unspecified" bucket),
+  `ProfitByLocationChart.tsx` following `DayOfWeekChart`'s pattern, placed on `Analytics.tsx` and
+  inheriting its date-range filter. Note: `DayOfWeekChart` itself was deliberately removed from
+  Analytics in commit 36f82b7; left that decision intact.
+- **Client code-splitting (P1, follow-up 2026-06-19)** — route-level `React.lazy`/`Suspense` in
+  `App.tsx` (shell/providers eager, 13 route pages lazy, new `RouteLoader.tsx` fallback) + vendor
+  `manualChunks` in `vite.config.ts` (react/router/query/recharts/ui). Initial chunk 1,118 kB →
+  169.6 kB (gzip 53.7 kB); Recharts (404 kB) loads only on chart routes; >500 kB warning gone.
+
+**Verification** server unit 57 ✓ · integration 45 ✓ · server+client typecheck ✓ · client unit 21 ✓ ·
+E2E 6 ✓ (code-split production artifact) · client build ✓ (no chunk-size warning).
+
+---
+
+## 2026-07-12 — Leaderboard timeframes, reopen-window fix, rebuy edit/undo, settlement paid tracking
+
+**Why** Close the remaining "ready for real weekly games" gaps: the leaderboard was all-time only,
+a mis-entered rebuy couldn't be corrected mid-game, the 24h reopen window silently re-extended on
+any session edit (PH-10), and settlement transfers had no paid/pending state (BACKLOG P1).
+**Uncommitted by request** — left in the working tree for review; nothing committed or pushed.
+
+**Changed**
+- **Leaderboard timeframes** — `GET /groups/:groupId/leaderboard?timeframe=all|year|month|week`
+  (default `all`, unchanged behavior; invalid → 400). Pure `getTimeframeStart()` helper in
+  `statsService.ts` (week is Sunday-based, matching `getProfitTrend`); metric formulas untouched.
+  Rankings page gained a timeframe `Select` (All Time / This Year / This Month / This Week).
+- **PH-10 reopen-window fix** — additive `Session.completedAt DateTime?` column (migration
+  `20260712045404_add_session_completed_at`, applied to dev/test/e2e DBs). Stamped on every
+  COMPLETED transition; `reopenSession` now checks `completedAt ?? updatedAt` and clears it on reopen.
+- **Rebuy edit/undo (PH-16/IMP-008)** — `PATCH`/`DELETE /live-sessions/:sessionId/rebuys/:rebuyId`;
+  atomic `$transaction` updates RebuyEvent + SessionEntry.buyIn (guards amount > 0, buyIn > 0,
+  IN_PROGRESS only). Inline edit/delete controls in `RebuyItinerary`, EDITOR-gated.
+- **Settlement paid tracking (P1)** — optional `paid` flag inside the existing settlements JSON
+  (no migration; per-session only per DECISIONS D-001). `PATCH /sessions/:sessionId/settlements/:index`
+  via pure `setSettlementPaid()` helper. New shared `SettlementList` component ("N of M settled",
+  EDITOR checkbox toggle) used in `SettlementView` and a new Settlement card on `SessionDetail`.
+- **Role-gating consistency** — Add Rebuy / Add Player / End Session in `LiveSessionView` now
+  hidden for VIEWER (pre-existing gap).
+
+**Files** Server: `statsService.ts(+test)`, `statsController.ts`, `liveSessionService.ts`,
+`liveSessionController.ts`, `sessionService.ts`, `sessionController.ts`, `settlementService.ts(+test)`,
+`calculations.ts(+test)`, `routes/{stats,liveSessions,sessions}.ts`, `types/index.ts`,
+`prisma/schema.prisma` + migration, `tests/integration/{leaderboardTimeframe,liveSession,sessionSettlements}.test.ts`.
+Client: `Rankings.tsx`, `LiveSessionView.tsx`, `SettlementView.tsx`, `SessionDetail.tsx`,
+`components/live/RebuyItinerary.tsx`, new `components/session/SettlementList.tsx`,
+`hooks/{useStats,useLiveSessions,useSessions}.ts`, `lib/api.ts`, `types/index.ts`.
+
+**Verification** server unit 57 ✓ · integration 33 ✓ · server+client typecheck ✓ · client unit 16 ✓ ·
+E2E 6 ✓ (production artifact) · client build ✓.
+
+---
+
 ## 2026-06-19 — Insights: The Story of Your Game
 
 **Why** Find feature gaps that add real value to a *home* poker group. Chosen direction: social,
