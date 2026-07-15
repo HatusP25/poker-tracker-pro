@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,17 +15,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2, Copy } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2, Copy, MessageCircle } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
+import { useBelt } from '@/hooks/useInsights';
 import BalanceIndicator from '@/components/sessions/BalanceIndicator';
 import RankingChangesSection from '@/components/session/RankingChangesSection';
 import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
 import StreaksSection from '@/components/session/StreaksSection';
 import RebuyItinerary from '@/components/live/RebuyItinerary';
 import SettlementList from '@/components/session/SettlementList';
+import NightTitleChips from '@/components/session/NightTitleChips';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { formatNightMessage, getCurrencySymbol } from '@/lib/nightMessage';
+import { deriveBeltLine } from '@/lib/beltLine';
 import type { Settlement } from '@/types';
 
 const SessionDetail = () => {
@@ -37,6 +42,7 @@ const SessionDetail = () => {
     id || '',
     session?.groupId || ''
   );
+  const { data: belt } = useBelt(session?.groupId || '');
   const deleteSession = useDeleteSession();
   const restoreSession = useRestoreSession();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -102,6 +108,34 @@ const SessionDetail = () => {
   const isDeleted = session.deletedAt !== null;
   const settlements: Settlement[] = session.settlements ? JSON.parse(session.settlements) : [];
   const isCompleted = session.status === 'COMPLETED';
+
+  const handleCopyForWhatsApp = async () => {
+    const currency = getCurrencySymbol(session.group?.currency);
+    const beltLine = deriveBeltLine({
+      sessionDate: session.date,
+      sessionPlayerIds: session.entries?.map((e) => e.playerId) || [],
+      belt,
+    });
+
+    const message = formatNightMessage({
+      date: session.date,
+      currency,
+      results: entriesWithStats.map((entry) => ({
+        name: entry.player?.name || 'Unknown',
+        profit: entry.profit,
+        titles: (summary?.titles || []).filter((t) => t.playerId === entry.playerId),
+      })),
+      settlements,
+      belt: beltLine ? { line: beltLine } : undefined,
+    });
+
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success('Copied settlement message for WhatsApp');
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  };
 
   return (
     <div>
@@ -246,6 +280,9 @@ const SessionDetail = () => {
           </Card>
         </div>
 
+        {/* Night Titles */}
+        {summary && summary.titles.length > 0 && <NightTitleChips titles={summary.titles} />}
+
         {/* Balance Check */}
         <BalanceIndicator totalBuyIn={totalBuyIn} totalCashOut={totalCashOut} threshold={1} />
 
@@ -320,11 +357,19 @@ const SessionDetail = () => {
         {isCompleted && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span>💰</span>
-                Settlement
-              </CardTitle>
-              <CardDescription>Who owes whom for this session</CardDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <span>💰</span>
+                    Settlement
+                  </CardTitle>
+                  <CardDescription>Who owes whom for this session</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Copy for WhatsApp
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <SettlementList sessionId={session.id} settlements={settlements} canEdit={canEdit} />

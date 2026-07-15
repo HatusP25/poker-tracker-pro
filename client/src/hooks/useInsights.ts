@@ -28,3 +28,17 @@ export const useSeasonRecap = (groupId: string, year: number) =>
     queryFn: async () => (await insightsApi.getSeasonRecap(groupId, year)).data,
     enabled: !!groupId,
   });
+
+export const useBelt = (groupId: string) =>
+  useQuery({
+    queryKey: ['insights', 'belt', groupId],
+    queryFn: async () => (await insightsApi.getBelt(groupId)).data,
+    enabled: !!groupId,
+  });
+
+export const useAchievements = (groupId: string) =>
+  useQuery({
+    queryKey: ['insights', 'achievements', groupId],
+    queryFn: async () => (await insightsApi.getAchievements(groupId)).data,
+    enabled: !!groupId,
+  });
