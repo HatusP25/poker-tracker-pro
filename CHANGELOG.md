@@ -10,6 +10,24 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-07-12 — The Banter Pack
+
+Bragging-rights features, all **derived-on-read from existing history — no schema changes,
+no writes to session data** (design: `docs/superpowers/specs/2026-07-12-banter-pack-design.md`).
+
+- **The Belt 🥇** — championship belt with full retroactive lineage. Succession rule
+  (group-ratified): the belt is only at stake when the holder plays; whoever out-profits
+  them that night takes it. Belt card + expandable lineage on Insights.
+- **Night Titles** — Shark of the Night, Donation of the Night, ATM, Houdini — auto-crowned
+  per session, shown on the settlement screen and session detail.
+- **Achievements & Trophy Case** — 10 stake-agnostic badges (Hat Trick, Comeback Kid,
+  Phoenix, Giant Slayer, Iron Man, Regular, Veteran, Rebuy Royalty, Double-Up, Untouchable),
+  retroactive over the whole year; trophy case on player pages, recent unlocks on Insights,
+  one-time unlock toasts (localStorage-tracked, no server state).
+- **Copy for WhatsApp** — one-tap formatted night summary (results, titles, transfers,
+  belt line) from the settlement screen and session detail.
+- Tests: +37 server unit, +6 integration, +14 client unit, +3 e2e.
+
 In the working tree, verified green, awaiting review/commit (2026-07-12):
 
 ### Added

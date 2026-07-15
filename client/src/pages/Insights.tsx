@@ -4,6 +4,8 @@ import RecordsModule from '@/components/insights/RecordsModule';
 import FormBoardModule from '@/components/insights/FormBoardModule';
 import RivalriesModule from '@/components/insights/RivalriesModule';
 import SeasonRecapModule from '@/components/insights/SeasonRecapModule';
+import BeltCard from '@/components/insights/BeltCard';
+import RecentUnlocks from '@/components/insights/RecentUnlocks';
 import RankRaceChart from '@/components/insights/charts/RankRaceChart';
 
 const Insights = () => {
@@ -24,8 +26,10 @@ const Insights = () => {
 
       <RecordsModule groupId={groupId} />
       <RankRaceChart sessions={sessions ?? []} />
+      <BeltCard groupId={groupId} />
       <FormBoardModule groupId={groupId} />
       <RivalriesModule groupId={groupId} />
+      <RecentUnlocks groupId={groupId} />
       <SeasonRecapModule groupId={groupId} />
     </div>
   );

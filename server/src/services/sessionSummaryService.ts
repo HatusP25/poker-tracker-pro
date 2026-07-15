@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { round } from '../utils/calculations';
+import { computeNightTitles } from './banterService';
+import { NightTitle } from '../types/banter';
 
 interface RankingChange {
   playerId: string;
@@ -44,6 +46,7 @@ interface SessionSummary {
   highlights: SessionHighlights;
   streaks: StreakUpdate[];
   milestones: Milestone[];
+  titles: NightTitle[];
 }
 
 export class SessionSummaryService {
@@ -64,6 +67,7 @@ export class SessionSummaryService {
             player: true,
           },
         },
+        rebuyEvents: true,
         group: true,
       },
     });
@@ -97,6 +101,17 @@ export class SessionSummaryService {
     // 7. Check for milestones
     const milestones = await this.calculateMilestones(session.entries, groupId, rankingsAfter);
 
+    // 8. Night titles (Shark / Donation / ATM / Houdini) — pure, derived-on-read
+    const titles = computeNightTitles(
+      session.entries.map((e) => ({
+        playerId: e.playerId,
+        playerName: e.player.name,
+        buyIn: e.buyIn,
+        cashOut: e.cashOut,
+      })),
+      session.rebuyEvents.map((r) => ({ playerId: r.playerId, amount: r.amount }))
+    );
+
     return {
       session: {
         id: session.id,
@@ -108,6 +123,7 @@ export class SessionSummaryService {
       highlights,
       streaks,
       milestones,
+      titles,
     };
   }
 

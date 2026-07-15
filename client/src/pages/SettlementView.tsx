@@ -1,17 +1,22 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import { useSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
+import { useBelt } from '@/hooks/useInsights';
 import { useRole } from '@/context/RoleContext';
 import type { Settlement } from '@/types';
 import { cn } from '@/lib/utils';
+import { formatNightMessage, getCurrencySymbol } from '@/lib/nightMessage';
+import { deriveBeltLine } from '@/lib/beltLine';
 import RankingChangesSection from '@/components/session/RankingChangesSection';
 import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
 import StreaksSection from '@/components/session/StreaksSection';
 import SettlementList from '@/components/session/SettlementList';
+import NightTitleChips from '@/components/session/NightTitleChips';
 
 const SettlementView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -24,6 +29,7 @@ const SettlementView = () => {
     sessionId || '',
     session?.groupId || ''
   );
+  const { data: belt } = useBelt(session?.groupId || '');
 
   if (isLoading || !session) {
     return (
@@ -38,6 +44,34 @@ const SettlementView = () => {
     : [];
 
   const totalPot = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
+
+  const handleCopyForWhatsApp = async () => {
+    const currency = getCurrencySymbol(session.group?.currency);
+    const beltLine = deriveBeltLine({
+      sessionDate: session.date,
+      sessionPlayerIds: session.entries?.map((e) => e.playerId) || [],
+      belt,
+    });
+
+    const message = formatNightMessage({
+      date: session.date,
+      currency,
+      results: (session.entries || []).map((entry) => ({
+        name: entry.player?.name || 'Unknown',
+        profit: entry.cashOut - entry.buyIn,
+        titles: (summary?.titles || []).filter((t) => t.playerId === entry.playerId),
+      })),
+      settlements,
+      belt: beltLine ? { line: beltLine } : undefined,
+    });
+
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success('Copied settlement message for WhatsApp');
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  };
 
   const calculateDuration = () => {
     if (!session.startTime || !session.endTime) return null;
@@ -112,6 +146,11 @@ const SettlementView = () => {
       <Card>
         <CardHeader>
           <CardTitle>Final Results</CardTitle>
+          {summary && summary.titles.length > 0 && (
+            <div className="pt-2">
+              <NightTitleChips titles={summary.titles} />
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -160,13 +199,21 @@ const SettlementView = () => {
       {/* Settlement Instructions */}
       <Card className="border-primary">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span>💰</span>
-            Settlement Instructions
-          </CardTitle>
-          <CardDescription>
-            Optimal payment structure (minimized transactions)
-          </CardDescription>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <span>💰</span>
+                Settlement Instructions
+              </CardTitle>
+              <CardDescription>
+                Optimal payment structure (minimized transactions)
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy for WhatsApp
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <SettlementList

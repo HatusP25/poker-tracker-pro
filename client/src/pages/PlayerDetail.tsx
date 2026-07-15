@@ -11,6 +11,7 @@ import { exportPlayerStatsCSV } from '@/lib/export';
 import PlayerProfitChart from '@/components/analytics/PlayerProfitChart';
 import PlayerSessionHistoryChart from '@/components/analytics/PlayerSessionHistoryChart';
 import PlayerNotes from '@/components/players/PlayerNotes';
+import TrophyCase from '@/components/players/TrophyCase';
 
 const PlayerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -330,6 +331,9 @@ const PlayerDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Trophy Case */}
+      <TrophyCase groupId={selectedGroup?.id || ''} playerId={id || ''} />
 
       {/* Notes */}
       <PlayerNotes playerId={id || ''} canEdit={canEdit} />
