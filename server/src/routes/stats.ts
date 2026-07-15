@@ -14,6 +14,8 @@ import {
   getGroupHeadToHead,
   getGroupForm,
   getSeasonRecap,
+  getGroupBelt,
+  getGroupAchievements,
 } from '../controllers/statsController';
 
 const router = Router();
@@ -45,5 +47,9 @@ router.get('/groups/:groupId/records', getGroupRecords);
 router.get('/groups/:groupId/head-to-head', getGroupHeadToHead);
 router.get('/groups/:groupId/form', getGroupForm);
 router.get('/groups/:groupId/season', getSeasonRecap);
+
+// Banter pack endpoints
+router.get('/groups/:groupId/belt', getGroupBelt);
+router.get('/groups/:groupId/achievements', getGroupAchievements);
 
 export default router;

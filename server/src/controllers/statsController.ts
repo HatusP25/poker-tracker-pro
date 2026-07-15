@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { statsService } from '../services/statsService';
 import { sessionSummaryService } from '../services/sessionSummaryService';
 import { insightsService } from '../services/insightsService';
+import { banterService } from '../services/banterService';
 import { LeaderboardTimeframe } from '../types';
 
 const VALID_LEADERBOARD_TIMEFRAMES: LeaderboardTimeframe[] = ['all', 'year', 'month', 'week'];
@@ -169,6 +170,26 @@ export const getSeasonRecap = async (req: Request, res: Response, next: NextFunc
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
     const recap = await insightsService.getSeasonRecap(groupId, year);
     res.json(recap);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGroupBelt = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const belt = await banterService.getBelt(groupId);
+    res.json(belt);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getGroupAchievements = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const achievements = await banterService.getAchievements(groupId);
+    res.json(achievements);
   } catch (error) {
     next(error);
   }
