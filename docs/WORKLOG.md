@@ -10,6 +10,31 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-07-12 (batch 3) — The Banter Pack
+
+**Why** PM-driven feature wave: pure bragging-rights value for the group. Spec + plan under
+`docs/superpowers/` (belt succession rule chosen by the user: head-to-head). Hard constraint
+honored by construction: **zero schema changes, zero writes to historical data** — everything
+is computed on read (D-004 precedent), so corrected history always re-derives correctly.
+
+**Changed**
+- `server/src/services/banterService.ts(+37-test)` — pure `computeBeltLineage`,
+  `computeNightTitles`, `computeAchievements`; fetch-and-delegate `getBelt`/`getAchievements`;
+  types in `server/src/types/banter.ts` mirrored client-side. Endpoints
+  `GET /stats/groups/:groupId/belt` and `/achievements`; `titles` added to the session summary
+  (`sessionSummaryService.ts`). Integration: `tests/integration/banter.test.ts` (6).
+- Client: `BeltCard` + `RecentUnlocks` on Insights, `TrophyCase` on PlayerDetail with
+  localStorage one-time unlock toasts, `NightTitleChips` + Copy-for-WhatsApp on
+  SettlementView/SessionDetail; pure TDD'd `nightMessage.ts` (8 tests) + `beltLine.ts`
+  (6 tests); `useBelt`/`useAchievements` hooks.
+- E2E `e2e/banter.spec.ts` (3): belt card with champion, trophy case (unlock toast observed
+  live during the test), WhatsApp button.
+
+**Verification** server unit 94 ✓ · integration 51 ✓ · typechecks ✓ · client unit 35 ✓ ·
+E2E 9 ✓ (production artifact) · build ✓.
+
+---
+
 ## 2026-07-12 (batch 2) — Template quick-start, player notes, location chart, code-splitting
 
 **Why** Continue closing backlog items after the correctness batch below. All P1/P2 feature items

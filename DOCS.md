@@ -322,6 +322,8 @@ User Action → React Component → TanStack Query Mutation
 | GET | `/stats/groups/:groupId/head-to-head` | Get rivalries / head-to-head (optional `playerA`, `playerB`) |
 | GET | `/stats/groups/:groupId/form` | Get form & momentum board |
 | GET | `/stats/groups/:groupId/season` | Get season recap (optional `year`) |
+| GET | `/stats/groups/:groupId/belt` | Get The Belt lineage (derived, head-to-head succession rule) |
+| GET | `/stats/groups/:groupId/achievements` | Get per-player achievements + catalog + recent unlocks (derived) |
 
 ---
 
