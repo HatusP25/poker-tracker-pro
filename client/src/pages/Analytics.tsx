@@ -3,7 +3,7 @@ import { useGroupContext } from '@/context/GroupContext';
 import { useSessionsByGroup } from '@/hooks/useSessions';
 import { useLeaderboard } from '@/hooks/useStats';
 import DateRangeSelector, { type DateRange } from '@/components/analytics/DateRangeSelector';
-import ProfitChart from '@/components/analytics/ProfitChart';
+import MoneyRaceChart from '@/components/analytics/MoneyRaceChart';
 import PlayerComparisonChart from '@/components/analytics/PlayerComparisonChart';
 import SessionSizeChart from '@/components/analytics/SessionSizeChart';
 import ProfitByLocationChart from '@/components/analytics/ProfitByLocationChart';
@@ -187,7 +187,7 @@ const Analytics = () => {
 
       {/* Charts Row 2 - Cumulative Profit and Recent Activity */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <ProfitChart sessions={filteredSessions} />
+        <MoneyRaceChart sessions={filteredSessions} />
         <RecentActivity sessions={filteredSessions} />
       </div>
 

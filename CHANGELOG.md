@@ -10,6 +10,17 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-07-12 — Chart truth & polish
+
+- **The Money Race** — Analytics' "Profit Over Time" summed profit across all players per
+  session, which is always ~$0 in a zero-sum game (it was plotting data-entry drift).
+  Replaced with the chart a poker group actually wants: cumulative profit per player over
+  the selected date range, one line per friend.
+- **Player Comparison** now shows all players (top-5 cutoff removed).
+- **Belt timeline** — proportional reign bands per holder inside the Belt card.
+- Removed four dead chart components (DayOfWeek, Sessions, WinRateDistribution,
+  dashboard ProfitTrend). Net −156 lines.
+
 ### 2026-07-12 — The Banter Pack
 
 Bragging-rights features, all **derived-on-read from existing history — no schema changes,

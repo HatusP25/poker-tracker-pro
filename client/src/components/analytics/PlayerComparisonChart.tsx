@@ -7,10 +7,9 @@ interface PlayerComparisonChartProps {
 }
 
 const PlayerComparisonChart = ({ players }: PlayerComparisonChartProps) => {
-  // Sort by balance and take top 5 players
+  // Sort by balance, showing every player in the group
   const chartData = [...players]
     .sort((a, b) => b.balance - a.balance)
-    .slice(0, 5)
     .map(player => ({
       name: player.playerName.length > 12
         ? `${player.playerName.substring(0, 12)}...`
@@ -55,7 +54,7 @@ const PlayerComparisonChart = ({ players }: PlayerComparisonChartProps) => {
       <Card>
         <CardHeader>
           <CardTitle>Player Comparison</CardTitle>
-          <CardDescription>Top 5 players by balance</CardDescription>
+          <CardDescription>All players by balance</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-80 flex items-center justify-center text-muted-foreground">

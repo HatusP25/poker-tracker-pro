@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Award, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBelt } from '@/hooks/useInsights';
 import { formatLocalDate } from '@/lib/dateUtils';
+import BeltTimeline from './BeltTimeline';
 import type { BeltReign } from '@/types';
 
 interface BeltCardProps {
@@ -62,6 +63,7 @@ const BeltCard = ({ groupId }: BeltCardProps) => {
             )}
           </CardHeader>
           <CardContent className="space-y-3">
+            {data && <BeltTimeline lineage={data} />}
             {data?.current?.takenFromPlayerName && (
               <p className="text-sm text-muted-foreground">
                 Took the belt from {data.current.takenFromPlayerName}
