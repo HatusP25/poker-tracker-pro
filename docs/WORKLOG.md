@@ -10,6 +10,26 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-07-12 (batch 4) — Chart truth & polish
+
+**Why** Chart audit (user-requested) found Analytics' flagship "Profit Over Time" chart
+summed profit across all players per session — zero-sum, so it plotted ~$0 ± entry drift
+labeled as "cumulative profit". Also: top-5 cutoff on Player Comparison, four dead chart
+components, and no cumulative-$-per-player chart (the one poker groups actually want).
+Spec: `docs/superpowers/specs/2026-07-12-chart-truth-polish-design.md`. Client-only.
+
+**Changed** `MoneyRaceChart.tsx` (replaces `ProfitChart.tsx` in the same Analytics slot,
+inherits date-range filter) with pure TDD'd `lib/moneyRace.ts` (5 tests: carry-forward
+through skipped sessions, mid-range joiners, date/createdAt sort); `PlayerComparisonChart`
+shows all players; `BeltTimeline.tsx` inside `BeltCard` with pure `lib/beltSegments.ts`
+(3 tests); deleted `DayOfWeekChart`, `SessionsChart`, `WinRateDistributionChart`,
+`dashboard/ProfitTrendChart` (grep-verified unreferenced).
+
+**Verification** client unit 43 ✓ · client tsc ✓ · build ✓ · server suites unaffected ✓ ·
+E2E 9 ✓ on merged result.
+
+---
+
 ## 2026-07-12 (batch 3) — The Banter Pack
 
 **Why** PM-driven feature wave: pure bragging-rights value for the group. Spec + plan under
