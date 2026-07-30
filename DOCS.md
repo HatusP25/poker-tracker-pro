@@ -325,6 +325,47 @@ User Action → React Component → TanStack Query Mutation
 | GET | `/stats/groups/:groupId/belt` | Get The Belt lineage (derived, head-to-head succession rule) |
 | GET | `/stats/groups/:groupId/achievements` | Get per-player achievements + catalog + recent unlocks (derived) |
 
+#### Backup & Restore
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/backup/export` | Export every group (backup format v2) |
+| GET | `/backup/export/:groupId` | Export one group — safer to restore, since a replace from it can only affect that group |
+| POST | `/backup/validate` | Validate a backup file; returns `{ valid, errors, warnings }` |
+| POST | `/backup/import` | Import `{ backup, options: { mode, skipDuplicates } }` |
+
+**Backup format v2** (since 2026-07-30). v1 exported only groups, players, sessions and
+entries, so an export → replace-restore round trip permanently destroyed rebuy events, player
+notes, templates, settlements and session status — and dropped `deletedAt`, resurrecting
+soft-deleted sessions into live statistics. v2 covers all seven models plus every session
+lifecycle field:
+
+```jsonc
+{
+  "version": "2.0.0",
+  "exportDate": "2026-07-30T00:00:00.000Z",
+  "scope": { "groupIds": ["..."] },   // groups this file covers = blast radius of a replace
+  "data": {
+    "groups": [], "players": [], "sessions": [], "entries": [],
+    "rebuyEvents": [], "playerNotes": [], "templates": []
+  }
+}
+```
+
+Import modes:
+- **`merge`** — upserts rows. `skipDuplicates` leaves existing rows alone instead of updating them.
+- **`replace`** — deletes everything belonging to the groups in the file, then imports.
+  **Scoped**: groups absent from the file are never touched. Refused for v1 files (they cannot
+  restore what the delete removes) and for files naming no groups.
+
+v1 files still import in `merge` mode; `validateBackup` returns a warning listing everything
+they cannot restore.
+
+### API authentication
+
+Mutating requests (`POST`/`PATCH`/`PUT`/`DELETE`) require an `X-Api-Key` header matching the
+server's `API_KEY` environment variable. Reads are unauthenticated. When `API_KEY` is unset the
+gate is a no-op, so local development and CI are unaffected — see [docs/SECURITY.md](docs/SECURITY.md).
+
 ---
 
 ## Database Schema

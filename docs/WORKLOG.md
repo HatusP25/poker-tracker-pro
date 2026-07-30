@@ -10,6 +10,68 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-07-30 — Wave 0: data safety (F-01, F-02, F-03)
+
+**Why** A full codebase analysis (`docs/ai-audit/2026-07-30-codebase-analysis.md`) found two
+paths that destroy historical poker data — the thing the operator has stated must never be
+altered. Spec: `docs/superpowers/specs/2026-07-30-feature-roadmap.md` (Wave 0). Plan:
+`docs/superpowers/plans/2026-07-30-wave-0-data-safety.md`.
+
+The three findings, in the order they were fixed:
+
+1. **F-03 — public unauthenticated mutation.** `main` auto-deploys to a public Railway domain and
+   the server does no authorization. `CORS_ORIGIN` restricts browsers, not `curl`. So
+   `POST /api/backup/import` with `mode:"replace"` was an unauthenticated remote-wipe primitive
+   reachable by anyone who learned the URL. `docs/SECURITY.md` had already warned not to deploy
+   this way (F-06); the condition was simply not met.
+2. **F-01 — lossy backup.** `exportDatabase()` covered four of seven models. A round trip through
+   export → replace-restore permanently destroyed `RebuyEvent`, `PlayerNote` and
+   `SessionTemplate` rows, discarded session `status`/`settlements`/`completedAt`, and dropped
+   `deletedAt`, resurrecting soft-deleted sessions into every statistic and the Belt lineage.
+3. **F-02 — unscoped wipe.** `replace` ran `deleteMany({})` on every table with no `where`,
+   deleting all groups regardless of the backup file's contents.
+
+**Changed**
+- `server/src/middleware/requireApiKey.ts` (new, +15 unit tests) — gates non-idempotent verbs on
+  `X-Api-Key` vs `process.env.API_KEY`. Reads `API_KEY` per request (rotatable without restart),
+  compares in constant time without leaking length, and is a **no-op when unset** so dev/CI are
+  untouched. `logApiKeyStatus()` warns at startup if unset in production. Wired in `app.ts` after
+  the rate limiter; client sends the header from `VITE_API_KEY`.
+  Integration: `tests/integration/apiKey.test.ts` (7).
+- `server/src/services/backupService.ts` — rewritten for **format v2**. Exports all seven models
+  plus every session lifecycle field; `exportDatabase(groupId?)` scopes to one group; `scope.groupIds`
+  records the blast radius. `validateBackup` branches on version, requiring the v2 arrays and
+  warning on v1 files about exactly what they cannot restore. `importDatabase` deletes only within
+  `collectBackupGroupIds(backup)`, imports all seven models in FK order, and **refuses** replace for
+  v1 files and for files naming no groups. Transaction budget raised to 120s (a real group's restore
+  exceeds Prisma's 5s interactive default). New pure exports `isLegacyBackup` /
+  `collectBackupGroupIds` (+24 unit tests). Route `GET /backup/export/:groupId` added.
+  Integration: `tests/integration/backup.test.ts` (16) — including a byte-for-byte round trip after
+  a total wipe, a bystander-group-untouched assertion, and soft-deletes staying deleted.
+- `client/src/lib/backupScope.ts` (new, +11 unit tests) — pure `describeReplaceScope` /
+  `isReplaceConfirmed`. `Settings.tsx` holds a replace in `pendingReplace` state and opens an
+  AlertDialog naming the affected groups; the action stays disabled until the user types the group
+  name (or `REPLACE ALL` for a multi-group file), and v1 files get an explanation instead of a
+  confirm button. Export is now two buttons (this group / all groups).
+  E2E: `e2e/backup-safety.spec.ts` (2).
+- Docs: `docs/SECURITY.md` rewritten (F-06 downgraded from "accepted" to "partially mitigated",
+  plus the mandatory two-step key rollout and a data-destruction-safety section); `DOCS.md` gains
+  a Backup & Restore API section with the v2 format and an API-authentication note;
+  `.env.production.example` gains `API_KEY`/`VITE_API_KEY` with rollout ordering.
+
+**Judgement calls**
+- Reads are left ungated. Names and game results are not sensitive; destructive mutation is the
+  risk, and gating reads would break nothing but buy nothing.
+- The gate is a shared secret, not the auth epic (`IMP-011`). It is ~40 lines and closes the actual
+  exposure; a `User` model would not.
+- v1 files remain importable in `merge` mode. Refusing them outright would strand anyone holding
+  only an old backup.
+
+**Verification** server unit 133 ✓ · integration 74 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 54 ✓ · client build ✓ · E2E 11 ✓ against the production artifact.
+
+---
+
 ## 2026-07-12 (batch 4) — Chart truth & polish
 
 **Why** Chart audit (user-requested) found Analytics' flagship "Profit Over Time" chart

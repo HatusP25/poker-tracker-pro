@@ -161,7 +161,10 @@ export const insightsApi = {
 
 // Backup
 export const backupApi = {
-  export: () => api.get('/backup/export'),
+  // Omit groupId to export every group. A group-scoped file is safer to restore:
+  // a "replace" from it can only ever affect that one group.
+  export: (groupId?: string) =>
+    api.get(groupId ? `/backup/export/${groupId}` : '/backup/export'),
   validate: (backup: any) => api.post('/backup/validate', backup),
   import: (backup: any, options: { mode: 'merge' | 'replace'; skipDuplicates: boolean }) =>
     api.post('/backup/import', { backup, options }),

@@ -23,20 +23,14 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 ---
 
-## P0 — Data-safety, before any feature work
+## P0 — Data-safety
 
-The app currently ships two ways to destroy the historical data that must stay intact.
+*(empty — F-01, F-02 and F-03 shipped 2026-07-30, see [CHANGELOG.md](CHANGELOG.md))*
 
-- **[P0·M] F-01 Lossless backup.** Export/import drops `RebuyEvent`, `PlayerNote`,
-  `SessionTemplate`, and session `status`/`settlements`/`completedAt`/`deletedAt`. An
-  export → replace-restore round trip permanently destroys rebuy history and player notes, and
-  resurrects soft-deleted sessions into live stats.
-- **[P0·S] F-02 Scope + fence the restore.** `replace` mode runs `deleteMany({})` — it wipes
-  *every* group, not just the ones in the backup file. Scope it, and require typed confirmation.
-- **[P0·S] F-03 Gate the mutating API.** Public Railway deploy, zero server-side authz, and CORS
-  doesn't restrict non-browser clients — `POST /api/backup/import` with `mode:"replace"` is an
-  unauthenticated remote wipe. Shared-secret middleware, **not** the full auth epic.
-  (Supersedes SECURITY.md F-06's "accepted" status.)
+> **Deploy action still outstanding:** `API_KEY` must actually be set in Railway for the gate to
+> do anything, and the rollout is two-step — set `VITE_API_KEY` in the client build and confirm
+> the header is sent *before* setting `API_KEY` on the server, or every write 401s. See
+> [docs/SECURITY.md](docs/SECURITY.md#deploying-the-api-key).
 
 ## P1 — High value, ready to pick up
 
