@@ -84,9 +84,9 @@ tx.group.deleteMany({})
 Three compounding problems:
 
 1. **Unscoped.** It deletes *every group in the database*, not just the groups in the backup file.
-   The export route is `GET /api/backup/export/:groupId`, but
-   [`exportDatabase()`](../../server/src/services/backupService.ts#L40) ignores the param and dumps
-   the whole DB — so the route's shape implies a per-group operation that neither side implements.
+   There is no per-group backup at all: the route is `GET /api/backup/export` and
+   [`exportDatabase()`](../../server/src/services/backupService.ts#L40) dumps the entire database.
+   (`feature-inventory.md` documents the route as `GET /export/:groupId` — that is wrong; see §6.)
 2. **The backup is lossy.** The export covers `groups`, `players`, `sessions`, `entries` — and
    nothing else. It omits:
    - `RebuyEvent` — every rebuy in group history
