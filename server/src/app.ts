@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { errorHandler } from './middleware/errorHandler';
+import { requireApiKey } from './middleware/requireApiKey';
 
 // Import routes
 import groupRoutes from './routes/groups';
@@ -60,6 +61,11 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // API routes
 app.use('/api', apiLimiter);
+
+// Shared-secret gate on mutating requests. No-op unless API_KEY is set, so local
+// dev and CI are unaffected; see middleware/requireApiKey.ts and docs/SECURITY.md.
+app.use('/api', requireApiKey);
+
 app.use('/api/groups', groupRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/sessions', sessionRoutes);

@@ -1,10 +1,17 @@
 import axios from 'axios';
 import type { Group, Player, PlayerNote, Session, PlayerStats, LeaderboardEntry, LeaderboardTimeframe, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap, BeltLineage, AchievementsResponse } from '@/types';
 
+// Shared secret for mutating requests. Only present when the deployment sets one
+// (see server/src/middleware/requireApiKey.ts); local dev leaves it undefined and
+// the server gate is a no-op. This is a deployment gate, not user authentication —
+// it stops anonymous internet traffic from reaching destructive endpoints.
+const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+
 const api = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
+    ...(apiKey ? { 'X-Api-Key': apiKey } : {}),
   },
 });
 
