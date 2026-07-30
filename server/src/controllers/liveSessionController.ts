@@ -44,6 +44,31 @@ export const addRebuy = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
+export const cashOutPlayer = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId } = req.params;
+    const { playerId, cashOut } = req.body;
+
+    const entry = await liveSessionService.cashOutPlayer(sessionId, playerId, cashOut);
+
+    res.json(entry);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const undoCashOut = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId, playerId } = req.params;
+
+    const entry = await liveSessionService.undoCashOut(sessionId, playerId);
+
+    res.json(entry);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateRebuy = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId, rebuyId } = req.params;

@@ -4,7 +4,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { validateCashOut, clampCashOut } from '@/lib/moneyValidation';
+import {
+  computeDiscrepancy,
+  splitEvenly,
+  assignToOne,
+  type CashOutRow,
+  type ReconcileResult,
+} from '@/lib/reconcile';
 import type { SessionEntry } from '@/types';
 
 interface EndSessionDialogProps {
@@ -18,21 +26,26 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
   const [endTime, setEndTime] = useState(format(new Date(), 'HH:mm'));
   const [cashOuts, setCashOuts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [assignee, setAssignee] = useState<string>('');
+
+  // Players who left early already have a locked-in result; only the rest need a
+  // number entered here.
+  const settled = entries.filter((e) => e.cashedOutAt);
+  const awaiting = entries.filter((e) => !e.cashedOutAt);
 
   useEffect(() => {
-    // Initialize cash-outs with zeros
-    const initialCashOuts: Record<string, string> = {};
-    entries.forEach((entry) => {
-      initialCashOuts[entry.playerId] = '0';
+    const initial: Record<string, string> = {};
+    awaiting.forEach((entry) => {
+      initial[entry.playerId] = '0';
     });
-    setCashOuts(initialCashOuts);
+    setCashOuts(initial);
+    setAssignee('');
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries]);
 
   const handleCashOutChange = (playerId: string, value: string) => {
-    setCashOuts({
-      ...cashOuts,
-      [playerId]: value,
-    });
+    setCashOuts((prev) => ({ ...prev, [playerId]: value }));
     setError(null);
   };
 
@@ -46,59 +59,97 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
     }));
   };
 
-  const anyCashOutInvalid = entries.some(
+  const anyCashOutInvalid = awaiting.some(
     (entry) => !validateCashOut(parseFloat(cashOuts[entry.playerId] ?? '')).valid
   );
+
+  const totalBuyIn = entries.reduce((sum, e) => sum + e.buyIn, 0);
+
+  /** Every player's number: locked for early exits, typed for the rest. */
+  const allRows: CashOutRow[] = entries.map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.player?.name ?? '',
+    cashOut: entry.cashedOutAt
+      ? entry.cashOut
+      : parseFloat(cashOuts[entry.playerId] ?? '') || 0,
+  }));
+
+  const difference = computeDiscrepancy(totalBuyIn, allRows);
+  const reconciled = Math.abs(difference) < 0.01;
+  const totalCashOut = allRows.reduce((sum, r) => sum + r.cashOut, 0);
+
+  /** Apply a reconcile result to the editable fields, refusing if it can't be done. */
+  // Compared against the literal rather than `!result.ok`: this project builds with
+  // `strict: false`, under which truthiness narrowing of a discriminated union
+  // doesn't apply.
+  const applyResult = (result: ReconcileResult) => {
+    if (result.ok === false) {
+      setError(result.reason);
+      return;
+    }
+    const { cashOuts: adjusted } = result;
+    setCashOuts((prev) => {
+      const next = { ...prev };
+      for (const entry of awaiting) {
+        next[entry.playerId] = String(adjusted[entry.playerId] ?? 0);
+      }
+      return next;
+    });
+    setError(null);
+  };
+
+  const handleSplitEvenly = () =>
+    applyResult(
+      splitEvenly(
+        allRows,
+        totalBuyIn,
+        awaiting.map((e) => e.playerId)
+      )
+    );
+
+  const handleAssignToOne = () => {
+    if (!assignee) return;
+    applyResult(assignToOne(allRows, totalBuyIn, assignee));
+  };
 
   const handleSubmit = () => {
     setError(null);
 
-    // Validate all players have cash-outs
-    for (const entry of entries) {
+    for (const entry of awaiting) {
       if (!cashOuts[entry.playerId] || cashOuts[entry.playerId].trim() === '') {
         setError(`Please enter cash-out for ${entry.player?.name || 'all players'}`);
         return;
       }
     }
 
-    // Calculate totals
-    const totalBuyIn = entries.reduce((sum, e) => sum + e.buyIn, 0);
-    const totalCashOut = Object.values(cashOuts).reduce(
-      (sum, v) => sum + (parseFloat(v) || 0),
-      0
-    );
-
-    // Check if zero-sum (within 1% tolerance for rounding)
-    const difference = Math.abs(totalCashOut - totalBuyIn);
-    if (difference > totalBuyIn * 0.01) {
+    // Match the server exactly: it requires the table to reconcile to the cent and
+    // rejects anything else, so there is no point letting a near-miss through here.
+    if (!reconciled) {
       setError(
-        `Total cash-outs ($${totalCashOut.toFixed(2)}) must equal total buy-ins ($${totalBuyIn.toFixed(2)}). Difference: $${difference.toFixed(2)}`
+        `Cash-outs are $${Math.abs(difference).toFixed(2)} ${difference > 0 ? 'over' : 'short'}. ` +
+          'Resolve the difference before ending the session.'
       );
       return;
     }
 
-    const cashOutsArray = entries.map((entry) => ({
-      playerId: entry.playerId,
-      cashOut: parseFloat(cashOuts[entry.playerId]),
-    }));
-
-    onSubmit(endTime, cashOutsArray);
+    onSubmit(
+      endTime,
+      awaiting.map((entry) => ({
+        playerId: entry.playerId,
+        cashOut: parseFloat(cashOuts[entry.playerId]),
+      }))
+    );
   };
-
-  const totalBuyIn = entries.reduce((sum, e) => sum + e.buyIn, 0);
-  const totalCashOut = Object.values(cashOuts).reduce(
-    (sum, v) => sum + (parseFloat(v) || 0),
-    0
-  );
-  const difference = totalCashOut - totalBuyIn;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>End Live Session</DialogTitle>
           <DialogDescription>
-            Enter final cash-out amounts for all players
+            {settled.length > 0
+              ? `Enter cash-outs for the ${awaiting.length} still at the table`
+              : 'Enter final cash-out amounts for all players'}
           </DialogDescription>
         </DialogHeader>
 
@@ -113,9 +164,38 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
             />
           </div>
 
+          {settled.length > 0 && (
+            <div className="space-y-2">
+              <Label>Already cashed out</Label>
+              {settled.map((entry) => {
+                const profit = entry.cashOut - entry.buyIn;
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/40 text-sm"
+                  >
+                    <div>
+                      <div className="font-medium">{entry.player?.name}</div>
+                      <div className="text-muted-foreground">
+                        Buy-in ${entry.buyIn.toFixed(2)} · Cash-out ${entry.cashOut.toFixed(2)}
+                      </div>
+                    </div>
+                    <div
+                      className={`font-medium ${
+                        profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(2)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="space-y-3">
             <Label>Player Cash-Outs</Label>
-            {entries.map((entry) => {
+            {awaiting.map((entry) => {
               const raw = cashOuts[entry.playerId] ?? '';
               const cashOutValue = parseFloat(raw || '0');
               const profit = cashOutValue - entry.buyIn;
@@ -137,6 +217,7 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
                       </Label>
                       <Input
                         type="number"
+                        inputMode="decimal"
                         step="0.01"
                         min="0"
                         max={10000}
@@ -177,15 +258,69 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
             </div>
             <div
               className={`flex justify-between items-center font-bold ${
-                Math.abs(difference) < 0.01
-                  ? 'text-green-600'
-                  : 'text-destructive'
+                reconciled ? 'text-green-600' : 'text-destructive'
               }`}
             >
               <span>Difference:</span>
               <span>${difference.toFixed(2)}</span>
             </div>
           </div>
+
+          {/* Reconciliation helper — chip counts never match to the cent. */}
+          {!reconciled && !anyCashOutInvalid && (
+            <div
+              className="p-4 rounded-lg border border-amber-500/50 bg-amber-500/10 space-y-3"
+              data-testid="reconcile-helper"
+            >
+              <div className="text-sm">
+                <p className="font-semibold">
+                  The table is ${Math.abs(difference).toFixed(2)}{' '}
+                  {difference > 0 ? 'over' : 'short'}
+                </p>
+                <p className="text-muted-foreground">
+                  Chip counts rarely match exactly. Settle the difference deliberately
+                  rather than guessing at a number.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSplitEvenly}
+                  data-testid="reconcile-split"
+                >
+                  Split across the table
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Select value={assignee} onValueChange={setAssignee}>
+                    <SelectTrigger className="w-44" data-testid="reconcile-assignee">
+                      <SelectValue placeholder="Assign to…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {awaiting.map((entry) => (
+                        <SelectItem key={entry.playerId} value={entry.playerId}>
+                          {entry.player?.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!assignee}
+                    onClick={handleAssignToOne}
+                    data-testid="reconcile-assign"
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/50">
@@ -198,10 +333,7 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={anyCashOutInvalid || Math.abs(difference) > totalBuyIn * 0.01}
-          >
+          <Button onClick={handleSubmit} disabled={anyCashOutInvalid || !reconciled}>
             End Session
           </Button>
         </DialogFooter>

@@ -60,6 +60,8 @@ export interface SessionEntry {
   playerId: string;
   buyIn: number;
   cashOut: number;
+  /** Set when the player left an in-progress session early; null = still at the table. */
+  cashedOutAt: string | null;
   createdAt: string;
   updatedAt: string;
   player?: {
