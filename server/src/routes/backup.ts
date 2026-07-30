@@ -5,9 +5,16 @@ const router = Router();
 
 /**
  * GET /api/backup/export
- * Export entire database as JSON
+ * Export every group as JSON (backup format v2).
  */
 router.get('/export', backupController.exportDatabase);
+
+/**
+ * GET /api/backup/export/:groupId
+ * Export a single group. Restoring this file in "replace" mode only ever
+ * deletes within that group — other groups are untouched.
+ */
+router.get('/export/:groupId', backupController.exportDatabase);
 
 /**
  * POST /api/backup/validate

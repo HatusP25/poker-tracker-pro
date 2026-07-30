@@ -2,15 +2,19 @@ import { Request, Response, NextFunction } from 'express';
 import { backupService } from '../services/backupService';
 
 export const exportDatabase = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const backup = await backupService.exportDatabase();
+    // `:groupId` is present on /export/:groupId and absent on /export, which
+    // exports every group.
+    const { groupId } = req.params;
+    const backup = await backupService.exportDatabase(groupId);
 
     // Set headers for file download
-    const filename = `poker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const slug = groupId ? `group-${groupId}` : 'all-groups';
+    const filename = `poker-backup-${slug}-${new Date().toISOString().split('T')[0]}.json`;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 

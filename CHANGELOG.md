@@ -10,6 +10,34 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-07-30 — Wave 0: data safety
+
+Found by a full codebase analysis (`docs/ai-audit/2026-07-30-codebase-analysis.md`): the app
+shipped two ways to destroy the history it exists to protect. Both are closed. Plan:
+`docs/superpowers/plans/2026-07-30-wave-0-data-safety.md`.
+
+- **Backups are no longer lossy (F-01).** v1 exported only groups/players/sessions/entries, so an
+  export → replace-restore round trip permanently destroyed every rebuy event, player note and
+  template, threw away each session's status/settlements/completedAt, and dropped `deletedAt` —
+  silently resurrecting soft-deleted sessions into the live statistics. **Format v2** covers all
+  seven models and every session lifecycle field. A round-trip integration test asserts a restored
+  group matches the original exactly.
+- **`Replace` restore is scoped and fenced (F-02).** It ran `deleteMany({})` — wiping *every*
+  group in the database regardless of what the backup file contained. It now deletes only within
+  the groups the file covers; other groups are provably untouched. It is refused for v1 files
+  (which cannot restore what the delete removes) and for files naming no groups. New
+  `GET /backup/export/:groupId` produces a single-group backup. The UI now opens a dialog listing
+  the exact groups that will be deleted and requires the group name to be typed back.
+- **Mutating endpoints are gated (F-03).** The app auto-deploys to a public domain with no
+  server-side authorization, and CORS constrains browsers but not `curl` — so
+  `POST /api/backup/import` with `mode: "replace"` was an unauthenticated remote wipe. `X-Api-Key`
+  is now required on `POST`/`PATCH`/`PUT`/`DELETE` when `API_KEY` is set; reads stay open and the
+  gate is a no-op when unset, so dev and CI are unchanged. **Not** the auth epic: no `User` model,
+  no login. See `docs/SECURITY.md` for the mandatory two-step rollout.
+
+### Tests
+- +39 server unit (94 → 133), +23 integration (51 → 74), +11 client unit (43 → 54), +2 E2E (9 → 11).
+
 ### 2026-07-12 — Chart truth & polish
 
 - **The Money Race** — Analytics' "Profit Over Time" summed profit across all players per

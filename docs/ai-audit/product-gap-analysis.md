@@ -1,5 +1,11 @@
 # Product Gap Analysis
 
+> **⚠️ SUPERSEDED (2026-07-30) — kept as history.** Written at the 2026-03-17 audit and now
+> materially wrong: it claims there are no tests, no CI, and no rate limiting (all shipped in
+> PH-07…PH-13), lists head-to-head, session clone and comparison view as missing (all shipped),
+> and recommends $/hour, variance and EV metrics that [DECISIONS D-002](../DECISIONS.md) rejects.
+> For the current picture see [2026-07-30-codebase-analysis.md](./2026-07-30-codebase-analysis.md).
+
 ## Executive Summary
 
 Poker Tracker Pro is a mature application with comprehensive core features. This analysis identifies gaps and opportunities to enhance its value as a poker analytics tool.

@@ -1,8 +1,12 @@
 import dotenv from 'dotenv';
 import app from './app';
+import { logApiKeyStatus } from './middleware/requireApiKey';
 
 // Load environment variables
 dotenv.config();
+
+// Warn once at startup if the mutating-request gate is disabled in production.
+logApiKeyStatus();
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 

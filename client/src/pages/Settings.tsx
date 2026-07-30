@@ -11,6 +11,7 @@ import { useRole } from '@/context/RoleContext';
 import { useUpdateGroup, useDeleteGroup } from '@/hooks/useGroups';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { describeReplaceScope, isReplaceConfirmed, type ReplaceScope } from '@/lib/backupScope';
 
 const Settings = () => {
   const { selectedGroup, setSelectedGroup } = useGroupContext();
@@ -20,6 +21,14 @@ const Settings = () => {
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // A "replace" restore deletes real poker history, so it is held here until the
+  // user has seen exactly which groups it affects and typed the phrase back.
+  const [pendingReplace, setPendingReplace] = useState<{
+    backup: any;
+    scope: ReplaceScope;
+  } | null>(null);
+  const [replaceConfirmText, setReplaceConfirmText] = useState('');
 
   // Group settings state
   const [groupName, setGroupName] = useState(selectedGroup?.name || '');
@@ -63,10 +72,11 @@ const Settings = () => {
     });
   };
 
-  const handleExport = async () => {
+  /** `groupId` omitted exports every group; passing one produces a group-scoped file. */
+  const handleExport = async (groupId?: string) => {
     setIsExporting(true);
     try {
-      const response = await backupApi.export();
+      const response = await backupApi.export(groupId);
 
       // Create blob from response
       const blob = new Blob([JSON.stringify(response.data, null, 2)], {
@@ -74,21 +84,54 @@ const Settings = () => {
       });
 
       // Create download link
+      const slug = groupId ? `group-${groupId}` : 'all-groups';
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `poker-backup-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `poker-backup-${slug}-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast.success('Database exported successfully');
+      toast.success('Backup downloaded');
     } catch (error: any) {
       console.error('Export failed:', error);
       toast.error(error.response?.data?.error || 'Failed to export database');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  /** Runs the import. Only reached for `replace` once the confirmation gate passes. */
+  const runImport = async (backup: any, mode: 'merge' | 'replace') => {
+    setIsImporting(true);
+    try {
+      const result = await backupApi.import(backup, { mode, skipDuplicates });
+
+      if (result.data.report.success) {
+        const { imported } = result.data.report;
+        toast.success('Import completed successfully', {
+          description:
+            `Imported: ${imported.groups} groups, ${imported.players} players, ` +
+            `${imported.sessions} sessions, ${imported.rebuyEvents} rebuys, ` +
+            `${imported.playerNotes} notes, ${imported.templates} templates`,
+        });
+
+        // Reload page to refresh data
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        toast.error('Import completed with errors', {
+          description: result.data.report.errors.join(', '),
+        });
+      }
+    } catch (error: any) {
+      console.error('Import failed:', error);
+      toast.error(error.response?.data?.error || 'Failed to import database');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -109,7 +152,6 @@ const Settings = () => {
         toast.error('Invalid backup file', {
           description: validation.data.errors.join(', '),
         });
-        setIsImporting(false);
         return;
       }
 
@@ -119,26 +161,15 @@ const Settings = () => {
         });
       }
 
-      // Import backup
-      const result = await backupApi.import(backup, {
-        mode: importMode,
-        skipDuplicates,
-      });
-
-      if (result.data.report.success) {
-        toast.success('Import completed successfully', {
-          description: `Imported: ${result.data.report.imported.groups} groups, ${result.data.report.imported.players} players, ${result.data.report.imported.sessions} sessions`,
-        });
-
-        // Reload page to refresh data
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        toast.error('Import completed with errors', {
-          description: result.data.report.errors.join(', '),
-        });
+      if (importMode === 'replace') {
+        // Don't delete anything until the user has seen which groups are affected
+        // and typed the phrase back. The dialog carries on from here.
+        setPendingReplace({ backup, scope: describeReplaceScope(backup) });
+        setReplaceConfirmText('');
+        return;
       }
+
+      await runImport(backup, 'merge');
     } catch (error: any) {
       console.error('Import failed:', error);
       toast.error(error.response?.data?.error || 'Failed to import database');
@@ -148,6 +179,18 @@ const Settings = () => {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const cancelReplace = () => {
+    setPendingReplace(null);
+    setReplaceConfirmText('');
+  };
+
+  const confirmReplace = async () => {
+    if (!pendingReplace) return;
+    const { backup } = pendingReplace;
+    cancelReplace();
+    await runImport(backup, 'replace');
   };
 
   return (
@@ -381,22 +424,35 @@ const Settings = () => {
         <CardHeader>
           <CardTitle>Backup & Restore</CardTitle>
           <CardDescription>
-            Export your entire database to JSON format or import a backup file
+            Download a complete backup, or restore one you took earlier
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Export Section */}
           <div className="space-y-3">
             <div>
-              <h3 className="text-lg font-semibold">Export Database</h3>
+              <h3 className="text-lg font-semibold">Export Backup</h3>
               <p className="text-sm text-muted-foreground">
-                Download a complete backup of all your data (groups, players, sessions, entries)
+                Includes everything: groups, players, sessions, entries, rebuys, notes,
+                templates, settlements, and which sessions were deleted.
               </p>
             </div>
-            <Button onClick={handleExport} disabled={isExporting}>
-              <Download className="h-4 w-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export Database'}
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              {selectedGroup && (
+                <Button onClick={() => handleExport(selectedGroup.id)} disabled={isExporting}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {isExporting ? 'Exporting...' : `Export ${selectedGroup.name}`}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => handleExport()} disabled={isExporting}>
+                <Download className="h-4 w-4 mr-2" />
+                {isExporting ? 'Exporting...' : 'Export all groups'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A single-group backup is safer to restore: replacing from it can only ever
+              affect that one group.
+            </p>
           </div>
 
           <div className="border-t pt-6">
@@ -439,7 +495,7 @@ const Settings = () => {
                         className="w-4 h-4"
                       />
                       <span className="text-sm">
-                        <strong>Replace</strong> - Delete all existing data and import backup
+                        <strong>Replace</strong> - Delete the backup's groups, then import them fresh
                       </span>
                     </label>
                   </div>
@@ -466,8 +522,10 @@ const Settings = () => {
                   <div className="text-sm">
                     <p className="font-semibold text-destructive">Warning: Replace Mode</p>
                     <p className="text-muted-foreground">
-                      This will permanently delete ALL existing data before importing. Make sure you
-                      have a backup first!
+                      Every session, rebuy, note and template belonging to the groups in the
+                      backup file will be permanently deleted and rebuilt from the file. Groups
+                      that aren't in the file are left alone. You'll see exactly which groups
+                      are affected before anything is deleted.
                     </p>
                   </div>
                 </div>
@@ -509,6 +567,80 @@ const Settings = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Replace confirmation — nothing is deleted until this passes */}
+      <AlertDialog
+        open={pendingReplace !== null}
+        onOpenChange={(open) => {
+          if (!open) cancelReplace();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingReplace?.scope.isLegacy
+                ? 'This backup is too old to replace from'
+                : 'Permanently replace these groups?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {pendingReplace?.scope.isLegacy ? (
+                  <p>
+                    Version 1 backups don't contain rebuys, player notes, templates,
+                    settlements or deletion state, so replacing from this file would delete
+                    history it cannot restore. Use <strong>Merge</strong> instead.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      Everything in{' '}
+                      {pendingReplace?.scope.groupNames.length === 1
+                        ? 'this group'
+                        : 'these groups'}{' '}
+                      will be deleted and rebuilt from the backup file. This cannot be undone.
+                    </p>
+                    <ul className="list-disc list-inside font-medium text-foreground">
+                      {pendingReplace?.scope.groupNames.map((name) => (
+                        <li key={name}>{name}</li>
+                      ))}
+                    </ul>
+                    <p>Any other group is left untouched.</p>
+                    <div className="space-y-2 pt-1">
+                      <Label htmlFor="replace-confirm">
+                        Type <strong>{pendingReplace?.scope.confirmPhrase}</strong> to confirm
+                      </Label>
+                      <Input
+                        id="replace-confirm"
+                        autoComplete="off"
+                        value={replaceConfirmText}
+                        onChange={(e) => setReplaceConfirmText(e.target.value)}
+                        placeholder={pendingReplace?.scope.confirmPhrase}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelReplace}>Cancel</AlertDialogCancel>
+            {!pendingReplace?.scope.isLegacy && (
+              <AlertDialogAction
+                onClick={confirmReplace}
+                disabled={
+                  isImporting ||
+                  !isReplaceConfirmed(
+                    replaceConfirmText,
+                    pendingReplace?.scope.confirmPhrase ?? ''
+                  )
+                }
+              >
+                Replace permanently
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* App Info */}
       <Card>
