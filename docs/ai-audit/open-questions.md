@@ -1,5 +1,11 @@
 # Open Questions
 
+> **⚠️ PARTIALLY SUPERSEDED (2026-07-30).** Q4 (player notes) shipped 2026-07-12; Q7 (testing) is
+> answered — unit + integration + E2E all run in CI. Q6 (photos) is still genuinely open and is
+> now tracked as F-12 in [BACKLOG.md](../../BACKLOG.md). Q2 (auth) is answered *narrowly*: see
+> F-03 — the app needs a gate, not an identity system.
+> Current picture: [2026-07-30-codebase-analysis.md](./2026-07-30-codebase-analysis.md).
+
 ## Architecture Questions
 
 ### Q1: What is the expected scale?

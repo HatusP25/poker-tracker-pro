@@ -13,29 +13,79 @@ deferred mid-flight, give it a self-contained file in `docs/follow-ups/` and lin
 for a recurring friend group — not a debt tracker, not a grinder/bankroll tool. See
 [docs/DECISIONS.md](docs/DECISIONS.md). Ideas that don't add real value to that audience don't belong here.
 
-Legend: `P1` now-ish · `P2` soon · `P3` someday. Effort: S/M/L.
+Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. Effort: S/M/L.
+
+> **2026-07-30 refresh.** Repopulated from a full codebase analysis
+> ([docs/ai-audit/2026-07-30-codebase-analysis.md](docs/ai-audit/2026-07-30-codebase-analysis.md))
+> and the feature plan derived from it
+> ([docs/superpowers/specs/2026-07-30-feature-roadmap.md](docs/superpowers/specs/2026-07-30-feature-roadmap.md)).
+> F-* ids below refer to that roadmap, which carries the full rationale, scope and risk for each.
 
 ---
 
+## P0 — Data-safety, before any feature work
+
+The app currently ships two ways to destroy the historical data that must stay intact.
+
+- **[P0·M] F-01 Lossless backup.** Export/import drops `RebuyEvent`, `PlayerNote`,
+  `SessionTemplate`, and session `status`/`settlements`/`completedAt`/`deletedAt`. An
+  export → replace-restore round trip permanently destroys rebuy history and player notes, and
+  resurrects soft-deleted sessions into live stats.
+- **[P0·S] F-02 Scope + fence the restore.** `replace` mode runs `deleteMany({})` — it wipes
+  *every* group, not just the ones in the backup file. Scope it, and require typed confirmation.
+- **[P0·S] F-03 Gate the mutating API.** Public Railway deploy, zero server-side authz, and CORS
+  doesn't restrict non-browser clients — `POST /api/backup/import` with `mode:"replace"` is an
+  unauthenticated remote wipe. Shared-secret middleware, **not** the full auth epic.
+  (Supersedes SECURITY.md F-06's "accepted" status.)
+
 ## P1 — High value, ready to pick up
 
-*(empty — previous P1 items shipped 2026-07-12, see CHANGELOG)*
+- **[P1·M] F-04 Early cash-out in live sessions.** A player who leaves at 11pm can't be cashed out
+  without ending the night. Clearest functional hole in the app. Additive column
+  (`SessionEntry.cashedOutAt`).
+- **[P1·S] F-05 Reconciliation helper.** Cash-outs that don't sum to buy-ins are a routine
+  end-of-night event handled today as a hard error the user resolves by fudging numbers. Offer
+  split-evenly / assign-to-one. Client-side only; the server's zero-sum validator stays authoritative.
+- **[P1·M] F-06 Phone-first live session.** The one screen used at the table is a desktop data
+  table. F-04 and F-05 both land here — do the layout once.
+- **[P1·M] F-07 One definition of a rebuy.** `RebuyEvent` rows only exist for *live-tracked*
+  sessions, so ATM/Houdini/Phoenix/Rebuy Royalty/most-rebuys/biggest-comeback are silently biased
+  against hand-entered nights. Four different rebuy formulas coexist; `totalRebuys` sums fractions.
+  Includes an additive, reversible backfill — **needs explicit user sign-off before it runs.**
 
 ## P2 — Worth doing, not urgent
 
-- **[P2·M] Photo gallery per session.** `Session.photoUrls` already stored; build a gallery view.
-  NOTE: needs an upload/attach mechanism first — a gallery alone has no way to get photos in.
-- **[P2·S] Insights polish.** Make the Season Recap card one-tap screenshot/shareable; consider a
-  configurable "season" date range beyond calendar year.
+- **[P2·M] F-08 Refactor + test `sessionSummaryService`.** N+1 per player (plus a full ranking
+  recompute per player), zero unit tests, `any[]` params. Apply the `insightsService` pattern.
+- **[P2·M] F-09 Shareable image cards.** PNG for night result / belt change / Season Wrapped.
+  Zero schema — all inputs already exist. (Generalises the old "Insights polish" item.)
+- **[P2·M] F-10 Nicknames + avatar uploads.** `Player.nickname`; the Belt and trophy case have no
+  personality attached to them. Avatar upload shares F-12's storage decision.
+- **[P2·M] F-11 Configurable seasons.** Season Recap is hardcoded to the calendar year. New
+  additive `Season` model; unlocks a season-champions wall.
+- **[P2·L] F-12 Photo upload + gallery.** `Session.photoUrls` has always been inert.
+  **Blocked on a storage decision** (Railway volume vs external object store) — that call is the
+  user's, and it's why this is L.
 
 ## P3 — Someday / ideas
 
-- **[P3·M] Achievements / badges** as persisted unlockables (Form-board badges are currently computed
-  live, not stored).
+- **[P3·M] F-13 Hand of the Night.** Structured "moments" per session. Prototype inside the
+  existing `notes` field before committing to a table — adoption is the real risk.
+- **[P3·M] Achievements / badges** as persisted unlockables (currently computed live, not stored).
 - **[P3·L] Tournament mode** (placements, blind structures) — only if the group actually plays tournaments.
 - **[P3·M] Export to PDF reports** (season recap, player cards).
-- **[P3·M] PWA / offline** — only matters if usage shifts to phone-at-the-table (currently laptop; see DECISIONS).
+- **[P3·M] PWA / offline** — revisit *after* F-06, not before.
 - **[P3·S] Multi-group comparisons.**
+
+## Hygiene — fold into whatever branch touches the area
+
+- **[S] Delete the Vite scaffold** — `client/src/main.ts` + `client/src/counter.ts` are the
+  untouched template click-counter, unreferenced by `index.html`.
+- **[S] Retire dead trend endpoints** — `/stats/groups/:groupId/trends` still serves the zero-sum
+  quantity whose chart was deleted 2026-07-12; `useProfitTrend`, `useAggregatedStats` and
+  `statsApi.checkSessionBalance` have no consumers.
+- **[S] Refresh `docs/ai-audit/`** — `product-gap-analysis.md` and `open-questions.md` claim there
+  are no tests and no CI, and recommend metrics D-002 rejects.
 
 ---
 
@@ -43,5 +93,9 @@ Legend: `P1` now-ish · `P2` soon · `P3` someday. Effort: S/M/L.
 
 - **Cross-session debt ledger / "who owes whom over time."** Out of product scope. (DECISIONS §D-001)
 - **$/hour, variance, std-dev, and other grinder/bankroll metrics.** Wrong audience. (DECISIONS §D-002)
+- **Full auth / multi-user (IMP-011).** F-03 buys the actual safety for ~2% of the cost. Revisit
+  only if a second, non-friend group is onboarded.
+- **Redis / backend caching / leaderboard pagination.** Imaginary at home-game scale; F-08 covers
+  the real (code-clarity) problem.
 
-See [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind these.
+See [docs/DECISIONS.md](docs/DECISIONS.md) for the reasoning behind the first two.
