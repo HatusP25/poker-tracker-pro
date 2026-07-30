@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, UserPlus, StopCircle, LogOut } from 'lucide-react';
+import { Plus, UserPlus, StopCircle } from 'lucide-react';
 import { useGroupContext } from '@/context/GroupContext';
 import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
@@ -21,6 +20,7 @@ import RebuyDialog from '@/components/live/RebuyDialog';
 import AddPlayerDialog from '@/components/live/AddPlayerDialog';
 import EndSessionDialog from '@/components/live/EndSessionDialog';
 import CashOutDialog from '@/components/live/CashOutDialog';
+import PlayerStandingCard from '@/components/live/PlayerStandingCard';
 import RebuyItinerary from '@/components/live/RebuyItinerary';
 import { parseLocalDate } from '@/lib/dateUtils';
 import type { SessionEntry } from '@/types';
@@ -163,16 +163,18 @@ const LiveSessionView = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Timer */}
+      {/* Header with Timer — stacks on a phone, side by side from sm up */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Live Session</CardTitle>
               <CardDescription>{session.location || 'No location'}</CardDescription>
             </div>
-            <div className="text-right">
-              <div className="text-4xl font-mono font-bold">{formatDuration(elapsedSeconds)}</div>
+            <div className="sm:text-right">
+              <div className="text-3xl sm:text-4xl font-mono font-bold tabular-nums">
+                {formatDuration(elapsedSeconds)}
+              </div>
               <div className="text-sm text-muted-foreground">
                 Started at {session.startTime}
               </div>
@@ -184,7 +186,7 @@ const LiveSessionView = () => {
       {/* Current Standings */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Current Standings</CardTitle>
               <CardDescription>Total pot: ${totalPot.toFixed(2)}</CardDescription>
@@ -196,83 +198,18 @@ const LiveSessionView = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead className="text-right">Total Buy-In</TableHead>
-                <TableHead className="text-right">Rebuys</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {session.entries?.map((entry) => {
-                const rebuys = calculateRebuys(entry.buyIn, session.group?.defaultBuyIn || 0);
-                const cashedOut = Boolean(entry.cashedOutAt);
-                const profit = entry.cashOut - entry.buyIn;
-
-                return (
-                  <TableRow key={entry.id} className={cashedOut ? 'text-muted-foreground' : ''}>
-                    <TableCell className="font-medium">{entry.player?.name}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${entry.buyIn.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {rebuys > 0 ? (
-                        <span className="text-muted-foreground">{rebuys}</span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {cashedOut ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <span
-                            className={
-                              profit > 0
-                                ? 'text-green-600 font-medium'
-                                : profit < 0
-                                  ? 'text-red-600 font-medium'
-                                  : ''
-                            }
-                          >
-                            Cashed out {profit >= 0 ? '+' : '-'}${Math.abs(profit).toFixed(2)}
-                          </span>
-                          {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUndoCashOut(entry.playerId)}
-                            >
-                              Undo
-                            </Button>
-                          )}
-                        </div>
-                      ) : canEdit ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={stillPlaying.length <= 1}
-                          title={
-                            stillPlaying.length <= 1
-                              ? 'Last player at the table — end the session instead'
-                              : undefined
-                          }
-                          onClick={() => setCashingOut(entry)}
-                        >
-                          <LogOut className="h-3.5 w-3.5 mr-1.5" />
-                          Cash out
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground">Playing</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <CardContent className="space-y-2">
+          {session.entries?.map((entry) => (
+            <PlayerStandingCard
+              key={entry.id}
+              entry={entry}
+              rebuys={calculateRebuys(entry.buyIn, session.group?.defaultBuyIn || 0)}
+              canEdit={canEdit}
+              canCashOut={stillPlaying.length > 1}
+              onCashOut={setCashingOut}
+              onUndoCashOut={handleUndoCashOut}
+            />
+          ))}
         </CardContent>
       </Card>
 
@@ -284,37 +221,40 @@ const LiveSessionView = () => {
         onDelete={handleDeleteRebuy}
       />
 
-      {/* Quick Actions */}
+      {/* Quick Actions — pinned to the bottom of the viewport so they stay under a
+          thumb on a phone no matter how long the standings list gets. */}
       {canEdit && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button
-            size="lg"
-            onClick={() => setShowRebuyDialog(true)}
-            className="h-20"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Add Rebuy
-          </Button>
+        <div className="sticky bottom-0 -mx-4 sm:mx-0 border-t bg-background/95 px-4 py-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <Button
+              size="lg"
+              onClick={() => setShowRebuyDialog(true)}
+              className="h-14 flex-col gap-1 sm:h-20 sm:flex-row sm:gap-0"
+            >
+              <Plus className="h-5 w-5 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Rebuy</span>
+            </Button>
 
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => setShowAddPlayerDialog(true)}
-            className="h-20"
-          >
-            <UserPlus className="mr-2 h-5 w-5" />
-            Add Player
-          </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setShowAddPlayerDialog(true)}
+              className="h-14 flex-col gap-1 sm:h-20 sm:flex-row sm:gap-0"
+            >
+              <UserPlus className="h-5 w-5 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Add Player</span>
+            </Button>
 
-          <Button
-            size="lg"
-            variant="destructive"
-            onClick={() => setShowEndDialog(true)}
-            className="h-20"
-          >
-            <StopCircle className="mr-2 h-5 w-5" />
-            End Session
-          </Button>
+            <Button
+              size="lg"
+              variant="destructive"
+              onClick={() => setShowEndDialog(true)}
+              className="h-14 flex-col gap-1 sm:h-20 sm:flex-row sm:gap-0"
+            >
+              <StopCircle className="h-5 w-5 sm:mr-2" />
+              <span className="text-xs sm:text-sm">End Session</span>
+            </Button>
+          </div>
         </div>
       )}
 

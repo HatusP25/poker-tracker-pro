@@ -143,7 +143,9 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      {/* w-[calc(100%-1.5rem)] keeps a margin on a phone; overflow-x-hidden makes any
+          future wide child clip rather than push the whole dialog off-screen. */}
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>End Live Session</DialogTitle>
           <DialogDescription>
@@ -172,16 +174,16 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-muted/40 text-sm"
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/40 text-sm"
                   >
-                    <div>
-                      <div className="font-medium">{entry.player?.name}</div>
-                      <div className="text-muted-foreground">
-                        Buy-in ${entry.buyIn.toFixed(2)} · Cash-out ${entry.cashOut.toFixed(2)}
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{entry.player?.name}</div>
+                      <div className="text-muted-foreground text-xs sm:text-sm">
+                        In ${entry.buyIn.toFixed(2)} · Out ${entry.cashOut.toFixed(2)}
                       </div>
                     </div>
                     <div
-                      className={`font-medium ${
+                      className={`font-medium shrink-0 ${
                         profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground'
                       }`}
                     >
@@ -203,10 +205,13 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
               const showError = raw.trim() !== '' && !validity.valid;
 
               return (
+                // Stacks on a phone: name on its own line, then the input and the
+                // running profit side by side. A single flex row is wider than a
+                // 390px viewport once the name, label, input and amount are in it.
                 <div key={entry.id} className="space-y-1">
-                  <div className="flex items-center gap-4 p-3 rounded-lg border bg-card">
-                    <div className="flex-1">
-                      <div className="font-medium">{entry.player?.name}</div>
+                  <div className="p-3 rounded-lg border bg-card space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+                    <div className="sm:flex-1 min-w-0">
+                      <div className="font-medium truncate">{entry.player?.name}</div>
                       <div className="text-sm text-muted-foreground">
                         Buy-in: ${entry.buyIn.toFixed(2)}
                       </div>
@@ -224,13 +229,22 @@ const EndSessionDialog = ({ open, onOpenChange, entries, onSubmit }: EndSessionD
                         value={cashOuts[entry.playerId] || ''}
                         onChange={(e) => handleCashOutChange(entry.playerId, e.target.value)}
                         onBlur={() => handleCashOutBlur(entry.playerId)}
-                        className="w-28"
+                        className="w-24 sm:w-28"
                         data-testid={`cashout-input-${entry.player?.name}`}
                       />
+                      {cashOutValue > 0 && (
+                        <div
+                          className={`text-sm font-medium ml-auto sm:hidden ${
+                            profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {profit > 0 && '+'}${profit.toFixed(2)}
+                        </div>
+                      )}
                     </div>
                     {cashOutValue > 0 && (
                       <div
-                        className={`text-sm font-medium w-20 text-right ${
+                        className={`hidden sm:block text-sm font-medium w-20 text-right ${
                           profit > 0 ? 'text-green-600' : profit < 0 ? 'text-red-600' : 'text-muted-foreground'
                         }`}
                       >

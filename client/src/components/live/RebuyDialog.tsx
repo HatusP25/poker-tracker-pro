@@ -63,6 +63,7 @@ const RebuyDialog = ({ open, onOpenChange, players, defaultBuyIn, onSubmit }: Re
             <Input
               id="rebuy-amount"
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               max={MAX_BUY_IN}

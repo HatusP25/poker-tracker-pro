@@ -308,8 +308,16 @@ User Action → React Component → TanStack Query Mutation
 | POST | `/live-sessions/start` | Start live session |
 | POST | `/live-sessions/:id/rebuy` | Add rebuy |
 | POST | `/live-sessions/:id/add-player` | Add player mid-game |
+| POST | `/live-sessions/:id/cash-out` | Cash a player out early (they're leaving); `{ playerId, cashOut }` |
+| DELETE | `/live-sessions/:id/cash-out/:playerId` | Undo an early cash-out, returning them to the table |
 | GET | `/live-sessions/:id` | Get live session status |
-| POST | `/live-sessions/:id/end` | End session with cash-outs |
+| POST | `/live-sessions/:id/end` | End session with cash-outs for whoever is still at the table |
+
+**Early cash-out.** `SessionEntry.cashedOutAt` is null while a player is at the table and set when
+they leave mid-session. A cashed-out player keeps their recorded result, is refused further
+rebuys, and is skipped by `/end` — which uses their stored `cashOut` and ignores any resubmitted
+value for them. The last player still playing cannot cash out early; ending the session is the
+only path that computes settlements and enforces zero-sum.
 
 #### Statistics
 | Method | Endpoint | Description |

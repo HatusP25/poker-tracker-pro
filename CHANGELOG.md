@@ -10,6 +10,35 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-07-30 — Wave 1: the live night
+
+Everything shipped in the previous two waves happened *after* the game. This wave is the screen
+used with people actually at the table. Plan:
+`docs/superpowers/plans/2026-07-30-wave-1-live-night.md`.
+
+- **Early cash-out (F-04).** People leave home games early, constantly, and the app had no concept
+  of it — the departing player's stack had to be remembered in someone's head until the final
+  cash-out. You can now cash a player out mid-session: their result is recorded and locked, they
+  stay visible in standings, and End Session stops asking for a number it already has. Undoable
+  while the session is live. Rebuys are refused for a cashed-out player. The last player at the
+  table can't leave early — that's End Session, the only path that computes settlements. Additive
+  nullable `SessionEntry.cashedOutAt`; no existing row is touched.
+- **Reconciliation helper (F-05).** Chip counts never match to the cent, so the zero-sum error was
+  a routine end-of-night event handled as a form error the user resolved by nudging an arbitrary
+  number until the app relented. End Session now shows the difference and offers to split it across
+  the table or pin it on whoever miscounted. Cent-exact, refuses rather than clamping when someone
+  would go below zero, and **the server's zero-sum validator is untouched and still authoritative**.
+  Also fixed: the dialog previously allowed a 1% tolerance the server would reject, so a big pot
+  could pass the client check and fail the request.
+- **Phone-first live session (F-06).** The live view was a desktop data table. Standings are now
+  cards, the Rebuy / Add Player / End Session actions stick to the bottom of the viewport under a
+  thumb, every money field raises the numeric keypad, and the End Session dialog no longer
+  overflows a phone screen. One layout for both phone and desktop.
+
+### Tests
+- +19 server unit (133 → 152), +18 integration (74 → 92), +18 client unit (54 → 72),
+  +5 E2E (11 → 16, including a 390px-viewport pass over the whole live flow).
+
 ### 2026-07-30 — Wave 0: data safety
 
 Found by a full codebase analysis (`docs/ai-audit/2026-07-30-codebase-analysis.md`): the app

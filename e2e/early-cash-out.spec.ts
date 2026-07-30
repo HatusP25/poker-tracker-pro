@@ -33,17 +33,15 @@ test('a player leaves early and the night settles around them', async ({ page, r
   await startLiveNight(page, request, ['Alice', 'Bob', 'Cara']);
 
   // Bob leaves at 11 with $150 of the $300 on the table.
-  await page
-    .getByRole('row', { name: /Bob/ })
-    .getByRole('button', { name: 'Cash out' })
-    .click();
+  await page.getByRole('button', { name: 'Cash out Bob' }).click();
   await page.getByTestId('early-cashout-input').fill('150');
   await page.getByRole('button', { name: 'Cash out' }).last().click();
 
   // He stays in the standings with his result, and can be put back.
-  const bobRow = page.getByRole('row', { name: /Bob/ });
-  await expect(bobRow).toContainText('Cashed out +$50.00');
-  await expect(bobRow.getByRole('button', { name: 'Undo' })).toBeVisible();
+  const bob = page.getByTestId('standing-Bob');
+  await expect(bob).toContainText('+$50.00');
+  await expect(bob).toContainText('Cashed out');
+  await expect(page.getByRole('button', { name: 'Undo cash-out for Bob' })).toBeVisible();
   await expect(page.getByText('2 at the table · 1 cashed out')).toBeVisible();
 
   // End Session only asks for the two still playing.
@@ -63,16 +61,13 @@ test('a player leaves early and the night settles around them', async ({ page, r
 test('a cashed-out player cannot rebuy until the cash-out is undone', async ({ page, request }) => {
   await startLiveNight(page, request, ['Alice', 'Bob', 'Cara']);
 
-  await page
-    .getByRole('row', { name: /Bob/ })
-    .getByRole('button', { name: 'Cash out' })
-    .click();
+  await page.getByRole('button', { name: 'Cash out Bob' }).click();
   await page.getByTestId('early-cashout-input').fill('150');
   await page.getByRole('button', { name: 'Cash out' }).last().click();
-  await expect(page.getByRole('row', { name: /Bob/ })).toContainText('Cashed out');
+  await expect(page.getByTestId('standing-Bob')).toContainText('Cashed out');
 
   // Bob is no longer offered in the rebuy picker.
-  await page.getByRole('button', { name: 'Add Rebuy' }).click();
+  await page.getByRole('button', { name: 'Rebuy' }).click();
   await page.getByRole('combobox').click();
   await expect(page.getByRole('option', { name: /Bob/ })).toHaveCount(0);
   await expect(page.getByRole('option', { name: /Alice/ })).toBeVisible();
@@ -104,6 +99,33 @@ test('an unbalanced table can be reconciled by splitting the difference', async 
   await page.getByRole('button', { name: 'End Session' }).last().click();
   await expect(page).toHaveURL(/\/settlement$/);
   await expect(page.getByText('Zero-sum validated')).toBeVisible();
+});
+
+test.describe('on a phone', () => {
+  // The live view is the one screen used with people at the table, so it has to
+  // work in a hand. iPhone-ish viewport.
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('the whole live flow is usable at phone width', async ({ page, request }) => {
+    await startLiveNight(page, request, ['Alice', 'Bob', 'Cara']);
+
+    // Standings read as cards, and the actions stay reachable without scrolling.
+    await expect(page.getByTestId('standing-Alice')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Rebuy' })).toBeInViewport();
+    await expect(page.getByRole('button', { name: 'End Session' })).toBeInViewport();
+
+    // The page itself must not scroll sideways.
+    const overflows = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(overflows).toBe(false);
+
+    // Cash-out works from the card.
+    await page.getByRole('button', { name: 'Cash out Bob' }).click();
+    await page.getByTestId('early-cashout-input').fill('150');
+    await page.getByRole('button', { name: 'Cash out' }).last().click();
+    await expect(page.getByTestId('standing-Bob')).toContainText('Cashed out');
+  });
 });
 
 test('the difference can be pinned on whoever miscounted', async ({ page, request }) => {

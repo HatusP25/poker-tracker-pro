@@ -67,6 +67,7 @@ const EntryRow = ({
       <div className="col-span-3 sm:col-span-2 lg:col-span-2">
         <Input
           type="number"
+          inputMode="decimal"
           step="0.01"
           min="0"
           max={MAX_BUY_IN}
@@ -80,6 +81,7 @@ const EntryRow = ({
       <div className="col-span-3 sm:col-span-2 lg:col-span-2">
         <Input
           type="number"
+          inputMode="decimal"
           step="0.01"
           min="0"
           max={MAX_CASH_OUT}

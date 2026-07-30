@@ -103,6 +103,7 @@ const RebuyItinerary = ({ rebuyEvents, editable = false, onEdit, onDelete }: Reb
                     <div className="flex items-center gap-1.5">
                       <Input
                         type="number"
+                        inputMode="decimal"
                         step="0.01"
                         min="0"
                         autoFocus

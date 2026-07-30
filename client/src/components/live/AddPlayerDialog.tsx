@@ -143,6 +143,7 @@ const AddPlayerDialog = ({ open, onOpenChange, availablePlayers, defaultBuyIn, g
             <Input
               id="player-buyin"
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               value={buyIn}
