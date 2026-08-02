@@ -36,12 +36,10 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 *(F-04, F-05, F-06 shipped 2026-07-30 and F-07 shipped 2026-08-02, see [CHANGELOG.md](CHANGELOG.md))*
 
-> **Operator action outstanding:** existing sessions still have no rebuy events until the backfill
-> is run. New and edited sessions are already correct. Take a backup, then:
-> ```
-> cd server && DATABASE_URL=<prod> npx tsx scripts/backfill-rebuy-events.ts --expect <db-name>
-> ```
-> That is a dry run; add `--apply` to write, `--undo --apply` to reverse.
+> **No operator action required.** Rebuy counts are correct on read for every session, including
+> old ones that never recorded rebuy events — recorded rows win, and sessions with none fall back
+> to the derivation. `server/scripts/backfill-rebuy-events.ts` optionally *persists* that
+> derivation (dry-run by default, `--undo --apply` to reverse); it changes no displayed number.
 
 ## P2 — Worth doing, not urgent
 

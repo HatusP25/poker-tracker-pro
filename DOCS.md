@@ -319,8 +319,13 @@ entered by hand gets rows *derived* from each buy-in above the group default (th
 into full-size rebuys plus a remainder, so `$17` at a `$5` default becomes `[5, 5, 2]`; the
 amounts always sum back to the recorded total). `RebuyEvent.derived` distinguishes those
 reconstructions from rebuys observed live. Only derived rows are ever rewritten, so editing a
-completed live session never destroys real, timestamped history. Existing history is filled in by
-`server/scripts/backfill-rebuy-events.ts` (dry-run by default, idempotent, `--undo` to reverse).
+completed live session never destroys real, timestamped history.
+
+Sessions that never recorded any rebuy events derive their count **on read**, so old history is
+correct without a migration step. Recorded rows always win: a live night with one $20 rebuy reports
+1, not the 4 its total would imply. `server/scripts/backfill-rebuy-events.ts` optionally persists
+the derivation (dry-run by default, idempotent, `--undo` to reverse) but changes no displayed
+number.
 
 **Early cash-out.** `SessionEntry.cashedOutAt` is null while a player is at the table and set when
 they leave mid-session. A cashed-out player keeps their recorded result, is refused further

@@ -7,7 +7,7 @@ import {
   ValidationError,
 } from '../utils/validators';
 import { calculateProfit } from '../utils/calculations';
-import { deriveRebuyAmounts } from '../utils/rebuys';
+import { deriveRebuyAmounts, resolveRebuyCount } from '../utils/rebuys';
 import { setSettlementPaid } from './settlementService';
 
 interface SessionEntryInput {
@@ -97,17 +97,22 @@ export class SessionService {
       throw new Error('Session not found');
     }
 
-    // Rebuy counts come from RebuyEvent rows — the single source of truth — rather
-    // than from arithmetic on the total, which disagreed with every other consumer.
-    const rebuysByPlayer = new Map<string, number>();
+    // Recorded RebuyEvent rows are the source of truth; a session that has none
+    // (hand-entered, imported, or predating rebuy events) falls back to the
+    // derivation, so the count is right without needing a backfill first.
+    const recordedByPlayer = new Map<string, number>();
     for (const r of session.rebuyEvents) {
-      rebuysByPlayer.set(r.playerId, (rebuysByPlayer.get(r.playerId) ?? 0) + 1);
+      recordedByPlayer.set(r.playerId, (recordedByPlayer.get(r.playerId) ?? 0) + 1);
     }
 
     const entriesWithCalculations = session.entries.map(entry => ({
       ...entry,
       profit: calculateProfit(entry.cashOut, entry.buyIn),
-      rebuys: rebuysByPlayer.get(entry.playerId) ?? 0,
+      rebuys: resolveRebuyCount(
+        entry.buyIn,
+        recordedByPlayer.get(entry.playerId) ?? 0,
+        session.group.defaultBuyIn
+      ),
     }));
 
     return {

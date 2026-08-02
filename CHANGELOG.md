@@ -30,14 +30,16 @@ live-tracked nights. Separately, four different formulas for "rebuys" coexisted,
 - **Reconstructed rows are labelled.** New `RebuyEvent.derived` distinguishes a reconstruction from
   an observed live rebuy. Only derived rows are ever rewritten, so editing a completed live session
   can't destroy real, timestamped history.
-- **Backfill script** (`server/scripts/backfill-rebuy-events.ts`) for existing sessions: dry-run by
-  default, idempotent, reversible with `--undo`, refuses to run unless `--expect <db>` matches the
-  connection string, and only ever *inserts* `rebuy_events` rows — no `SessionEntry`, `Session` or
-  money field is read or written. **Not run against production**; that's an operator action after a
-  verified backup.
+- **Old sessions are correct with no migration step.** Recorded rows always win; a session with
+  none — hand-entered, imported, or predating rebuy events entirely — derives its count on read.
+  So the numbers are right immediately, on real history, without anyone running anything.
+- **Optional backfill** (`server/scripts/backfill-rebuy-events.ts`) *persists* that derivation for
+  anyone who prefers stored rows: dry-run by default, idempotent, reversible with `--undo`, refuses
+  to run unless `--expect <db>` matches the connection string, and only ever *inserts*
+  `rebuy_events` rows. It changes no displayed number. Not run against production.
 
 ### Tests
-- +24 server unit (152 → 176), +12 integration (92 → 104).
+- +33 server unit (152 → 185), +18 integration (92 → 110).
 
 ### 2026-07-30 — Wave 1: the live night
 

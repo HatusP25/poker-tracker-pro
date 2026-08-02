@@ -17,6 +17,7 @@ import {
   SeasonRecap,
   SeasonSuperlative,
 } from '../types/insights';
+import { withDerivedRebuyEvents } from '../utils/rebuys';
 
 // ---- Tunable constants ----
 export const RECENT_WINDOW = 5;
@@ -460,13 +461,19 @@ async function fetchSessionRows(
     include: {
       entries: { include: { player: true } },
       rebuyEvents: true,
+      group: { select: { defaultBuyIn: true } },
     },
     orderBy: { date: 'asc' },
   });
 
   return sessions.map((s) => {
+    // Sessions that never recorded rebuy events (hand-entered, imported) get them
+    // reconstructed here, so records and rivalries see the same counts a
+    // live-tracked night would produce.
+    const events = withDerivedRebuyEvents(s.entries, s.rebuyEvents, s.group.defaultBuyIn);
+
     const rebuysByPlayer = new Map<string, number>();
-    for (const r of s.rebuyEvents) {
+    for (const r of events) {
       rebuysByPlayer.set(r.playerId, (rebuysByPlayer.get(r.playerId) ?? 0) + 1);
     }
     return {
