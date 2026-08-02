@@ -429,11 +429,20 @@ export class BackupService {
           }
 
           for (const rebuy of backup.data.rebuyEvents ?? []) {
+            // Absent on rows written before the derived flag existed; false is what
+            // those rows mean (recorded live), which is also the safe default —
+            // a restore must never silently reclassify real history as derived.
+            const derived = rebuy.derived === true;
+
             await upsert(
               'rebuyEvents',
               `Rebuy ${rebuy.id}`,
               () => tx.rebuyEvent.findUnique({ where: { id: rebuy.id } }),
-              () => tx.rebuyEvent.update({ where: { id: rebuy.id }, data: { amount: rebuy.amount } }),
+              () =>
+                tx.rebuyEvent.update({
+                  where: { id: rebuy.id },
+                  data: { amount: rebuy.amount, derived },
+                }),
               () =>
                 tx.rebuyEvent.create({
                   data: {
@@ -441,6 +450,7 @@ export class BackupService {
                     sessionId: rebuy.sessionId,
                     playerId: rebuy.playerId,
                     amount: rebuy.amount,
+                    derived,
                     createdAt: new Date(rebuy.createdAt),
                   },
                 })

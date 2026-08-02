@@ -34,12 +34,14 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 ## P1 — High value, ready to pick up
 
-*(F-04, F-05 and F-06 shipped 2026-07-30, see [CHANGELOG.md](CHANGELOG.md))*
+*(F-04, F-05, F-06 shipped 2026-07-30 and F-07 shipped 2026-08-02, see [CHANGELOG.md](CHANGELOG.md))*
 
-- **[P1·M] F-07 One definition of a rebuy.** `RebuyEvent` rows only exist for *live-tracked*
-  sessions, so ATM/Houdini/Phoenix/Rebuy Royalty/most-rebuys/biggest-comeback are silently biased
-  against hand-entered nights. Four different rebuy formulas coexist; `totalRebuys` sums fractions.
-  Includes an additive, reversible backfill — **needs explicit user sign-off before it runs.**
+> **Operator action outstanding:** existing sessions still have no rebuy events until the backfill
+> is run. New and edited sessions are already correct. Take a backup, then:
+> ```
+> cd server && DATABASE_URL=<prod> npx tsx scripts/backfill-rebuy-events.ts --expect <db-name>
+> ```
+> That is a dry run; add `--apply` to write, `--undo --apply` to reverse.
 
 ## P2 — Worth doing, not urgent
 

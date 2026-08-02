@@ -92,8 +92,13 @@ export class SessionSummaryService {
       rankingsAfter
     );
 
-    // 5. Find session highlights
-    const highlights = this.calculateHighlights(session.entries, session.group.defaultBuyIn);
+    // 5. Find session highlights. Rebuy counts come from RebuyEvent rows (the single
+    // source of truth) rather than arithmetic on the buy-in total.
+    const rebuysByPlayer = new Map<string, number>();
+    for (const r of session.rebuyEvents) {
+      rebuysByPlayer.set(r.playerId, (rebuysByPlayer.get(r.playerId) ?? 0) + 1);
+    }
+    const highlights = this.calculateHighlights(session.entries, rebuysByPlayer);
 
     // 6. Calculate streak updates
     const streaks = await this.calculateStreaks(session.entries, groupId, session.date);
@@ -233,7 +238,10 @@ export class SessionSummaryService {
   /**
    * Calculate session highlights
    */
-  private calculateHighlights(entries: any[], defaultBuyIn: number): SessionHighlights {
+  private calculateHighlights(
+    entries: any[],
+    rebuysByPlayer: Map<string, number>
+  ): SessionHighlights {
     // Handle edge case of empty entries
     if (entries.length === 0) {
       return {
@@ -264,7 +272,7 @@ export class SessionSummaryService {
     let mostRebuysEntry = null;
     let maxRebuys = 0;
     for (const entry of entries) {
-      const rebuys = Math.max(0, (entry.buyIn - defaultBuyIn) / defaultBuyIn);
+      const rebuys = rebuysByPlayer.get(entry.playerId) ?? 0;
       if (rebuys > maxRebuys) {
         maxRebuys = rebuys;
         mostRebuysEntry = entry;
@@ -288,7 +296,7 @@ export class SessionSummaryService {
       highlights.mostRebuys = {
         playerId: mostRebuysEntry.playerId,
         name: mostRebuysEntry.player.name,
-        rebuys: Math.round(maxRebuys),
+        rebuys: maxRebuys,
       };
     }
 
