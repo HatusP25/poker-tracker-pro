@@ -10,6 +10,35 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-08-02 — Wave 2: one definition of a rebuy (F-07)
+
+**The Banter Pack's brags were wrong for half the group's history.** `RebuyEvent` rows were only
+ever written by the live-session path, so a night typed in by hand had none — and ATM, Houdini,
+Phoenix, Rebuy Royalty, "most rebuys" and "biggest comeback" all count those rows. A group that
+logs some nights live and enters others afterwards got awards silently biased toward the
+live-tracked nights. Separately, four different formulas for "rebuys" coexisted, and
+`PlayerStats.totalRebuys` summed *fractional* rebuys — three $7 buy-ins at a $5 default reported
+"1.2 rebuys".
+
+- **`RebuyEvent` is now the single source of truth.** `statsService`, `sessionService`,
+  `sessionSummaryService` and the live view all count rows. `calculateRebuys` is retired from
+  production paths.
+- **Hand-entered sessions get the rebuys their totals imply.** The excess over one standard buy-in
+  is split into full-size rebuys plus a remainder — $17 at a $5 default becomes `[5, 5, 2]` — and
+  the amounts always sum back to the recorded total, so a reconstruction can never disagree with
+  the money.
+- **Reconstructed rows are labelled.** New `RebuyEvent.derived` distinguishes a reconstruction from
+  an observed live rebuy. Only derived rows are ever rewritten, so editing a completed live session
+  can't destroy real, timestamped history.
+- **Backfill script** (`server/scripts/backfill-rebuy-events.ts`) for existing sessions: dry-run by
+  default, idempotent, reversible with `--undo`, refuses to run unless `--expect <db>` matches the
+  connection string, and only ever *inserts* `rebuy_events` rows — no `SessionEntry`, `Session` or
+  money field is read or written. **Not run against production**; that's an operator action after a
+  verified backup.
+
+### Tests
+- +24 server unit (152 → 176), +12 integration (92 → 104).
+
 ### 2026-07-30 — Wave 1: the live night
 
 Everything shipped in the previous two waves happened *after* the game. This wave is the screen

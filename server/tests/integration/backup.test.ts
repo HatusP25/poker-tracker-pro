@@ -57,8 +57,10 @@ async function seedGroup(name: string) {
       },
       rebuyEvents: {
         create: [
-          { playerId: dave.id, amount: 10 },
-          { playerId: dave.id, amount: 10 },
+          // One observed live, one reconstructed — a restore must preserve which
+          // is which, or real history gets reclassified as a guess.
+          { playerId: dave.id, amount: 10, derived: false },
+          { playerId: dave.id, amount: 10, derived: true },
         ],
       },
     },
@@ -234,6 +236,17 @@ describe('backup round trip', () => {
     // And it must stay out of the live set.
     const live = await prisma.session.findMany({ where: { groupId: group.id, deletedAt: null } });
     expect(live.map((s) => s.id)).not.toContain(deleted.id);
+  });
+
+  it('preserves which rebuys were recorded live and which were derived', async () => {
+    const { group } = await seedGroup('DerivedFlag');
+    const backup = await backupService.exportDatabase(group.id);
+
+    await prisma.rebuyEvent.deleteMany();
+    await backupService.importDatabase(backup, { mode: 'merge', skipDuplicates: false });
+
+    const restored = await prisma.rebuyEvent.findMany({ orderBy: { derived: 'asc' } });
+    expect(restored.map((r) => r.derived)).toEqual([false, true]);
   });
 
   it('preserves an early cash-out through a restore', async () => {

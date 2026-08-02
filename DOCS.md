@@ -313,6 +313,15 @@ User Action → React Component → TanStack Query Mutation
 | GET | `/live-sessions/:id` | Get live session status |
 | POST | `/live-sessions/:id/end` | End session with cash-outs for whoever is still at the table |
 
+**Rebuys.** `RebuyEvent` rows are the single source of truth for every rebuy count in the app —
+player stats, session highlights, group records, and the night titles/achievements. A session
+entered by hand gets rows *derived* from each buy-in above the group default (the excess split
+into full-size rebuys plus a remainder, so `$17` at a `$5` default becomes `[5, 5, 2]`; the
+amounts always sum back to the recorded total). `RebuyEvent.derived` distinguishes those
+reconstructions from rebuys observed live. Only derived rows are ever rewritten, so editing a
+completed live session never destroys real, timestamped history. Existing history is filled in by
+`server/scripts/backfill-rebuy-events.ts` (dry-run by default, idempotent, `--undo` to reverse).
+
 **Early cash-out.** `SessionEntry.cashedOutAt` is null while a player is at the table and set when
 they leave mid-session. A cashed-out player keeps their recorded result, is refused further
 rebuys, and is skipped by `/end` — which uses their stored `cashOut` and ignores any resubmitted

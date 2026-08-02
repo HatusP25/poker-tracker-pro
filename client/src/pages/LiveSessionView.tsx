@@ -111,9 +111,12 @@ const LiveSessionView = () => {
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const calculateRebuys = (buyIn: number, defaultBuyIn: number) => {
-    return Math.floor((buyIn - defaultBuyIn) / defaultBuyIn);
-  };
+  // Rebuy counts come from the recorded RebuyEvent rows, not arithmetic on the
+  // buy-in total — the server derives the same way, so the two can't disagree.
+  const rebuysByPlayer = new Map<string, number>();
+  for (const event of session.rebuyEvents ?? []) {
+    rebuysByPlayer.set(event.playerId, (rebuysByPlayer.get(event.playerId) ?? 0) + 1);
+  }
 
   const handleAddRebuy = (playerId: string, amount: number) => {
     addRebuy.mutate({ sessionId: sessionId!, playerId, amount });
@@ -203,7 +206,7 @@ const LiveSessionView = () => {
             <PlayerStandingCard
               key={entry.id}
               entry={entry}
-              rebuys={calculateRebuys(entry.buyIn, session.group?.defaultBuyIn || 0)}
+              rebuys={rebuysByPlayer.get(entry.playerId) ?? 0}
               canEdit={canEdit}
               canCashOut={stillPlaying.length > 1}
               onCashOut={setCashingOut}

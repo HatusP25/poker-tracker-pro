@@ -9,7 +9,6 @@ import {
 } from '../types';
 import {
   calculateProfit,
-  calculateRebuys,
   calculateROI,
   calculateWinRate,
   calculateAvgProfit,
@@ -122,10 +121,12 @@ export class StatsService {
     const bestSession = profits.length > 0 ? Math.max(...profits) : 0;
     const worstSession = profits.length > 0 ? Math.min(...profits) : 0;
 
-    const totalRebuys = entries.reduce(
-      (sum, e) => sum + calculateRebuys(e.buyIn, player.group.defaultBuyIn),
-      0
-    );
+    // Count RebuyEvent rows rather than inferring from buy-in totals. The old
+    // arithmetic returned *fractions* — three $7 buy-ins at a $5 default reported
+    // "1.2 rebuys" — and disagreed with every other rebuy consumer in the app.
+    const totalRebuys = await prisma.rebuyEvent.count({
+      where: { playerId, session: { deletedAt: null } },
+    });
 
     const currentStreak = calculateStreak(sessionResults);
     const longestWinStreak = calculateLongestWinStreak(sessionResults);

@@ -10,6 +10,61 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-08-02 — Wave 2: one definition of a rebuy (F-07)
+
+**Why** `RebuyEvent` rows were written only by `liveSessionService.addRebuy()`. A hand-entered,
+CSV-imported or v1-restored session had none, yet the Banter Pack counts those rows — so ATM,
+Houdini, Phoenix, Rebuy Royalty, most-rebuys and biggest-comeback structurally skipped every
+session not tracked live. The brags were biased, silently, which is the worst failure mode for a
+bragging-rights feature. Analysis §3.3/§3.4. Plan:
+`docs/superpowers/plans/2026-07-30-wave-2-rebuy-truth.md`.
+
+**Design decision — derived vs recorded.** A live rebuy is an observed event with a real
+timestamp; a rebuy inferred from a hand-entered total is a reconstruction. Conflating them would
+mean a later edit could silently destroy real history, so `RebuyEvent.derived` (additive,
+`@default(false)` — which is what every existing row already means) keeps them distinguishable.
+Only derived rows are ever rewritten, and an entry that carries any recorded rebuy is left alone
+entirely rather than reconstructed on top of.
+
+**Changed**
+- `server/src/utils/rebuys.ts` (new, +24 unit tests) — pure `deriveRebuyAmounts(buyIn, default)`.
+  Excess split into full-size rebuys plus a remainder; the amounts always sum to the excess to the
+  cent, so a reconstruction can't disagree with the recorded money. Guards: nonsensical inputs
+  return nothing, never a zero-amount rebuy, and a 100-row cap so a fat-fingered buy-in can't
+  generate unbounded inserts (the overflow collapses into the final rebuy, preserving the total).
+- Migration `20260802045701_add_rebuy_event_derived` — one boolean with a default; no row read or
+  rewritten.
+- `sessionService` — `createSession` and `addSessionEntry` write derived rows; `updateSessionEntry`
+  re-derives via a new private `reDeriveRebuyEvents` that deletes only `derived: true` rows and
+  bails entirely when recorded rebuys exist. `getSessionById` counts rows instead of doing
+  arithmetic.
+- `statsService.getPlayerStats` — `totalRebuys` is now a `rebuyEvent.count()` scoped to
+  non-deleted sessions, so it's an integer instead of a sum of fractions.
+- `sessionSummaryService.calculateHighlights` — takes a rebuy-count map rather than re-deriving
+  from `defaultBuyIn`.
+- `LiveSessionView` — counts `rebuyEvents` rather than flooring a buy-in ratio.
+- `backupService` — round-trips `derived`, defaulting a missing value to `false` so a restore can
+  never reclassify real history as a guess.
+- `server/scripts/backfill-rebuy-events.ts` (new) — see below.
+
+**Backfill script, verified by hand against `poker_tracker_test`:** refuses to run without
+`--expect`, refuses when `--expect` doesn't match the URL, dry-runs by default with a full
+per-session plan, applies, is a no-op on a second run, and `--undo --apply` removes exactly the
+derived rows while leaving a recorded live rebuy untouched. Buy-ins and cash-outs verified
+unchanged before and after. **It was not run against production** — that is an operator action,
+after a verified backup.
+
+**Bug caught before shipping (again):** backup import lists `rebuyEvent` fields explicitly, so
+`derived` would have been silently dropped on restore — the same class of bug as `cashedOutAt` in
+Wave 1 and the whole of Wave 0's F-01. Round-trip test added. This is now three occurrences;
+`sessionSummaryService`'s F-08 refactor should consider whether the explicit field lists in
+`backupService` want a shared, exhaustive mapping instead.
+
+**Verification** server unit 176 ✓ · integration 104 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 72 ✓ · E2E 16 ✓ against the production artifact.
+
+---
+
 ## 2026-07-30 — Wave 1: the live night (F-04, F-05, F-06)
 
 **Why** The last two feature waves both landed *after* the game. `LiveSessionView` — the one
