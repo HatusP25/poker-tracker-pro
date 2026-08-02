@@ -29,6 +29,12 @@ Internal; no user-visible behaviour change, verified by the integration suite st
 - Sessions sharing a date now sort deterministically by `createdAt`; previously the ordering was
   undefined and streak results could vary between calls.
 
+- **Dead code removed.** The untouched Vite scaffold (`client/src/main.ts`, `client/src/counter.ts`
+  — a "Vite + TypeScript" click counter, unreferenced since the project began), plus the
+  `/stats/groups/:groupId/trends` and `/aggregates` endpoints and their services, hooks and API
+  methods. `/trends` served the zero-sum quantity whose chart was deleted on 2026-07-12 and had no
+  consumer; neither did `checkBalance`.
+
 ### Tests
 - +51 server unit (185 → 236).
 

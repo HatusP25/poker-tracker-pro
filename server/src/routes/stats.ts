@@ -5,9 +5,7 @@ import {
   getSessionStats,
   getDashboardStats,
   checkSessionBalance,
-  getProfitTrend,
   getPlayerStreaks,
-  getAggregatedStats,
   getPlayerPerformanceTrend,
   getSessionSummary,
   getGroupRecords,
@@ -38,9 +36,7 @@ router.get('/groups/:groupId/dashboard', getDashboardStats);
 router.get('/sessions/:id/balance-check', checkSessionBalance);
 
 // Trend endpoints
-router.get('/groups/:groupId/trends', getProfitTrend);
 router.get('/groups/:groupId/streaks', getPlayerStreaks);
-router.get('/groups/:groupId/aggregates', getAggregatedStats);
 
 // Insights endpoints
 router.get('/groups/:groupId/records', getGroupRecords);

@@ -72,16 +72,6 @@ export const checkSessionBalance = async (req: Request, res: Response, next: Nex
   }
 };
 
-export const getProfitTrend = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { groupId } = req.params;
-    const period = (req.query.period as 'daily' | 'weekly' | 'monthly') || 'daily';
-    const trend = await statsService.getProfitTrend(groupId, period);
-    res.json(trend);
-  } catch (error) {
-    next(error);
-  }
-};
 
 export const getPlayerStreaks = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -93,17 +83,6 @@ export const getPlayerStreaks = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const getAggregatedStats = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { groupId } = req.params;
-    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
-    const month = req.query.month ? parseInt(req.query.month as string) : undefined;
-    const stats = await statsService.getAggregatedStats(groupId, year, month);
-    res.json(stats);
-  } catch (error) {
-    next(error);
-  }
-};
 
 export const getPlayerPerformanceTrend = async (req: Request, res: Response, next: NextFunction) => {
   try {
