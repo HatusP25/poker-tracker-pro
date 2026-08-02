@@ -11,6 +11,29 @@ in [`docs/superpowers/specs/2026-07-30-feature-roadmap.md`](../superpowers/specs
 
 ---
 
+## 0. Resolution status (updated 2026-08-02)
+
+This document is kept as the point-in-time analysis. Every finding in §3 has since been addressed —
+see [CHANGELOG.md](../../CHANGELOG.md) and [WORKLOG.md](../WORKLOG.md) for what shipped.
+
+| Finding | Status |
+|---------|--------|
+| §3.1 Lossy, unscoped `replace` restore | **Fixed** — backup format v2 covers all seven models; replace is scoped to the file's groups, refused for v1 files, and fenced behind a typed confirmation (F-01, F-02) |
+| §3.2 Public unauthenticated mutation | **Code shipped, deploy action outstanding** — `requireApiKey` gates mutating verbs (F-03), but it is a no-op until `API_KEY` is set in Railway. See [SECURITY.md](../SECURITY.md#deploying-the-api-key) |
+| §3.3 Rebuy awards blind to hand-entered sessions | **Fixed** — `RebuyEvent` is the single source of truth, with derivation on read for sessions that recorded none (F-07) |
+| §3.4 Four definitions of "rebuys" | **Fixed** — one definition, `resolveRebuyCount`; `calculateRebuys` retired from production paths (F-07) |
+| §3.5 `sessionSummaryService` N+1, untested | **Fixed** — 25 queries → 2, measured; rules extracted to a pure, tested module (F-08) |
+| §3.6 Dead code | **Fixed** — Vite scaffold and the `/trends` + `/aggregates` endpoints removed |
+
+Also fixed, and not in the original analysis because it took three occurrences to see the pattern:
+`backupService` hand-listed columns per model, making every new column a silent data-loss bug on
+restore. Row shaping is now driven off the Prisma schema (F-08).
+
+The §4 product read still stands; the Wave 1 items it motivated (early cash-out, reconciliation,
+phone-first live view) have shipped, and the rest remain on [BACKLOG.md](../../BACKLOG.md).
+
+---
+
 ## 1. Verified baseline
 
 Run in this worktree on 2026-07-30 after `npm run install:all`:
