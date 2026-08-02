@@ -43,8 +43,6 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 ## P2 — Worth doing, not urgent
 
-- **[P2·M] F-08 Refactor + test `sessionSummaryService`.** N+1 per player (plus a full ranking
-  recompute per player), zero unit tests, `any[]` params. Apply the `insightsService` pattern.
 - **[P2·M] F-09 Shareable image cards.** PNG for night result / belt change / Season Wrapped.
   Zero schema — all inputs already exist. (Generalises the old "Insights polish" item.)
 - **[P2·M] F-10 Nicknames + avatar uploads.** `Player.nickname`; the Belt and trophy case have no

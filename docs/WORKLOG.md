@@ -10,6 +10,50 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-08-02 — Session summary refactor + schema-driven backup (F-08)
+
+**Why** Two problems named in the analysis (§3.5) and one pattern that had bitten three times.
+
+`backupService` hand-listed each model's columns in its create/update calls. The export comes from
+`findMany` so it always carried every column, but the import silently dropped anything not on the
+list — surfacing only when someone restored. `status`/`settlements`/`completedAt`/`deletedAt`
+(F-01), `cashedOutAt` (F-04) and `derived` (F-07) were each caught by luck rather than design.
+
+`sessionSummaryService` issued one full-history query per player in the session, plus a full
+ranking recomputation nested in that loop, and had zero unit tests because every rule was tangled
+up with Prisma.
+
+**Changed**
+- `server/src/services/backupRows.ts` (new, +22 unit tests) — `coerceBackupRow` projects a backup
+  row onto exactly the scalar columns Prisma's DMMF declares for that model, converting DateTimes.
+  Absent fields are omitted so schema defaults apply (this is how a v1 file still imports); unknown
+  fields are dropped so a hand-edited file can't reach Prisma. The test builds a complete row per
+  model from the schema and asserts every field survives, so a future column can't be dropped
+  silently. `BACKED_UP_MODELS` is asserted equal to the schema's model list.
+- `backupService.importDatabase` — the seven per-model blocks collapse into one `IMPORT_ORDER`
+  table plus a single upsert loop. No field lists remain.
+- `server/src/services/sessionSummaryRules.ts` (new, +29 unit tests) — `computeRankings`,
+  `sessionsUpTo`, `computeRankingChanges`, `computeHighlights`, `computeStreakUpdates`,
+  `computeMilestones` as pure functions over plain rows, per the insightsService convention. The
+  milestone and streak rules now have tests for the first time.
+- `sessionSummaryService` — fetches the session plus the group's history in two queries, then
+  delegates. Dropped from 507 lines to ~110, and `any[]` params are gone.
+
+**Measured, not assumed.** Instrumented the Prisma client with `$use` and ran a real summary on an
+8-player night with 12 nights of history: **25 queries before, 2 after** — and constant now, where
+it previously grew as 2 + 3n in the number of players.
+
+**Behaviour preserved** — the 110 integration tests and the E2E settlement flow exercise this
+endpoint and stayed green throughout, which is the regression net for a refactor of this size.
+
+**One deliberate change:** sessions sharing a date now sort by `createdAt` as a tie-break. The
+previous ordering was undefined, so streak results could differ between identical calls.
+
+**Verification** server unit 236 ✓ · integration 110 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 72 ✓ · E2E 16 ✓ against the production artifact.
+
+---
+
 ## 2026-08-02 — Wave 2: one definition of a rebuy (F-07)
 
 **Why** `RebuyEvent` rows were written only by `liveSessionService.addRebuy()`. A hand-entered,

@@ -1,40 +1,20 @@
 import { prisma } from '../lib/prisma';
-import { round } from '../utils/calculations';
 import { computeNightTitles } from './banterService';
 import { NightTitle } from '../types/banter';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
-
-interface RankingChange {
-  playerId: string;
-  playerName: string;
-  oldRank: number;
-  newRank: number;
-  change: number;
-  profit: number;
-}
-
-interface SessionHighlights {
-  biggestWinner: { playerId: string; name: string; profit: number };
-  biggestLoser: { playerId: string; name: string; profit: number };
-  mostRebuys?: { playerId: string; name: string; rebuys: number };
-  biggestComeback?: { playerId: string; name: string; description: string };
-}
-
-interface StreakUpdate {
-  playerId: string;
-  playerName: string;
-  type: 'win' | 'loss';
-  count: number;
-  isNew: boolean;
-}
-
-interface Milestone {
-  playerId: string;
-  playerName: string;
-  type: 'best_session' | 'total_games' | 'total_profit' | 'top_3';
-  description: string;
-  value?: number;
-}
+import {
+  computeRankings,
+  sessionsUpTo,
+  computeRankingChanges,
+  computeHighlights,
+  computeStreakUpdates,
+  computeMilestones,
+  type SummarySessionRow,
+  type RankingChange,
+  type SessionHighlights,
+  type StreakUpdate,
+  type Milestone,
+} from './sessionSummaryRules';
 
 interface SessionSummary {
   session: {
@@ -50,24 +30,21 @@ interface SessionSummary {
   titles: NightTitle[];
 }
 
+/**
+ * Post-session summary: ranking changes, highlights, streaks, milestones, titles.
+ *
+ * Previously this issued one full-history query *per player in the session*, plus a
+ * complete ranking recomputation per player nested inside that loop, and had no
+ * unit tests because every rule was tangled up with Prisma. It now fetches the
+ * group's history once and delegates to the pure functions in
+ * `sessionSummaryRules.ts`.
+ */
 export class SessionSummaryService {
-  constructor() {
-    // No dependencies needed - using Prisma directly
-  }
-
-  /**
-   * Get comprehensive session summary with ranking changes, highlights, streaks, and milestones
-   */
   async getSessionSummary(sessionId: string, groupId: string): Promise<SessionSummary> {
-    // 1. Get the completed session with all entries and player data
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
       include: {
-        entries: {
-          include: {
-            player: true,
-          },
-        },
+        entries: { include: { player: true } },
         rebuyEvents: true,
         group: true,
       },
@@ -77,24 +54,37 @@ export class SessionSummaryService {
       throw new Error('Session not found or does not belong to this group');
     }
 
-    const playerCount = session.entries.length;
-    const totalPot = session.entries.reduce((sum, e) => sum + e.buyIn, 0);
+    // One query for the whole group's history, instead of one per player.
+    const history = await prisma.session.findMany({
+      where: { groupId, deletedAt: null },
+      include: { entries: { include: { player: { select: { name: true } } } } },
+      orderBy: { date: 'asc' },
+    });
 
-    // 2. Calculate rankings BEFORE this session (exclude current session)
-    const rankingsBefore = await this.calculateRankings(groupId, session.date, true);
+    const rows: SummarySessionRow[] = history.map((s) => ({
+      id: s.id,
+      date: s.date.toISOString(),
+      createdAt: s.createdAt.toISOString(),
+      entries: s.entries.map((e) => ({
+        playerId: e.playerId,
+        playerName: e.player.name,
+        buyIn: e.buyIn,
+        cashOut: e.cashOut,
+      })),
+    }));
 
-    // 3. Calculate rankings AFTER this session (include current session)
-    const rankingsAfter = await this.calculateRankings(groupId, session.date, false);
+    const entries = session.entries.map((e) => ({
+      playerId: e.playerId,
+      playerName: e.player.name,
+      buyIn: e.buyIn,
+      cashOut: e.cashOut,
+    }));
 
-    // 4. Calculate ranking changes for players in this session
-    const rankingChanges = this.calculateRankingChanges(
-      session.entries,
-      rankingsBefore,
-      rankingsAfter
-    );
+    const cutoff = session.date.toISOString();
+    const rankingsBefore = computeRankings(sessionsUpTo(rows, cutoff, true));
+    const rankingsAfter = computeRankings(sessionsUpTo(rows, cutoff, false));
 
-    // 5. Find session highlights. Recorded RebuyEvent rows are the source of truth;
-    // a night that never had any falls back to the derivation from each buy-in.
+    // Recorded rebuys win; nights that never recorded any derive from the totals.
     const rebuyEvents = withDerivedRebuyEvents(
       session.entries,
       session.rebuyEvents,
@@ -104,416 +94,20 @@ export class SessionSummaryService {
     for (const r of rebuyEvents) {
       rebuysByPlayer.set(r.playerId, (rebuysByPlayer.get(r.playerId) ?? 0) + 1);
     }
-    const highlights = this.calculateHighlights(session.entries, rebuysByPlayer);
-
-    // 6. Calculate streak updates
-    const streaks = await this.calculateStreaks(session.entries, groupId, session.date);
-
-    // 7. Check for milestones
-    const milestones = await this.calculateMilestones(session.entries, groupId, rankingsAfter);
-
-    // 8. Night titles (Shark / Donation / ATM / Houdini) — pure, derived-on-read
-    const titles = computeNightTitles(
-      session.entries.map((e) => ({
-        playerId: e.playerId,
-        playerName: e.player.name,
-        buyIn: e.buyIn,
-        cashOut: e.cashOut,
-      })),
-      rebuyEvents
-    );
 
     return {
       session: {
         id: session.id,
         date: session.date.toISOString(),
-        playerCount,
-        totalPot,
+        playerCount: session.entries.length,
+        totalPot: session.entries.reduce((sum, e) => sum + e.buyIn, 0),
       },
-      rankingChanges,
-      highlights,
-      streaks,
-      milestones,
-      titles,
+      rankingChanges: computeRankingChanges(entries, rankingsBefore, rankingsAfter),
+      highlights: computeHighlights(entries, rebuysByPlayer),
+      streaks: computeStreakUpdates(rows, entries, cutoff),
+      milestones: computeMilestones(rows, entries, cutoff, rankingsBefore, rankingsAfter),
+      titles: computeNightTitles(entries, rebuyEvents),
     };
-  }
-
-  /**
-   * Calculate rankings for a specific point in time
-   * @param excludeCurrentDate - if true, exclude sessions on or after this date
-   */
-  private async calculateRankings(
-    groupId: string,
-    currentDate: Date,
-    excludeCurrentDate: boolean
-  ) {
-    // Get all sessions up to (and optionally excluding) the current date
-    const sessions = await prisma.session.findMany({
-      where: {
-        groupId,
-        date: excludeCurrentDate ? { lt: currentDate } : { lte: currentDate },
-        deletedAt: null,
-      },
-      include: {
-        entries: {
-          include: {
-            player: true,
-          },
-        },
-      },
-    });
-
-    // Calculate stats for each player
-    const playerStats = new Map<
-      string,
-      { playerId: string; playerName: string; balance: number; games: number }
-    >();
-
-    for (const session of sessions) {
-      for (const entry of session.entries) {
-        const profit = entry.cashOut - entry.buyIn;
-        const existing = playerStats.get(entry.playerId);
-
-        if (existing) {
-          existing.balance += profit;
-          existing.games += 1;
-        } else {
-          playerStats.set(entry.playerId, {
-            playerId: entry.playerId,
-            playerName: entry.player.name,
-            balance: profit,
-            games: 1,
-          });
-        }
-      }
-    }
-
-    // Sort by balance descending, then by games descending
-    const rankings = Array.from(playerStats.values()).sort((a, b) => {
-      if (b.balance !== a.balance) return b.balance - a.balance;
-      return b.games - a.games;
-    });
-
-    // Assign ranks
-    const rankedPlayers = new Map<string, number>();
-    rankings.forEach((player, index) => {
-      rankedPlayers.set(player.playerId, index + 1);
-    });
-
-    return rankedPlayers;
-  }
-
-  /**
-   * Calculate ranking changes for players in the session
-   */
-  private calculateRankingChanges(
-    entries: any[],
-    rankingsBefore: Map<string, number>,
-    rankingsAfter: Map<string, number>
-  ): RankingChange[] {
-    const changes: RankingChange[] = [];
-
-    for (const entry of entries) {
-      const profit = entry.cashOut - entry.buyIn;
-      const oldRank = rankingsBefore.get(entry.playerId) || 0; // 0 means new player
-      const newRank = rankingsAfter.get(entry.playerId) || 0;
-
-      // Calculate change (negative means moved up in ranking, positive means moved down)
-      const change = oldRank === 0 ? 0 : oldRank - newRank;
-
-      changes.push({
-        playerId: entry.playerId,
-        playerName: entry.player.name,
-        oldRank,
-        newRank,
-        change,
-        profit: round(profit),
-      });
-    }
-
-    // Sort by new rank
-    changes.sort((a, b) => {
-      if (a.newRank === 0) return 1;
-      if (b.newRank === 0) return -1;
-      return a.newRank - b.newRank;
-    });
-
-    return changes;
-  }
-
-  /**
-   * Calculate session highlights
-   */
-  private calculateHighlights(
-    entries: any[],
-    rebuysByPlayer: Map<string, number>
-  ): SessionHighlights {
-    // Handle edge case of empty entries
-    if (entries.length === 0) {
-      return {
-        biggestWinner: { playerId: '', name: 'N/A', profit: 0 },
-        biggestLoser: { playerId: '', name: 'N/A', profit: 0 },
-      };
-    }
-
-    // Find biggest winner and loser
-    let biggestWinner = entries[0];
-    let biggestLoser = entries[0];
-    let maxProfit = entries[0].cashOut - entries[0].buyIn;
-    let minProfit = maxProfit;
-
-    for (const entry of entries) {
-      const profit = entry.cashOut - entry.buyIn;
-      if (profit > maxProfit) {
-        maxProfit = profit;
-        biggestWinner = entry;
-      }
-      if (profit < minProfit) {
-        minProfit = profit;
-        biggestLoser = entry;
-      }
-    }
-
-    // Find most rebuys
-    let mostRebuysEntry = null;
-    let maxRebuys = 0;
-    for (const entry of entries) {
-      const rebuys = rebuysByPlayer.get(entry.playerId) ?? 0;
-      if (rebuys > maxRebuys) {
-        maxRebuys = rebuys;
-        mostRebuysEntry = entry;
-      }
-    }
-
-    const highlights: SessionHighlights = {
-      biggestWinner: {
-        playerId: biggestWinner.playerId,
-        name: biggestWinner.player.name,
-        profit: round(maxProfit),
-      },
-      biggestLoser: {
-        playerId: biggestLoser.playerId,
-        name: biggestLoser.player.name,
-        profit: round(minProfit),
-      },
-    };
-
-    if (mostRebuysEntry && maxRebuys > 0) {
-      highlights.mostRebuys = {
-        playerId: mostRebuysEntry.playerId,
-        name: mostRebuysEntry.player.name,
-        rebuys: maxRebuys,
-      };
-    }
-
-    return highlights;
-  }
-
-  /**
-   * Calculate streak updates for players
-   */
-  private async calculateStreaks(
-    entries: any[],
-    groupId: string,
-    currentDate: Date
-  ): Promise<StreakUpdate[]> {
-    const streaks: StreakUpdate[] = [];
-
-    for (const entry of entries) {
-      const profit = entry.cashOut - entry.buyIn;
-      if (profit === 0) continue; // Skip break-even
-
-      // Get player's recent sessions (ordered by date descending)
-      const recentSessions = await prisma.session.findMany({
-        where: {
-          groupId,
-          date: { lte: currentDate },
-          deletedAt: null,
-          entries: {
-            some: {
-              playerId: entry.playerId,
-            },
-          },
-        },
-        include: {
-          entries: {
-            where: {
-              playerId: entry.playerId,
-            },
-          },
-        },
-        orderBy: {
-          date: 'desc',
-        },
-        take: 10, // Look at last 10 sessions max
-      });
-
-      // Calculate current streak
-      const currentType: 'win' | 'loss' = profit > 0 ? 'win' : 'loss';
-      let streakCount = 0;
-      let isNew = true;
-
-      for (const session of recentSessions) {
-        const sessionEntry = session.entries[0];
-        const sessionProfit = sessionEntry.cashOut - sessionEntry.buyIn;
-
-        if (sessionProfit === 0) continue; // Skip break-even
-
-        const sessionType: 'win' | 'loss' = sessionProfit > 0 ? 'win' : 'loss';
-
-        if (sessionType === currentType) {
-          streakCount++;
-        } else {
-          break; // Streak broken
-        }
-      }
-
-      // Only report streaks of 2 or more
-      if (streakCount >= 2) {
-        // Check if this is a new streak (previous session was opposite result)
-        if (recentSessions.length > 1) {
-          const prevSessionEntry = recentSessions[1].entries[0];
-          const prevProfit = prevSessionEntry.cashOut - prevSessionEntry.buyIn;
-          const prevType: 'win' | 'loss' | null =
-            prevProfit === 0 ? null : prevProfit > 0 ? 'win' : 'loss';
-          isNew = prevType !== currentType && prevType !== null;
-        }
-
-        streaks.push({
-          playerId: entry.playerId,
-          playerName: entry.player.name,
-          type: currentType,
-          count: streakCount,
-          isNew,
-        });
-      }
-    }
-
-    return streaks;
-  }
-
-  /**
-   * Calculate milestones achieved
-   */
-  private async calculateMilestones(
-    entries: any[],
-    groupId: string,
-    rankingsAfter: Map<string, number>
-  ): Promise<Milestone[]> {
-    const milestones: Milestone[] = [];
-
-    for (const entry of entries) {
-      const profit = entry.cashOut - entry.buyIn;
-
-      // Get player's all-time stats
-      const playerSessions = await prisma.session.findMany({
-        where: {
-          groupId,
-          deletedAt: null,
-          entries: {
-            some: {
-              playerId: entry.playerId,
-            },
-          },
-        },
-        include: {
-          entries: {
-            where: {
-              playerId: entry.playerId,
-            },
-          },
-        },
-      });
-
-      // Calculate total games and best session
-      const totalGames = playerSessions.length;
-      let totalProfit = 0;
-      let bestSession = profit;
-
-      for (const session of playerSessions) {
-        const sessionEntry = session.entries[0];
-        const sessionProfit = sessionEntry.cashOut - sessionEntry.buyIn;
-        totalProfit += sessionProfit;
-        if (sessionProfit > bestSession) {
-          bestSession = sessionProfit;
-        }
-      }
-
-      // Best session ever
-      if (profit > 0 && profit === bestSession) {
-        milestones.push({
-          playerId: entry.playerId,
-          playerName: entry.player.name,
-          type: 'best_session',
-          description: `Best session ever!`,
-          value: round(profit),
-        });
-      }
-
-      // Total games milestones (10, 25, 50, 100)
-      const gameMilestones = [10, 25, 50, 100];
-      for (const milestone of gameMilestones) {
-        if (totalGames === milestone) {
-          milestones.push({
-            playerId: entry.playerId,
-            playerName: entry.player.name,
-            type: 'total_games',
-            description: `${milestone} games played!`,
-            value: milestone,
-          });
-        }
-      }
-
-      // Total profit milestones for low-stakes games ($50, $100, $250, $500)
-      const profitMilestones = [50, 100, 250, 500];
-      for (const milestone of profitMilestones) {
-        if (totalProfit >= milestone && totalProfit - profit < milestone) {
-          milestones.push({
-            playerId: entry.playerId,
-            playerName: entry.player.name,
-            type: 'total_profit',
-            description: `Crossed $${milestone} total profit!`,
-            value: milestone,
-          });
-        }
-      }
-
-      // First time in top 3
-      const currentRank = rankingsAfter.get(entry.playerId);
-      if (currentRank && currentRank <= 3) {
-        // Check if they weren't in top 3 before
-        const prevRank = await this.getPreviousRank(entry.playerId, groupId, entry.sessionId);
-        if (!prevRank || prevRank > 3) {
-          milestones.push({
-            playerId: entry.playerId,
-            playerName: entry.player.name,
-            type: 'top_3',
-            description: `Made it to top 3!`,
-            value: currentRank,
-          });
-        }
-      }
-    }
-
-    return milestones;
-  }
-
-  /**
-   * Helper to get player's rank before current session
-   */
-  private async getPreviousRank(
-    playerId: string,
-    groupId: string,
-    currentSessionId: string
-  ): Promise<number | null> {
-    const currentSession = await prisma.session.findUnique({
-      where: { id: currentSessionId },
-    });
-
-    if (!currentSession) return null;
-
-    const rankings = await this.calculateRankings(groupId, currentSession.date, true);
-    return rankings.get(playerId) || null;
   }
 }
 

@@ -10,6 +10,28 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-08-02 — Session summary refactor + schema-driven backup (F-08)
+
+Internal; no user-visible behaviour change, verified by the integration suite staying green.
+
+- **Backup import no longer hand-lists columns.** It listed each model's fields explicitly in its
+  create and update calls, so *every new column was a silent data-loss bug on restore*. That
+  happened three times running — `status`/`settlements`/`completedAt`/`deletedAt` (F-01),
+  `cashedOutAt` (F-04), `derived` (F-07) — each caught by luck. Row shaping is now driven off
+  Prisma's schema, so a new column is carried automatically, and a test asserts every scalar field
+  survives for every model. `BACKED_UP_MODELS` is asserted against the schema too, so adding a
+  model without deciding whether it belongs in backups fails the build.
+- **`sessionSummaryService` fetches once instead of per player.** It ran one full-history query per
+  player in the session, plus a complete ranking recomputation nested inside that loop. Measured on
+  an 8-player night with 12 nights of history: **25 queries → 2**, and now constant regardless of
+  table size. The rules moved to a pure `sessionSummaryRules` module (+29 unit tests) — previously
+  the milestone and streak logic had none at all.
+- Sessions sharing a date now sort deterministically by `createdAt`; previously the ordering was
+  undefined and streak results could vary between calls.
+
+### Tests
+- +51 server unit (185 → 236).
+
 ### 2026-08-02 — Wave 2: one definition of a rebuy (F-07)
 
 **The Banter Pack's brags were wrong for half the group's history.** `RebuyEvent` rows were only

@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { coerceBackupRow, type BackedUpModel } from './backupRows';
 
 /**
  * Backup / restore.
@@ -292,224 +293,94 @@ export class BackupService {
             await tx.group.deleteMany({ where: { id: inScope } });
           }
 
-          for (const group of backup.data.groups) {
-            await upsert(
-              'groups',
-              `Group ${group.name}`,
-              () => tx.group.findUnique({ where: { id: group.id } }),
-              () =>
-                tx.group.update({
-                  where: { id: group.id },
-                  data: {
-                    name: group.name,
-                    defaultBuyIn: group.defaultBuyIn,
-                    currency: group.currency,
-                    ...(group.userRole !== undefined && { userRole: group.userRole }),
-                  },
-                }),
-              () =>
-                tx.group.create({
-                  data: {
-                    id: group.id,
-                    name: group.name,
-                    defaultBuyIn: group.defaultBuyIn,
-                    currency: group.currency,
-                    ...(group.userRole !== undefined && { userRole: group.userRole }),
-                    createdAt: new Date(group.createdAt),
-                    updatedAt: new Date(group.updatedAt),
-                  },
-                })
-            );
-          }
+          // Import order respects FK dependencies: parents before children.
+          // Row shaping is schema-driven (see backupRows.ts) so a new column is
+          // carried automatically instead of being silently dropped on restore.
+          const IMPORT_ORDER: Array<{
+            kind: keyof ImportReport['imported'];
+            model: BackedUpModel;
+            rows: any[];
+            label: (row: any) => string;
+            find: (id: string) => Promise<unknown>;
+            update: (id: string, data: any) => Promise<unknown>;
+            create: (data: any) => Promise<unknown>;
+          }> = [
+            {
+              kind: 'groups',
+              model: 'Group',
+              rows: backup.data.groups ?? [],
+              label: (r) => `Group ${r.name}`,
+              find: (id) => tx.group.findUnique({ where: { id } }),
+              update: (id, data) => tx.group.update({ where: { id }, data }),
+              create: (data) => tx.group.create({ data }),
+            },
+            {
+              kind: 'players',
+              model: 'Player',
+              rows: backup.data.players ?? [],
+              label: (r) => `Player ${r.name}`,
+              find: (id) => tx.player.findUnique({ where: { id } }),
+              update: (id, data) => tx.player.update({ where: { id }, data }),
+              create: (data) => tx.player.create({ data }),
+            },
+            {
+              kind: 'sessions',
+              model: 'Session',
+              rows: backup.data.sessions ?? [],
+              label: (r) => `Session ${r.id}`,
+              find: (id) => tx.session.findUnique({ where: { id } }),
+              update: (id, data) => tx.session.update({ where: { id }, data }),
+              create: (data) => tx.session.create({ data }),
+            },
+            {
+              kind: 'entries',
+              model: 'SessionEntry',
+              rows: backup.data.entries ?? [],
+              label: (r) => `Entry ${r.id}`,
+              find: (id) => tx.sessionEntry.findUnique({ where: { id } }),
+              update: (id, data) => tx.sessionEntry.update({ where: { id }, data }),
+              create: (data) => tx.sessionEntry.create({ data }),
+            },
+            {
+              kind: 'rebuyEvents',
+              model: 'RebuyEvent',
+              rows: backup.data.rebuyEvents ?? [],
+              label: (r) => `Rebuy ${r.id}`,
+              find: (id) => tx.rebuyEvent.findUnique({ where: { id } }),
+              update: (id, data) => tx.rebuyEvent.update({ where: { id }, data }),
+              create: (data) => tx.rebuyEvent.create({ data }),
+            },
+            {
+              kind: 'playerNotes',
+              model: 'PlayerNote',
+              rows: backup.data.playerNotes ?? [],
+              label: (r) => `Note ${r.id}`,
+              find: (id) => tx.playerNote.findUnique({ where: { id } }),
+              update: (id, data) => tx.playerNote.update({ where: { id }, data }),
+              create: (data) => tx.playerNote.create({ data }),
+            },
+            {
+              kind: 'templates',
+              model: 'SessionTemplate',
+              rows: backup.data.templates ?? [],
+              label: (r) => `Template ${r.name}`,
+              find: (id) => tx.sessionTemplate.findUnique({ where: { id } }),
+              update: (id, data) => tx.sessionTemplate.update({ where: { id }, data }),
+              create: (data) => tx.sessionTemplate.create({ data }),
+            },
+          ];
 
-          for (const player of backup.data.players) {
-            await upsert(
-              'players',
-              `Player ${player.name}`,
-              () => tx.player.findUnique({ where: { id: player.id } }),
-              () =>
-                tx.player.update({
-                  where: { id: player.id },
-                  data: {
-                    name: player.name,
-                    avatarUrl: player.avatarUrl,
-                    isActive: player.isActive,
-                  },
-                }),
-              () =>
-                tx.player.create({
-                  data: {
-                    id: player.id,
-                    groupId: player.groupId,
-                    name: player.name,
-                    avatarUrl: player.avatarUrl,
-                    isActive: player.isActive,
-                    createdAt: new Date(player.createdAt),
-                    updatedAt: new Date(player.updatedAt),
-                  },
-                })
-            );
-          }
-
-          for (const session of backup.data.sessions) {
-            // v1 files carry none of these; default to the shape v1 implicitly
-            // assumed (a completed, non-deleted session) rather than writing null
-            // status, which nothing downstream expects.
-            const lifecycle = {
-              status: session.status ?? 'COMPLETED',
-              settlements: session.settlements ?? null,
-              completedAt: session.completedAt ? new Date(session.completedAt) : null,
-              deletedAt: session.deletedAt ? new Date(session.deletedAt) : null,
-            };
-
-            await upsert(
-              'sessions',
-              `Session ${session.id}`,
-              () => tx.session.findUnique({ where: { id: session.id } }),
-              () =>
-                tx.session.update({
-                  where: { id: session.id },
-                  data: {
-                    date: new Date(session.date),
-                    startTime: session.startTime,
-                    endTime: session.endTime,
-                    location: session.location,
-                    notes: session.notes,
-                    photoUrls: session.photoUrls,
-                    ...lifecycle,
-                  },
-                }),
-              () =>
-                tx.session.create({
-                  data: {
-                    id: session.id,
-                    groupId: session.groupId,
-                    date: new Date(session.date),
-                    startTime: session.startTime,
-                    endTime: session.endTime,
-                    location: session.location,
-                    notes: session.notes,
-                    photoUrls: session.photoUrls,
-                    ...lifecycle,
-                    createdAt: new Date(session.createdAt),
-                    updatedAt: new Date(session.updatedAt),
-                  },
-                })
-            );
-          }
-
-          for (const entry of backup.data.entries) {
-            // Absent on v1 files and on rows written before early cash-out existed;
-            // null is exactly what those rows mean ("still at the table").
-            const cashedOutAt = entry.cashedOutAt ? new Date(entry.cashedOutAt) : null;
-
-            await upsert(
-              'entries',
-              `Entry ${entry.id}`,
-              () => tx.sessionEntry.findUnique({ where: { id: entry.id } }),
-              () =>
-                tx.sessionEntry.update({
-                  where: { id: entry.id },
-                  data: { buyIn: entry.buyIn, cashOut: entry.cashOut, cashedOutAt },
-                }),
-              () =>
-                tx.sessionEntry.create({
-                  data: {
-                    id: entry.id,
-                    sessionId: entry.sessionId,
-                    playerId: entry.playerId,
-                    buyIn: entry.buyIn,
-                    cashOut: entry.cashOut,
-                    cashedOutAt,
-                    createdAt: new Date(entry.createdAt),
-                    updatedAt: new Date(entry.updatedAt),
-                  },
-                })
-            );
-          }
-
-          for (const rebuy of backup.data.rebuyEvents ?? []) {
-            // Absent on rows written before the derived flag existed; false is what
-            // those rows mean (recorded live), which is also the safe default —
-            // a restore must never silently reclassify real history as derived.
-            const derived = rebuy.derived === true;
-
-            await upsert(
-              'rebuyEvents',
-              `Rebuy ${rebuy.id}`,
-              () => tx.rebuyEvent.findUnique({ where: { id: rebuy.id } }),
-              () =>
-                tx.rebuyEvent.update({
-                  where: { id: rebuy.id },
-                  data: { amount: rebuy.amount, derived },
-                }),
-              () =>
-                tx.rebuyEvent.create({
-                  data: {
-                    id: rebuy.id,
-                    sessionId: rebuy.sessionId,
-                    playerId: rebuy.playerId,
-                    amount: rebuy.amount,
-                    derived,
-                    createdAt: new Date(rebuy.createdAt),
-                  },
-                })
-            );
-          }
-
-          for (const note of backup.data.playerNotes ?? []) {
-            await upsert(
-              'playerNotes',
-              `Note ${note.id}`,
-              () => tx.playerNote.findUnique({ where: { id: note.id } }),
-              () =>
-                tx.playerNote.update({
-                  where: { id: note.id },
-                  data: { note: note.note, tags: note.tags },
-                }),
-              () =>
-                tx.playerNote.create({
-                  data: {
-                    id: note.id,
-                    playerId: note.playerId,
-                    note: note.note,
-                    tags: note.tags,
-                    createdAt: new Date(note.createdAt),
-                    updatedAt: new Date(note.updatedAt),
-                  },
-                })
-            );
-          }
-
-          for (const template of backup.data.templates ?? []) {
-            await upsert(
-              'templates',
-              `Template ${template.name}`,
-              () => tx.sessionTemplate.findUnique({ where: { id: template.id } }),
-              () =>
-                tx.sessionTemplate.update({
-                  where: { id: template.id },
-                  data: {
-                    name: template.name,
-                    location: template.location,
-                    defaultTime: template.defaultTime,
-                    playerIds: template.playerIds,
-                  },
-                }),
-              () =>
-                tx.sessionTemplate.create({
-                  data: {
-                    id: template.id,
-                    groupId: template.groupId,
-                    name: template.name,
-                    location: template.location,
-                    defaultTime: template.defaultTime,
-                    playerIds: template.playerIds,
-                    createdAt: new Date(template.createdAt),
-                    updatedAt: new Date(template.updatedAt),
-                  },
-                })
-            );
+          for (const step of IMPORT_ORDER) {
+            for (const row of step.rows) {
+              await upsert(
+                step.kind,
+                step.label(row),
+                () => step.find(row.id),
+                // Never rewrite a primary key on update.
+                () => step.update(row.id, coerceBackupRow(step.model, row, { omitId: true })),
+                () => step.create(coerceBackupRow(step.model, row))
+              );
+            }
           }
         },
         // A full-group restore does far more work than the default 5s interactive
