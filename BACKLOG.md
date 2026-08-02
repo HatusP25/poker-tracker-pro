@@ -63,15 +63,10 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 - **[P3·M] PWA / offline** — revisit *after* F-06, not before.
 - **[P3·S] Multi-group comparisons.**
 
-## Hygiene — fold into whatever branch touches the area
+## Hygiene
 
-- **[S] Delete the Vite scaffold** — `client/src/main.ts` + `client/src/counter.ts` are the
-  untouched template click-counter, unreferenced by `index.html`.
-- **[S] Retire dead trend endpoints** — `/stats/groups/:groupId/trends` still serves the zero-sum
-  quantity whose chart was deleted 2026-07-12; `useProfitTrend`, `useAggregatedStats` and
-  `statsApi.checkSessionBalance` have no consumers.
-- **[S] Refresh `docs/ai-audit/`** — `product-gap-analysis.md` and `open-questions.md` claim there
-  are no tests and no CI, and recommend metrics D-002 rejects.
+*(all cleared 2026-08-02 — Vite scaffold deleted, dead trend endpoints retired, stale ai-audit
+docs marked superseded)*
 
 ---
 

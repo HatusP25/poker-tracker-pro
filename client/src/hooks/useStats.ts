@@ -39,16 +39,6 @@ export const useDashboardStats = (groupId: string) => {
   });
 };
 
-export const useProfitTrend = (groupId: string, period: 'daily' | 'weekly' | 'monthly' = 'daily') => {
-  return useQuery({
-    queryKey: ['stats', 'trend', groupId, period],
-    queryFn: async () => {
-      const response = await statsApi.getProfitTrend(groupId, period);
-      return response.data;
-    },
-    enabled: !!groupId,
-  });
-};
 
 export const usePlayerStreaks = (groupId: string) => {
   return useQuery({
@@ -61,16 +51,6 @@ export const usePlayerStreaks = (groupId: string) => {
   });
 };
 
-export const useAggregatedStats = (groupId: string, year: number, month?: number) => {
-  return useQuery({
-    queryKey: ['stats', 'aggregates', groupId, year, month],
-    queryFn: async () => {
-      const response = await statsApi.getAggregatedStats(groupId, year, month);
-      return response.data;
-    },
-    enabled: !!groupId,
-  });
-};
 
 export const usePlayerPerformanceTrend = (playerId: string) => {
   return useQuery({

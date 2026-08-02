@@ -102,14 +102,6 @@ export const statsApi = {
   getDashboard: (groupId: string) =>
     api.get<DashboardStats>(`/stats/groups/${groupId}/dashboard`),
   getSessionStats: (sessionId: string) => api.get(`/stats/sessions/${sessionId}/stats`),
-  checkBalance: (sessionId: string, threshold?: number) =>
-    api.get(`/stats/sessions/${sessionId}/balance-check`, {
-      params: { threshold },
-    }),
-  getProfitTrend: (groupId: string, period?: 'daily' | 'weekly' | 'monthly') =>
-    api.get<{ date: string; profit: number; sessions: number }[]>(`/stats/groups/${groupId}/trends`, {
-      params: { period },
-    }),
   getPlayerStreaks: (groupId: string) =>
     api.get<{
       playerId: string;
@@ -119,16 +111,6 @@ export const statsApi = {
       longestWinStreak: number;
       longestLossStreak: number;
     }[]>(`/stats/groups/${groupId}/streaks`),
-  getAggregatedStats: (groupId: string, year: number, month?: number) =>
-    api.get<{
-      period: string;
-      totalSessions: number;
-      totalPlayers: number;
-      totalPot: number;
-      avgSessionSize: number;
-    }>(`/stats/groups/${groupId}/aggregates`, {
-      params: { year, month },
-    }),
   getPlayerPerformanceTrend: (playerId: string) =>
     api.get<Array<{
       date: string;
