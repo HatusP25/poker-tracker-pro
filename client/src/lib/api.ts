@@ -211,6 +211,12 @@ export const liveSessionsApi = {
     api.delete(`/live-sessions/${sessionId}/rebuys/${rebuyId}`),
   addPlayer: (sessionId: string, data: { playerId: string; buyIn: number }) =>
     api.post(`/live-sessions/${sessionId}/add-player`, data),
+  // Cash a player out mid-session because they're leaving; their result is locked
+  // in from that moment and End Session stops asking for it.
+  cashOut: (sessionId: string, data: { playerId: string; cashOut: number }) =>
+    api.post(`/live-sessions/${sessionId}/cash-out`, data),
+  undoCashOut: (sessionId: string, playerId: string) =>
+    api.delete(`/live-sessions/${sessionId}/cash-out/${playerId}`),
   end: (sessionId: string, data: { endTime: string; cashOuts: Array<{ playerId: string; cashOut: number }> }) =>
     api.post(`/live-sessions/${sessionId}/end`, data),
   reopen: (sessionId: string) => api.post(`/live-sessions/${sessionId}/reopen`, {}),

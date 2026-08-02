@@ -23,14 +23,14 @@ test('live session: start -> rebuy -> end -> settlement', async ({ page, request
   await expect(page.getByText('Current Standings')).toBeVisible();
 
   // Add a $100 rebuy for Alice -> her buy-in becomes $200.
-  await page.getByRole('button', { name: 'Add Rebuy' }).click();
+  await page.getByRole('button', { name: 'Rebuy', exact: true }).click();
   await page.getByRole('combobox').click();
   await page.getByRole('option', { name: /Alice/ }).click();
   // Amount input defaults to the $100 default buy-in.
   await page.getByRole('button', { name: 'Add Rebuy' }).last().click();
 
   // Standings now show Alice at $200.
-  await expect(page.getByRole('cell', { name: '$200.00' })).toBeVisible();
+  await expect(page.getByTestId('standing-Alice')).toContainText('$200.00');
 
   // End the session: Alice cashes out $0, Bob cashes out $300 (zero-sum vs $300 pot).
   await page.getByRole('button', { name: 'End Session' }).click();

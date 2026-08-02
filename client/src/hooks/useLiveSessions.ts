@@ -105,6 +105,49 @@ export const useAddPlayerToSession = () => {
   });
 };
 
+export const useCashOutPlayer = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      playerId,
+      cashOut,
+    }: {
+      sessionId: string;
+      playerId: string;
+      cashOut: number;
+    }) => liveSessionsApi.cashOut(sessionId, { playerId, cashOut }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['live-session', variables.sessionId] });
+      toast.success('Player cashed out');
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || error.response?.data?.error || 'Failed to cash out player'
+      );
+    },
+  });
+};
+
+export const useUndoCashOut = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, playerId }: { sessionId: string; playerId: string }) =>
+      liveSessionsApi.undoCashOut(sessionId, playerId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['live-session', variables.sessionId] });
+      toast.success('Player is back at the table');
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || error.response?.data?.error || 'Failed to undo cash-out'
+      );
+    },
+  });
+};
+
 export const useEndLiveSession = () => {
   const queryClient = useQueryClient();
 

@@ -12,6 +12,30 @@ import { prisma } from '../lib/prisma';
 import { calculateSessionSettlements } from './settlementService';
 import { isValidBuyIn, isValidCashOut, ValidationError } from '../utils/validators';
 import { adjustBuyInForRebuyChange, round } from '../utils/calculations';
+import {
+  planEarlyCashOut,
+  planUndoCashOut,
+  entriesAwaitingCashOut,
+  type CashOutEntryRow,
+} from './liveSessionRules';
+
+/** Shape the pure rules in liveSessionRules operate on. */
+const toRuleRows = (
+  entries: Array<{
+    playerId: string;
+    buyIn: number;
+    cashOut: number;
+    cashedOutAt: Date | null;
+    player: { name: string };
+  }>
+): CashOutEntryRow[] =>
+  entries.map((e) => ({
+    playerId: e.playerId,
+    playerName: e.player.name,
+    buyIn: e.buyIn,
+    cashOut: e.cashOut,
+    cashedOutAt: e.cashedOutAt,
+  }));
 
 export class LiveSessionService {
   /**
@@ -145,10 +169,19 @@ export class LiveSessionService {
           playerId,
         },
       },
+      include: { player: true },
     });
 
     if (!entry) {
       throw new Error('Player not in this session');
+    }
+
+    // A cashed-out player's night is closed: their result is already recorded, so
+    // a rebuy against it would silently invalidate it.
+    if (entry.cashedOutAt) {
+      throw new ValidationError(
+        `${entry.player.name} has cashed out — undo the cash-out before adding a rebuy`
+      );
     }
 
     // Use transaction to update entry AND create rebuy event
@@ -302,6 +335,77 @@ export class LiveSessionService {
   }
 
   /**
+   * Cash a player out before the night ends.
+   *
+   * People leave home games early all the time; before this existed, the departing
+   * player's stack had to be remembered in someone's head until the final cash-out.
+   * Their result is recorded now and locked (no further rebuys), they stay visible
+   * in standings, and End Session stops asking for a number it already has.
+   *
+   * Only the settlement math at End Session decides who owes whom — this writes a
+   * cash-out, nothing more.
+   */
+  async cashOutPlayer(sessionId: string, playerId: string, cashOut: number) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { entries: { include: { player: true } } },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'IN_PROGRESS') {
+      throw new ValidationError('Can only cash players out of in-progress sessions');
+    }
+
+    const plan = planEarlyCashOut(toRuleRows(session.entries), playerId, cashOut);
+    if (!plan.ok) {
+      throw new ValidationError(plan.reason);
+    }
+
+    const entry = session.entries.find((e) => e.playerId === playerId)!;
+
+    return prisma.sessionEntry.update({
+      where: { id: entry.id },
+      data: { cashOut, cashedOutAt: new Date() },
+      include: { player: true },
+    });
+  }
+
+  /**
+   * Undo an early cash-out recorded by mistake (or for someone who sat back down).
+   * Clears the timestamp and resets the amount, returning them to the table.
+   */
+  async undoCashOut(sessionId: string, playerId: string) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { entries: { include: { player: true } } },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'IN_PROGRESS') {
+      throw new ValidationError('Can only undo cash-outs on in-progress sessions');
+    }
+
+    const plan = planUndoCashOut(toRuleRows(session.entries), playerId);
+    if (!plan.ok) {
+      throw new ValidationError(plan.reason);
+    }
+
+    const entry = session.entries.find((e) => e.playerId === playerId)!;
+
+    return prisma.sessionEntry.update({
+      where: { id: entry.id },
+      data: { cashOut: 0, cashedOutAt: null },
+      include: { player: true },
+    });
+  }
+
+  /**
    * Add a new player to an in-progress session
    */
   async addPlayer(sessionId: string, playerId: string, buyIn: number) {
@@ -378,17 +482,30 @@ export class LiveSessionService {
       throw new Error('Session is not in progress');
     }
 
-    // Validate all players have a valid cash-out
-    const cashOutMap = new Map(data.cashOuts.map(c => [c.playerId, c.cashOut]));
+    // Players who left early already have a recorded result; End Session only needs
+    // numbers for whoever is still at the table. A late cash-out for someone who
+    // already settled is ignored rather than silently overwriting their result.
+    const submitted = new Map(data.cashOuts.map(c => [c.playerId, c.cashOut]));
+    const awaiting = entriesAwaitingCashOut(toRuleRows(session.entries));
 
-    for (const entry of session.entries) {
-      if (!cashOutMap.has(entry.playerId)) {
-        throw new ValidationError(`Missing cash-out for player: ${entry.player.name}`);
+    for (const entry of awaiting) {
+      if (!submitted.has(entry.playerId)) {
+        throw new ValidationError(`Missing cash-out for player: ${entry.playerName}`);
       }
-      if (!isValidCashOut(cashOutMap.get(entry.playerId)!)) {
-        throw new ValidationError(`Invalid cash-out for player: ${entry.player.name}`);
+      if (!isValidCashOut(submitted.get(entry.playerId)!)) {
+        throw new ValidationError(`Invalid cash-out for player: ${entry.playerName}`);
       }
     }
+
+    // Final value per player: their early cash-out if they have one, else what was
+    // just submitted. Every entry gets a number, so the zero-sum check below sees
+    // the whole table.
+    const cashOutMap = new Map(
+      session.entries.map(e => [
+        e.playerId,
+        e.cashedOutAt !== null ? e.cashOut : submitted.get(e.playerId)!,
+      ])
+    );
 
     // Compute settlements from the about-to-be-saved cash-outs. This validates
     // zero-sum (throws ValidationError -> 400) BEFORE we persist anything, so a

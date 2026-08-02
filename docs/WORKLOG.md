@@ -10,6 +10,53 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-07-30 — Wave 1: the live night (F-04, F-05, F-06)
+
+**Why** The last two feature waves both landed *after* the game. `LiveSessionView` — the one
+screen used with people at the table — had had no product attention and carried a real functional
+hole. Spec: `docs/superpowers/specs/2026-07-30-feature-roadmap.md` (Wave 1). Plan:
+`docs/superpowers/plans/2026-07-30-wave-1-live-night.md`.
+
+**Changed**
+- **F-04 early cash-out.** Migration `20260730220435_add_session_entry_cashed_out_at` — one
+  nullable column, no data touched (`ALTER TABLE ... ADD COLUMN "cashedOutAt" TIMESTAMP(3)`);
+  null means "still at the table", which is what every pre-existing row already means.
+  New pure `liveSessionRules.ts` (+19 unit tests): `planEarlyCashOut`, `planUndoCashOut`,
+  `entriesAwaitingCashOut`, following the insightsService convention so every rejection branch is
+  testable without a DB. `liveSessionService.cashOutPlayer` / `undoCashOut`; `addRebuy` rejects a
+  cashed-out player; `endSession` only demands numbers for `entriesAwaitingCashOut` and takes the
+  recorded value for everyone else — a stale resubmitted value for a departed player is ignored
+  rather than overwriting a real result. `reopenSession` deliberately keeps early cash-outs.
+  Routes `POST /live-sessions/:id/cash-out` and `DELETE /live-sessions/:id/cash-out/:playerId`.
+  Client: `CashOutDialog`, per-player action on the standings card, `useCashOutPlayer` /
+  `useUndoCashOut`. Integration: `tests/integration/earlyCashOut.test.ts` (17).
+- **F-05 reconciliation.** Pure `client/src/lib/reconcile.ts` (+18 unit tests):
+  `computeDiscrepancy`, `splitEvenly`, `assignToOne`. All arithmetic in integer cents so the
+  adjusted set sums *exactly* to the buy-in total; indivisible remainders go out a cent at a time
+  (a 3-way split of $1.00 is 0.34/0.33/0.33); refuses rather than clamping when an adjustment
+  would drive a cash-out below zero. `EndSessionDialog` surfaces the difference and the two
+  resolutions. **Server untouched** — `calculateSessionSettlements` stays as strict as it was.
+- **F-06 phone-first.** New `PlayerStandingCard` replaces the four-column standings table (one
+  layout for both phone and desktop — a home game is under ten players, so cards read fine on a
+  laptop). Action bar is `sticky bottom-0` on small screens. `inputMode="decimal"` on every money
+  input across live and session forms. `EndSessionDialog` rows stack below `sm`.
+
+**Bugs found and fixed while here**
+- `EndSessionDialog` allowed a **1% tolerance** the server rejects outright, so a large pot could
+  pass the client check and then fail the request. It now matches the server exactly.
+- Backup import listed `sessionEntry` fields explicitly, so the new `cashedOutAt` would have been
+  silently dropped on restore — the exact class of bug Wave 0 existed to kill. Caught before
+  shipping; round-trip test added.
+
+**Verified visually, not just asserted:** screenshots at 390px and 1280px during development
+caught the End Session dialog overflowing a phone viewport (values clipped off-screen) and a
+bare-icon cash-out button that was unreadable without a label. Both fixed.
+
+**Verification** server unit 152 ✓ · integration 92 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 72 ✓ · client build ✓ · E2E 16 ✓ against the production artifact.
+
+---
+
 ## 2026-07-30 — Wave 0: data safety (F-01, F-02, F-03)
 
 **Why** A full codebase analysis (`docs/ai-audit/2026-07-30-codebase-analysis.md`) found two

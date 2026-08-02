@@ -46,7 +46,13 @@ async function seedGroup(name: string) {
       entries: {
         create: [
           { playerId: ana.id, buyIn: 10, cashOut: 35 },
-          { playerId: dave.id, buyIn: 30, cashOut: 5 },
+          // Dave left early — his cashedOutAt must survive a round trip.
+          {
+            playerId: dave.id,
+            buyIn: 30,
+            cashOut: 5,
+            cashedOutAt: new Date('2026-05-01T22:15:00.000Z'),
+          },
         ],
       },
       rebuyEvents: {
@@ -228,6 +234,26 @@ describe('backup round trip', () => {
     // And it must stay out of the live set.
     const live = await prisma.session.findMany({ where: { groupId: group.id, deletedAt: null } });
     expect(live.map((s) => s.id)).not.toContain(deleted.id);
+  });
+
+  it('preserves an early cash-out through a restore', async () => {
+    const { group, dave } = await seedGroup('EarlyExit');
+    const backup = await backupService.exportDatabase(group.id);
+
+    await prisma.rebuyEvent.deleteMany();
+    await prisma.sessionEntry.deleteMany();
+    await prisma.playerNote.deleteMany();
+    await prisma.sessionTemplate.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.player.deleteMany();
+    await prisma.group.deleteMany();
+
+    await backupService.importDatabase(backup, { mode: 'merge', skipDuplicates: false });
+
+    const restored = await prisma.sessionEntry.findFirst({
+      where: { playerId: dave.id, cashedOutAt: { not: null } },
+    });
+    expect(restored?.cashedOutAt?.toISOString()).toBe('2026-05-01T22:15:00.000Z');
   });
 
   it('restores rebuy events, notes and templates that v1 silently destroyed', async () => {

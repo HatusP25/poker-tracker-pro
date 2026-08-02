@@ -252,6 +252,7 @@ const LiveSessionStart = () => {
                     <span className="text-sm text-muted-foreground">Buy-in:</span>
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       max={MAX_BUY_IN}

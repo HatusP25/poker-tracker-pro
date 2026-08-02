@@ -6,6 +6,8 @@ import {
   updateRebuy,
   deleteRebuy,
   addPlayer,
+  cashOutPlayer,
+  undoCashOut,
   endLiveSession,
   reopenLiveSession,
   getActiveSessions,
@@ -29,6 +31,10 @@ router.delete('/:sessionId/rebuys/:rebuyId', deleteRebuy);
 
 // Add new player mid-game
 router.post('/:sessionId/add-player', addPlayer);
+
+// Cash a player out early (they left before the night ended), and undo that
+router.post('/:sessionId/cash-out', cashOutPlayer);
+router.delete('/:sessionId/cash-out/:playerId', undoCashOut);
 
 // End session and calculate settlements
 router.post('/:sessionId/end', endLiveSession);

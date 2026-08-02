@@ -74,13 +74,14 @@ model Session {
 
 // SessionEntry - individual player results for a session
 model SessionEntry {
-  id        String   @id @default(cuid())
-  sessionId String
-  playerId  String
-  buyIn     Float // Total buy-in amount (including rebuys)
-  cashOut   Float // Cash-out amount
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  sessionId   String
+  playerId    String
+  buyIn       Float // Total buy-in amount (including rebuys)
+  cashOut     Float // Cash-out amount
+  cashedOutAt DateTime? // Set when a player leaves an in-progress session early; null = still at the table
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   player  Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)

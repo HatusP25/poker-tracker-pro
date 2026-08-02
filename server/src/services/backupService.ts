@@ -399,6 +399,10 @@ export class BackupService {
           }
 
           for (const entry of backup.data.entries) {
+            // Absent on v1 files and on rows written before early cash-out existed;
+            // null is exactly what those rows mean ("still at the table").
+            const cashedOutAt = entry.cashedOutAt ? new Date(entry.cashedOutAt) : null;
+
             await upsert(
               'entries',
               `Entry ${entry.id}`,
@@ -406,7 +410,7 @@ export class BackupService {
               () =>
                 tx.sessionEntry.update({
                   where: { id: entry.id },
-                  data: { buyIn: entry.buyIn, cashOut: entry.cashOut },
+                  data: { buyIn: entry.buyIn, cashOut: entry.cashOut, cashedOutAt },
                 }),
               () =>
                 tx.sessionEntry.create({
@@ -416,6 +420,7 @@ export class BackupService {
                     playerId: entry.playerId,
                     buyIn: entry.buyIn,
                     cashOut: entry.cashOut,
+                    cashedOutAt,
                     createdAt: new Date(entry.createdAt),
                     updatedAt: new Date(entry.updatedAt),
                   },

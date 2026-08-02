@@ -34,14 +34,8 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 ## P1 — High value, ready to pick up
 
-- **[P1·M] F-04 Early cash-out in live sessions.** A player who leaves at 11pm can't be cashed out
-  without ending the night. Clearest functional hole in the app. Additive column
-  (`SessionEntry.cashedOutAt`).
-- **[P1·S] F-05 Reconciliation helper.** Cash-outs that don't sum to buy-ins are a routine
-  end-of-night event handled today as a hard error the user resolves by fudging numbers. Offer
-  split-evenly / assign-to-one. Client-side only; the server's zero-sum validator stays authoritative.
-- **[P1·M] F-06 Phone-first live session.** The one screen used at the table is a desktop data
-  table. F-04 and F-05 both land here — do the layout once.
+*(F-04, F-05 and F-06 shipped 2026-07-30, see [CHANGELOG.md](CHANGELOG.md))*
+
 - **[P1·M] F-07 One definition of a rebuy.** `RebuyEvent` rows only exist for *live-tracked*
   sessions, so ATM/Houdini/Phoenix/Rebuy Royalty/most-rebuys/biggest-comeback are silently biased
   against hand-entered nights. Four different rebuy formulas coexist; `totalRebuys` sums fractions.
