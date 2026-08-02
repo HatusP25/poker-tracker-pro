@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { round } from '../utils/calculations';
 import { computeNightTitles } from './banterService';
 import { NightTitle } from '../types/banter';
+import { withDerivedRebuyEvents } from '../utils/rebuys';
 
 interface RankingChange {
   playerId: string;
@@ -92,10 +93,15 @@ export class SessionSummaryService {
       rankingsAfter
     );
 
-    // 5. Find session highlights. Rebuy counts come from RebuyEvent rows (the single
-    // source of truth) rather than arithmetic on the buy-in total.
+    // 5. Find session highlights. Recorded RebuyEvent rows are the source of truth;
+    // a night that never had any falls back to the derivation from each buy-in.
+    const rebuyEvents = withDerivedRebuyEvents(
+      session.entries,
+      session.rebuyEvents,
+      session.group.defaultBuyIn
+    );
     const rebuysByPlayer = new Map<string, number>();
-    for (const r of session.rebuyEvents) {
+    for (const r of rebuyEvents) {
       rebuysByPlayer.set(r.playerId, (rebuysByPlayer.get(r.playerId) ?? 0) + 1);
     }
     const highlights = this.calculateHighlights(session.entries, rebuysByPlayer);
@@ -114,7 +120,7 @@ export class SessionSummaryService {
         buyIn: e.buyIn,
         cashOut: e.cashOut,
       })),
-      session.rebuyEvents.map((r) => ({ playerId: r.playerId, amount: r.amount }))
+      rebuyEvents
     );
 
     return {

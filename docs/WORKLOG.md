@@ -60,7 +60,18 @@ Wave 1 and the whole of Wave 0's F-01. Round-trip test added. This is now three 
 `sessionSummaryService`'s F-08 refactor should consider whether the explicit field lists in
 `backupService` want a shared, exhaustive mapping instead.
 
-**Verification** server unit 176 ✓ · integration 104 ✓ · server tsc ✓ · client tsc ✓ ·
+**Correction made before this reached the user.** As first written, F-07 counted RebuyEvent rows
+and nothing else — so every session predating rebuy-event writing would have reported **0 rebuys**
+until the backfill script was run. That is a visible regression on real history, gated behind a
+manual step, which is exactly the wrong trade. Fixed by deriving on read: `resolveRebuyCount` and
+`withDerivedRebuyEvents` fill the gap per player for any session with no recorded events, wired
+into `sessionService`, `statsService`, `sessionSummaryService`, `insightsService` and
+`banterService`. Recorded rows still win outright — a live night with one $20 rebuy reports 1, not
+the 4 its total implies. The backfill script is now an optimisation that persists the derivation
+and changes no displayed number. This is the D-004 principle the rest of the codebase already
+follows; reaching for a migration script first was the mistake.
+
+**Verification** server unit 185 ✓ · integration 110 ✓ · server tsc ✓ · client tsc ✓ ·
 client unit 72 ✓ · E2E 16 ✓ against the production artifact.
 
 ---

@@ -18,6 +18,7 @@ import {
   calculateLongestLossStreak,
   round,
 } from '../utils/calculations';
+import { resolveRebuyCount } from '../utils/rebuys';
 
 /**
  * Compute the inclusive start date for a leaderboard timeframe, relative to `now`.
@@ -121,12 +122,27 @@ export class StatsService {
     const bestSession = profits.length > 0 ? Math.max(...profits) : 0;
     const worstSession = profits.length > 0 ? Math.min(...profits) : 0;
 
-    // Count RebuyEvent rows rather than inferring from buy-in totals. The old
-    // arithmetic returned *fractions* — three $7 buy-ins at a $5 default reported
-    // "1.2 rebuys" — and disagreed with every other rebuy consumer in the app.
-    const totalRebuys = await prisma.rebuyEvent.count({
+    // Prefer recorded RebuyEvent rows; fall back per session to the derivation for
+    // nights that never had any. The old arithmetic returned *fractions* — three
+    // $7 buy-ins at a $5 default reported "1.2 rebuys" — and disagreed with every
+    // other rebuy consumer in the app.
+    const recordedRebuys = await prisma.rebuyEvent.groupBy({
+      by: ['sessionId'],
       where: { playerId, session: { deletedAt: null } },
+      _count: { _all: true },
     });
+    const recordedBySession = new Map(recordedRebuys.map(r => [r.sessionId, r._count._all]));
+
+    const totalRebuys = entries.reduce(
+      (sum, e) =>
+        sum +
+        resolveRebuyCount(
+          e.buyIn,
+          recordedBySession.get(e.sessionId) ?? 0,
+          player.group.defaultBuyIn
+        ),
+      0
+    );
 
     const currentStreak = calculateStreak(sessionResults);
     const longestWinStreak = calculateLongestWinStreak(sessionResults);

@@ -10,6 +10,7 @@ import {
   PlayerAchievements,
   AchievementsResponse,
 } from '../types/banter';
+import { withDerivedRebuyEvents } from '../utils/rebuys';
 
 // ---- In-memory row shapes (already fetched, DB-agnostic for unit tests) ----
 // Matches what insightsService fetches: Session { id, date, createdAt, status,
@@ -414,6 +415,7 @@ async function fetchBanterSessionRows(groupId: string): Promise<BanterSessionRow
     include: {
       entries: { include: { player: true } },
       rebuyEvents: true,
+      group: { select: { defaultBuyIn: true } },
     },
     orderBy: { date: 'asc' },
   });
@@ -430,7 +432,10 @@ async function fetchBanterSessionRows(groupId: string): Promise<BanterSessionRow
       buyIn: e.buyIn,
       cashOut: e.cashOut,
     })),
-    rebuyEvents: s.rebuyEvents.map((r) => ({ playerId: r.playerId, amount: r.amount })),
+    // Nights that never recorded rebuy events get them reconstructed from each
+    // buy-in, so ATM / Houdini / Phoenix / Rebuy Royalty reach hand-entered
+    // sessions instead of silently skipping them.
+    rebuyEvents: withDerivedRebuyEvents(s.entries, s.rebuyEvents, s.group.defaultBuyIn),
   }));
 }
 

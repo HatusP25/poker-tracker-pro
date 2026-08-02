@@ -169,6 +169,105 @@ describe('player stats count whole rebuys, not fractions', () => {
   });
 });
 
+describe('legacy sessions with no rebuy events at all', () => {
+  /**
+   * Every session that predates rebuy-event writing — and any restored from an old
+   * backup — has zero rows. Counting rows alone would report 0 rebuys for all of
+   * them until a backfill script ran, which would be a visible regression on real
+   * history. The read path derives instead, so the backfill is an optimisation
+   * rather than a correctness requirement.
+   */
+  async function legacySession(defaultBuyIn = 5) {
+    const { group, ana, dave } = await seedGroup(defaultBuyIn);
+    const session = await enterSession(group.id, [
+      { playerId: ana.id, buyIn: 5, cashOut: 25 },
+      { playerId: dave.id, buyIn: 20, cashOut: 0 },
+    ]);
+    // Strip the rows, reproducing the state of pre-2026-08-02 history.
+    await prisma.rebuyEvent.deleteMany({ where: { sessionId: session.id } });
+    return { group, ana, dave, session };
+  }
+
+  it('still reports rebuys on session detail', async () => {
+    const { dave, session } = await legacySession();
+    expect(await prisma.rebuyEvent.count()).toBe(0);
+
+    const res = await request(app).get(`/api/sessions/${session.id}`);
+    const entry = res.body.entries.find((e: any) => e.playerId === dave.id);
+    expect(entry.rebuys).toBe(3);
+  });
+
+  it('still reports rebuys in player stats', async () => {
+    const { dave } = await legacySession();
+
+    const res = await request(app).get(`/api/stats/players/${dave.id}/stats`);
+    expect(res.body.totalRebuys).toBe(3);
+  });
+
+  it('still crowns the rebuy-based night titles', async () => {
+    const { group, ana, dave } = await seedGroup(5);
+    const session = await enterSession(group.id, [
+      { playerId: ana.id, buyIn: 20, cashOut: 5 },
+      { playerId: dave.id, buyIn: 15, cashOut: 30 },
+    ]);
+    await prisma.rebuyEvent.deleteMany({ where: { sessionId: session.id } });
+
+    const res = await request(app).get(
+      `/api/stats/sessions/${session.id}/summary?groupId=${group.id}`
+    );
+    const titleIds = res.body.titles.map((t: any) => t.id);
+    expect(titleIds).toContain('atm');
+    expect(titleIds).toContain('houdini');
+  });
+
+  it('still counts most-rebuys in group records', async () => {
+    const { group } = await legacySession();
+
+    const res = await request(app).get(`/api/stats/groups/${group.id}/records`);
+    expect(res.body.mostRebuys).toMatchObject({ playerName: 'Dave', value: 3 });
+  });
+
+  it('still awards rebuy-based achievements', async () => {
+    const { group, ana, dave } = await seedGroup(5);
+    // Dave rebuys three times and finishes up: Phoenix.
+    const session = await enterSession(group.id, [
+      { playerId: ana.id, buyIn: 5, cashOut: 0 },
+      { playerId: dave.id, buyIn: 20, cashOut: 25 },
+    ]);
+    await prisma.rebuyEvent.deleteMany({ where: { sessionId: session.id } });
+
+    const res = await request(app).get(`/api/stats/groups/${group.id}/achievements`);
+    const daveBadges = res.body.players
+      .find((p: any) => p.playerId === dave.id)
+      .earned.map((e: any) => e.id);
+    expect(daveBadges).toContain('phoenix');
+  });
+
+  it('prefers recorded events over the derivation when both could apply', async () => {
+    const { group, ana, dave } = await seedGroup(5);
+    const start = await request(app)
+      .post('/api/live-sessions/start')
+      .send({
+        groupId: group.id,
+        date: '2026-05-01',
+        startTime: '19:30',
+        players: [
+          { playerId: ana.id, buyIn: 5 },
+          { playerId: dave.id, buyIn: 5 },
+        ],
+      });
+    // One recorded rebuy of $20 — a single big top-up, not four $5 ones.
+    await request(app)
+      .post(`/api/live-sessions/${start.body.id}/rebuy`)
+      .send({ playerId: dave.id, amount: 20 });
+
+    const res = await request(app).get(`/api/sessions/${start.body.id}`);
+    const entry = res.body.entries.find((e: any) => e.playerId === dave.id);
+    // What actually happened (1), not what the $25 total would imply (4).
+    expect(entry.rebuys).toBe(1);
+  });
+});
+
 describe('editing an entry re-derives its rebuys', () => {
   it('updates the derived rows when a buy-in is corrected', async () => {
     const { group, ana, dave } = await seedGroup(5);

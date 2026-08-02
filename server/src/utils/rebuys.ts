@@ -45,3 +45,56 @@ export function deriveRebuyAmounts(buyIn: number, defaultBuyIn: number): number[
 
   return amounts;
 }
+
+/**
+ * How many rebuys a player had, preferring what was actually recorded.
+ *
+ * Recorded events win outright: a live-tracked night knows exactly what happened,
+ * including rebuys that weren't a round multiple of the default. Only when there
+ * are none — a hand-entered session, a CSV import, anything from before rebuy
+ * events were written — do we fall back to reconstructing from the total.
+ *
+ * This is why the backfill script is an optimisation, not a correctness
+ * requirement: the numbers are right on read either way (DECISIONS D-004).
+ */
+export function resolveRebuyCount(
+  buyIn: number,
+  recordedCount: number,
+  defaultBuyIn: number
+): number {
+  if (recordedCount > 0) return recordedCount;
+  return deriveRebuyAmounts(buyIn, defaultBuyIn).length;
+}
+
+export interface RebuyEventLike {
+  playerId: string;
+  amount: number;
+}
+
+/**
+ * Fill in derived rebuy events for players who have none, leaving players with
+ * recorded events untouched.
+ *
+ * Lets every downstream consumer — insights, the Belt, night titles, achievements
+ * — keep counting rows without knowing whether a night was tracked live or typed
+ * in afterwards. The gap is filled per player, not per session, so a night where
+ * only one player's rebuys were captured live still reconstructs the others.
+ */
+export function withDerivedRebuyEvents(
+  entries: Array<{ playerId: string; buyIn: number }>,
+  recorded: RebuyEventLike[],
+  defaultBuyIn: number
+): RebuyEventLike[] {
+  const hasRecorded = new Set(recorded.map((r) => r.playerId));
+
+  const derived = entries.flatMap((entry) =>
+    hasRecorded.has(entry.playerId)
+      ? []
+      : deriveRebuyAmounts(entry.buyIn, defaultBuyIn).map((amount) => ({
+          playerId: entry.playerId,
+          amount,
+        }))
+  );
+
+  return [...recorded, ...derived];
+}
