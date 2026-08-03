@@ -21,6 +21,7 @@ model Group {
   players   Player[]
   sessions  Session[]
   templates SessionTemplate[]
+  seasons   Season[]
 
   @@map("groups")
 }
@@ -131,6 +132,25 @@ model PlayerNote {
 
   @@index([playerId])
   @@map("player_notes")
+}
+
+// Season - a group-defined stretch of play. Groups think in seasons that start
+// when they decide, not on January 1st. Purely additive: with no seasons defined,
+// everything falls back to calendar years exactly as before.
+model Season {
+  id        String   @id @default(cuid())
+  groupId   String
+  name      String // e.g. "Season 3", "Winter 2026"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([groupId, startDate])
+  @@map("seasons")
 }
 
 // SessionTemplate - saved session configurations for quick entry

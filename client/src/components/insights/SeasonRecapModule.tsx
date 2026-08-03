@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Crown, Users, TrendingUp, Star, RefreshCw } from 'lucide-react';
-import { useSeasonRecap } from '@/hooks/useInsights';
+import { useSeasonRecap, useSeasonRecapForSeason } from '@/hooks/useInsights';
+import { useSeasons } from '@/hooks/useSeasons';
 import { formatSignedCurrency } from './charts/chartTheme';
 import ShareCardButton from '@/components/share/ShareCardButton';
 import { buildSeasonCardScene } from '@/lib/shareCard';
@@ -39,9 +40,19 @@ const Superlative = ({
 
 const SeasonRecapModule = ({ groupId }: SeasonRecapModuleProps) => {
   const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState(currentYear);
-  const { data, isLoading } = useSeasonRecap(groupId, year);
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const { data: seasons = [] } = useSeasons(groupId);
+
+  // One picker for both kinds of period: a group-defined season, or a calendar
+  // year. Seasons lead when the group has any; otherwise it reads exactly as it
+  // did before seasons existed.
+  const [selection, setSelection] = useState<string>(`year:${currentYear}`);
+  const seasonId = selection.startsWith('season:') ? selection.slice(7) : null;
+  const year = selection.startsWith('year:') ? parseInt(selection.slice(5)) : currentYear;
+
+  const yearRecap = useSeasonRecap(groupId, year);
+  const seasonRecap = useSeasonRecapForSeason(groupId, seasonId);
+  const { data, isLoading } = seasonId ? seasonRecap : yearRecap;
 
   return (
     <section>
@@ -75,19 +86,33 @@ const SeasonRecapModule = ({ groupId }: SeasonRecapModuleProps) => {
           )}
           <select
             className="rounded-md border border-border bg-background p-2 text-sm"
-            value={year}
-            onChange={(e) => setYear(parseInt(e.target.value))}
+            value={selection}
+            onChange={(e) => setSelection(e.target.value)}
+            aria-label="Period"
           >
-            {years.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {seasons.length > 0 && (
+              <optgroup label="Seasons">
+                {seasons.map((s) => (
+                  <option key={s.id} value={`season:${s.id}`}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Years">
+              {years.map((y) => (
+                <option key={y} value={`year:${y}`}>
+                  {y}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{data?.period ?? year} Season</CardTitle>
+          <CardTitle>{data?.period ?? year}</CardTitle>
           <CardDescription>
             {data ? `${data.totalSessions} nights · $${data.totalPot.toFixed(0)} on the table` : 'Loading…'}
           </CardDescription>
@@ -96,7 +121,9 @@ const SeasonRecapModule = ({ groupId }: SeasonRecapModuleProps) => {
           {isLoading ? (
             <p className="text-muted-foreground">Loading…</p>
           ) : data && data.totalSessions === 0 ? (
-            <p className="text-muted-foreground">No sessions played in {year}.</p>
+            <p className="text-muted-foreground">
+              No sessions played in {data.period}.
+            </p>
           ) : data ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Superlative

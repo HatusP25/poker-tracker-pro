@@ -29,6 +29,15 @@ export const useSeasonRecap = (groupId: string, year: number) =>
     enabled: !!groupId,
   });
 
+/** Recap for a group-defined season rather than a calendar year. */
+export const useSeasonRecapForSeason = (groupId: string, seasonId: string | null) =>
+  useQuery({
+    queryKey: ['insights', 'season', groupId, 'season', seasonId],
+    queryFn: async () =>
+      (await insightsApi.getSeasonRecapForSeason(groupId, seasonId!)).data,
+    enabled: !!groupId && !!seasonId,
+  });
+
 export const useBelt = (groupId: string) =>
   useQuery({
     queryKey: ['insights', 'belt', groupId],

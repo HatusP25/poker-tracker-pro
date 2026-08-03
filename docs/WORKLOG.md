@@ -10,6 +10,45 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-08-03 — Configurable seasons (F-11)
+
+**Why** Roadmap F-11. `getSeasonRecap` was hardcoded to Jan 1 – Dec 31. Groups think in seasons
+that start when they decide, and a season-champions history is the same bragging-rights vein as
+the Belt.
+
+**Design**
+- New `Season` model (`groupId`, `name`, `startDate`, `endDate`). Purely additive — a group with no
+  seasons keeps the calendar-year behaviour, and the year endpoint is untouched.
+- `seasonRules.ts` (new, +24 unit tests) — `normaliseRange`, `overlaps`, `findOverlap`,
+  `currentSeason`, `previousSeason`. Pure, so the date reasoning is testable without a DB.
+- **Non-overlap is enforced.** Overlapping seasons would make "this season" ambiguous for any night
+  inside both. The error names the conflicting season; back-to-back ranges are allowed; editing a
+  season doesn't conflict with itself.
+- `getSeasonRecapForSeason` compares "biggest mover" against the *previous season*. A group's first
+  season has no predecessor, so that superlative is absent rather than misleading.
+- One picker in Poker Wrapped offers seasons then years, so the fallback is visible rather than a
+  hidden mode.
+
+**A timezone bug, found and then found again.** The first cut snapped season bounds with local
+`setHours`, while `new Date('2026-05-31')` parses as UTC midnight — west of UTC those disagree and
+the boundary landed a day early, silently dropping the season's closing night (caught by an
+integration test). The first fix parsed as *local*, which passed the server test but then showed
+`2026-06-01` in the browser, because the stored local end-of-day serialises into the next UTC day
+and the client reads the ISO date part. The correct model is **UTC-anchored throughout**, matching
+how session dates are already stored. Both layers now agree, and the E2E asserts the closing day
+survives the round trip.
+
+**F-08 earning its keep again.** Adding a model *failed the build*: `BACKED_UP_MODELS` is asserted
+equal to the schema's model list, so `Season` could not be quietly omitted from backups. Three
+v2-fixture tests also failed until they carried the new array — the validator refusing an
+incomplete current-version file, exactly as designed.
+
+**Verification** server unit 262 ✓ · integration 138 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 106 ✓ · E2E 18 ✓. Checked against the real dev database: two seasons split 23 nights
+into 19 + 4 with no night double-counted, the first season correctly showing no biggest mover.
+
+---
+
 ## 2026-08-03 — Player nicknames (F-10)
 
 **Why** Roadmap F-10. The Belt and the trophy case are personality features, but a `Player` was a

@@ -45,8 +45,6 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 - **[P2·S] Avatar uploads.** Split out of F-10, which shipped nicknames. Blocked on the same
   storage decision as F-12.
-- **[P2·M] F-11 Configurable seasons.** Season Recap is hardcoded to the calendar year. New
-  additive `Season` model; unlocks a season-champions wall.
 - **[P2·L] F-12 Photo upload + gallery.** `Session.photoUrls` has always been inert.
   **Blocked on a storage decision** (Railway volume vs external object store) — that call is the
   user's, and it's why this is L.

@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { ValidationError } from '../utils/validators';
 import {
   calculateProfit,
   calculateStreak,
@@ -18,6 +19,7 @@ import {
   SeasonSuperlative,
 } from '../types/insights';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
+import { previousSeason } from './seasonRules';
 
 // ---- Tunable constants ----
 export const RECENT_WINDOW = 5;
@@ -515,6 +517,34 @@ export class InsightsService {
     return computeForm(rows, players.map((p) => p.id), names);
   }
 
+  /**
+   * Recap for a group-defined season. "Biggest mover" compares against the season
+   * that ended most recently before this one — for a group's first season there is
+   * nothing to move relative to, so that superlative is simply absent.
+   */
+  async getSeasonRecapForSeason(groupId: string, seasonId: string): Promise<SeasonRecap> {
+    const seasons = await prisma.season.findMany({ where: { groupId } });
+    const season = seasons.find((s) => s.id === seasonId);
+    if (!season) {
+      throw new ValidationError('Season not found for this group');
+    }
+
+    const prior = previousSeason(seasons, season);
+
+    const [periodRows, previousRows] = await Promise.all([
+      fetchSessionRows(groupId, { gte: season.startDate, lte: season.endDate }),
+      prior
+        ? fetchSessionRows(groupId, { gte: prior.startDate, lte: prior.endDate })
+        : Promise.resolve([]),
+    ]);
+
+    return computeSeasonRecap(periodRows, previousRows, season.name);
+  }
+
+  /**
+   * Recap for a calendar year — the original behaviour, still the default for
+   * groups that have not defined any seasons.
+   */
   async getSeasonRecap(groupId: string, year: number): Promise<SeasonRecap> {
     const start = new Date(year, 0, 1);
     const end = new Date(year, 11, 31, 23, 59, 59);
