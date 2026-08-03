@@ -110,6 +110,18 @@ const start = (title: string, subtitle: string): Builder => {
   return b;
 };
 
+/**
+ * Font size for the belt hero, stepped down so a long name plus a nickname still
+ * fits the card width. Approximates at ~0.55em average glyph width.
+ */
+export function heroSize(text: string): number {
+  const usable = W - PAD * 2;
+  for (const size of [104, 88, 72, 60, 48]) {
+    if (text.length * size * 0.55 <= usable) return size;
+  }
+  return 40;
+}
+
 /** One centred line — used where a card has a single subject rather than a list. */
 const centered = (b: Builder, text: string, size: number, color: string, bold = false) => {
   b.items.push({
@@ -182,7 +194,9 @@ export function buildBeltCardScene(input: BeltCardInput): Scene {
   // A hero layout rather than a list: this card has one subject, and centring the
   // whole block keeps the name from floating above left-aligned rows.
   b.y += 40;
-  centered(b, holderName, 104, ACCENT, true);
+  // A long name plus a nickname would run off a fixed-size hero, and this image
+  // gets posted — so step the size down as the name grows.
+  centered(b, holderName, heroSize(holderName), ACCENT, true);
   b.y += 16;
   centered(
     b,

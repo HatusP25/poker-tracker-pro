@@ -1,3 +1,4 @@
+import { displayName } from '@/lib/displayName';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,9 @@ const PlayerDetail = () => {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-3xl">{stats.playerName}</CardTitle>
+              <CardTitle className="text-3xl">
+                {player ? displayName(player) : stats.playerName}
+              </CardTitle>
               <CardDescription className="mt-2">
                 Player Statistics and Performance
               </CardDescription>

@@ -28,7 +28,8 @@ export const useCreatePlayer = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { groupId: string; name: string; avatarUrl?: string }) => playersApi.create(data),
+    mutationFn: (data: { groupId: string; name: string; nickname?: string | null; avatarUrl?: string }) =>
+      playersApi.create(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['players', variables.groupId] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
@@ -44,7 +45,13 @@ export const useUpdatePlayer = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name?: string; avatarUrl?: string; isActive?: boolean } }) =>
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { name?: string; nickname?: string | null; avatarUrl?: string; isActive?: boolean };
+    }) =>
       playersApi.update(id, data),
     onSuccess: (response) => {
       const player = response.data;

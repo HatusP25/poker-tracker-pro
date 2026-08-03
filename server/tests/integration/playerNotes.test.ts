@@ -153,3 +153,109 @@ describe('Player notes API', () => {
     });
   });
 });
+
+describe('player nicknames', () => {
+  async function group() {
+    return prisma.group.create({ data: { name: 'Nickname Group', defaultBuyIn: 5 } });
+  }
+
+  it('stores a nickname on create', async () => {
+    const g = await group();
+    const res = await request(app)
+      .post('/api/players')
+      .send({ groupId: g.id, name: 'Ana', nickname: 'The Closer' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.nickname).toBe('The Closer');
+  });
+
+  it('defaults to no nickname', async () => {
+    const g = await group();
+    const res = await request(app).post('/api/players').send({ groupId: g.id, name: 'Dave' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.nickname).toBeNull();
+  });
+
+  it('trims surrounding whitespace', async () => {
+    const g = await group();
+    const res = await request(app)
+      .post('/api/players')
+      .send({ groupId: g.id, name: 'Ana', nickname: '  Rocket  ' });
+
+    expect(res.body.nickname).toBe('Rocket');
+  });
+
+  it('stores an empty nickname as null rather than an empty string', async () => {
+    const g = await group();
+    const res = await request(app)
+      .post('/api/players')
+      .send({ groupId: g.id, name: 'Ana', nickname: '   ' });
+
+    expect(res.body.nickname).toBeNull();
+  });
+
+  it('rejects a nickname that would not fit on a share card', async () => {
+    const g = await group();
+    const res = await request(app)
+      .post('/api/players')
+      .send({ groupId: g.id, name: 'Ana', nickname: 'x'.repeat(25) });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/24 characters/i);
+  });
+
+  it('can be set and cleared on update', async () => {
+    const g = await group();
+    const created = await request(app).post('/api/players').send({ groupId: g.id, name: 'Ana' });
+
+    const set = await request(app)
+      .patch(`/api/players/${created.body.id}`)
+      .send({ nickname: 'The Closer' });
+    expect(set.body.nickname).toBe('The Closer');
+
+    const cleared = await request(app)
+      .patch(`/api/players/${created.body.id}`)
+      .send({ nickname: '' });
+    expect(cleared.body.nickname).toBeNull();
+  });
+
+  it('rides along on session entries so share cards can use it', async () => {
+    const g = await group();
+    const ana = await request(app)
+      .post('/api/players')
+      .send({ groupId: g.id, name: 'Ana', nickname: 'The Closer' });
+    const dave = await request(app).post('/api/players').send({ groupId: g.id, name: 'Dave' });
+
+    const session = await request(app)
+      .post('/api/sessions')
+      .send({
+        groupId: g.id,
+        date: '2026-05-01',
+        entries: [
+          { playerId: ana.body.id, buyIn: 5, cashOut: 10 },
+          { playerId: dave.body.id, buyIn: 5, cashOut: 0 },
+        ],
+      });
+
+    const detail = await request(app).get(`/api/sessions/${session.body.id}`);
+    const entry = detail.body.entries.find((e: any) => e.playerId === ana.body.id);
+    expect(entry.player.nickname).toBe('The Closer');
+  });
+
+  it('survives a backup round trip without anyone updating the backup code', async () => {
+    const g = await group();
+    await request(app)
+      .post('/api/players')
+      .send({ groupId: g.id, name: 'Ana', nickname: 'The Closer' });
+
+    const backup = await request(app).get(`/api/backup/export/${g.id}`);
+    await prisma.player.deleteMany();
+    await request(app)
+      .post('/api/backup/import')
+      .send({ backup: backup.body, options: { mode: 'merge', skipDuplicates: false } });
+
+    const restored = await prisma.player.findFirst({ where: { name: 'Ana' } });
+    expect(restored?.nickname).toBe('The Closer');
+  });
+});

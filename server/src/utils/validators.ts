@@ -27,6 +27,18 @@ export const isValidPlayerName = (name: string): boolean => {
   return typeof name === 'string' && name.trim().length >= 2 && name.trim().length <= 50;
 };
 
+/**
+ * A nickname is optional; when given it must be short enough to sit next to the
+ * name on a share card without wrapping.
+ */
+export const isValidNickname = (nickname: unknown): boolean => {
+  if (nickname === undefined || nickname === null) return true;
+  if (typeof nickname !== 'string') return false;
+  // Blank (or whitespace-only) means "no nickname" and is how one gets cleared —
+  // the service stores it as null. Only a too-long handle is actually invalid.
+  return nickname.trim().length <= 24;
+};
+
 export const isFutureDate = (date: Date): boolean => {
   return date.getTime() > Date.now();
 };

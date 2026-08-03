@@ -1,3 +1,4 @@
+import { hasNickname } from '@/lib/displayName';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, UserCheck, UserX } from 'lucide-react';
@@ -42,7 +43,14 @@ const PlayerTable = ({ players, onEdit, onDelete, canEdit = true }: PlayerTableP
       <TableBody>
         {players.map((player) => (
           <TableRow key={player.id}>
-            <TableCell className="font-medium">{player.name}</TableCell>
+            <TableCell className="font-medium">
+              {player.name}
+              {hasNickname(player) && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  “{player.nickname!.trim()}”
+                </span>
+              )}
+            </TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
                 {player.isActive ? (

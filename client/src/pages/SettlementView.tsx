@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { formatNightMessage } from '@/lib/nightMessage';
 import { buildNightShareInput, nightCardFilename } from '@/lib/nightShareData';
 import { buildNightCardScene } from '@/lib/shareCard';
+import { displayName } from '@/lib/displayName';
 import ShareCardButton from '@/components/share/ShareCardButton';
 import RankingChangesSection from '@/components/session/RankingChangesSection';
 import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
@@ -55,13 +56,21 @@ const SettlementView = () => {
       currency: session.group?.currency,
       entries: (session.entries || []).map((entry) => ({
         playerId: entry.playerId,
-        playerName: entry.player?.name || 'Unknown',
+        playerName: entry.player ? displayName(entry.player) : 'Unknown',
         profit: entry.cashOut - entry.buyIn,
       })),
       settlements,
       titles: summary?.titles || [],
       belt,
     });
+
+  // Night titles are a story surface — show nicknames where the group set one.
+  const displayNames = new Map(
+    (session.entries || []).map((e) => [
+      e.playerId,
+      e.player ? displayName(e.player) : '',
+    ])
+  );
 
   const handleCopyForWhatsApp = async () => {
     const message = formatNightMessage(shareInput());
@@ -149,7 +158,7 @@ const SettlementView = () => {
           <CardTitle>Final Results</CardTitle>
           {summary && summary.titles.length > 0 && (
             <div className="pt-2">
-              <NightTitleChips titles={summary.titles} />
+              <NightTitleChips titles={summary.titles} nicknames={displayNames} />
             </div>
           )}
         </CardHeader>
