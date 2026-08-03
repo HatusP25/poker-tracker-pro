@@ -12,6 +12,7 @@ import { useUpdateGroup, useDeleteGroup } from '@/hooks/useGroups';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { describeReplaceScope, isReplaceConfirmed, type ReplaceScope } from '@/lib/backupScope';
+import SeasonManager from '@/components/seasons/SeasonManager';
 
 const Settings = () => {
   const { selectedGroup, setSelectedGroup } = useGroupContext();
@@ -418,6 +419,8 @@ const Settings = () => {
           </CardContent>
         </Card>
       )}
+
+      {selectedGroup && <SeasonManager groupId={selectedGroup.id} canEdit={canEdit} />}
 
       {/* Backup & Restore */}
       <Card>

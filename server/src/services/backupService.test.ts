@@ -19,6 +19,7 @@ const emptyV2 = () => ({
     rebuyEvents: [],
     playerNotes: [],
     templates: [],
+    seasons: [],
   },
 });
 

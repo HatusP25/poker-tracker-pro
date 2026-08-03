@@ -28,6 +28,7 @@ export const BACKED_UP_MODELS = [
   'RebuyEvent',
   'PlayerNote',
   'SessionTemplate',
+  'Season',
 ] as const;
 
 export type BackedUpModel = (typeof BACKED_UP_MODELS)[number];

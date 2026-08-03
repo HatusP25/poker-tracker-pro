@@ -10,6 +10,28 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-08-03 — Configurable seasons (F-11)
+
+Poker Wrapped was hardcoded to the calendar year, but groups think in seasons that start when they
+decide — after a roster change, at the start of a new run.
+
+- **Define seasons in Settings**: a name and an inclusive date range. New additive `Season` model;
+  no existing row is touched.
+- **Poker Wrapped recaps a season or a year.** One picker offers the group's seasons first, then
+  calendar years. A group that defines no seasons sees exactly what it saw before.
+- **"Biggest mover" compares against the previous season**, not the previous year. A group's first
+  season has nothing to compare against, so that superlative is simply absent rather than wrong.
+- **Seasons can't overlap** — a night has to belong to just one, or "this season" is ambiguous.
+  The error names the season you'd collide with. Back-to-back seasons are fine.
+- **Deleting a season removes only the label.** No session, entry or result is touched.
+
+Seasons round-trip through backup automatically. Adding the model *failed the build* until backups
+accounted for it — F-08's exhaustiveness guard doing exactly its job.
+
+### Tests
+- +24 server unit on the date rules, +20 integration (CRUD, overlap, recap boundaries, backup
+  round trip, scoped replace), +1 E2E covering define → reject overlap → recap.
+
 ### 2026-08-03 — Player nicknames (F-10)
 
 Home games run on nicknames, and the Belt and trophy case were personality features with no

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Group, Player, PlayerNote, Session, PlayerStats, LeaderboardEntry, LeaderboardTimeframe, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap, BeltLineage, AchievementsResponse } from '@/types';
+import type { Season, Group, Player, PlayerNote, Session, PlayerStats, LeaderboardEntry, LeaderboardTimeframe, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap, BeltLineage, AchievementsResponse } from '@/types';
 
 // Shared secret for mutating requests. Only present when the deployment sets one
 // (see server/src/middleware/requireApiKey.ts); local dev leaves it undefined and
@@ -135,10 +135,25 @@ export const insightsApi = {
     api.get<PlayerForm[]>(`/stats/groups/${groupId}/form`),
   getSeasonRecap: (groupId: string, year: number) =>
     api.get<SeasonRecap>(`/stats/groups/${groupId}/season`, { params: { year } }),
+  getSeasonRecapForSeason: (groupId: string, seasonId: string) =>
+    api.get<SeasonRecap>(`/stats/groups/${groupId}/season`, { params: { seasonId } }),
   getBelt: (groupId: string) =>
     api.get<BeltLineage>(`/stats/groups/${groupId}/belt`),
   getAchievements: (groupId: string) =>
     api.get<AchievementsResponse>(`/stats/groups/${groupId}/achievements`),
+};
+
+// Seasons — group-defined stretches of play. A group with none falls back to
+// calendar years, exactly as before seasons existed.
+export const seasonsApi = {
+  getByGroup: (groupId: string) => api.get<Season[]>(`/seasons/groups/${groupId}/seasons`),
+  getCurrent: (groupId: string) =>
+    api.get<Season | null>(`/seasons/groups/${groupId}/seasons/current`),
+  create: (data: { groupId: string; name: string; startDate: string; endDate: string }) =>
+    api.post<Season>('/seasons', data),
+  update: (id: string, data: { name?: string; startDate?: string; endDate?: string }) =>
+    api.patch<Season>(`/seasons/${id}`, data),
+  delete: (id: string) => api.delete(`/seasons/${id}`),
 };
 
 // Backup

@@ -14,6 +14,7 @@ import statsRoutes from './routes/stats';
 import backupRoutes from './routes/backup';
 import templateRoutes from './routes/templates';
 import liveSessionRoutes from './routes/liveSessions';
+import seasonRoutes from './routes/seasons';
 
 const app: Express = express();
 
@@ -73,6 +74,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/live-sessions', liveSessionRoutes);
+app.use('/api/seasons', seasonRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {

@@ -349,6 +349,7 @@ describe('replace mode is scoped to the backup', () => {
           rebuyEvents: [],
           playerNotes: [],
           templates: [],
+          seasons: [],
         },
       },
       { mode: 'replace', skipDuplicates: false }

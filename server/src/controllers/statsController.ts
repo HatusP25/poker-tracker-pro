@@ -146,6 +146,13 @@ export const getGroupForm = async (req: Request, res: Response, next: NextFuncti
 export const getSeasonRecap = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { groupId } = req.params;
+    // A group-defined season wins when asked for; otherwise fall back to a
+    // calendar year, which is what every group had before seasons existed.
+    const seasonId = req.query.seasonId as string | undefined;
+    if (seasonId) {
+      res.json(await insightsService.getSeasonRecapForSeason(groupId, seasonId));
+      return;
+    }
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
     const recap = await insightsService.getSeasonRecap(groupId, year);
     res.json(recap);

@@ -24,6 +24,7 @@ const REPLACE_WIPE = {
       rebuyEvents: [],
       playerNotes: [],
       templates: [],
+      seasons: [],
     },
   },
   options: { mode: 'replace', skipDuplicates: false },

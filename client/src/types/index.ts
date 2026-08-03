@@ -344,3 +344,13 @@ export interface AchievementsResponse {
   recentUnlocks: (EarnedAchievement & { playerId: string; playerName: string })[]; // newest first, cap 10
   catalog: { id: AchievementId; name: string; emoji: string; description: string }[]; // all 10, for greyed silhouettes
 }
+
+export interface Season {
+  id: string;
+  groupId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+}

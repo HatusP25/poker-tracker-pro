@@ -31,6 +31,7 @@ export interface BackupData {
     rebuyEvents?: any[];
     playerNotes?: any[];
     templates?: any[];
+    seasons?: any[];
   };
 }
 
@@ -49,6 +50,7 @@ export interface ImportReport {
     rebuyEvents: number;
     playerNotes: number;
     templates: number;
+    seasons: number;
   };
   skipped: {
     groups: number;
@@ -58,6 +60,7 @@ export interface ImportReport {
     rebuyEvents: number;
     playerNotes: number;
     templates: number;
+    seasons: number;
   };
   errors: string[];
 }
@@ -70,12 +73,13 @@ const emptyTally = (): ImportReport['imported'] => ({
   rebuyEvents: 0,
   playerNotes: 0,
   templates: 0,
+  seasons: 0,
 });
 
 /** Arrays every backup must carry, in every version. */
 const CORE_ARRAYS = ['groups', 'players', 'sessions', 'entries'] as const;
 /** Arrays added in v2. Their absence is exactly what made v1 lossy. */
-const V2_ARRAYS = ['rebuyEvents', 'playerNotes', 'templates'] as const;
+const V2_ARRAYS = ['rebuyEvents', 'playerNotes', 'templates', 'seasons'] as const;
 
 /**
  * True for backups written by the pre-2026-07-30 exporter (version 1.x).
@@ -88,8 +92,8 @@ export function isLegacyBackup(version: string | undefined): boolean {
 /** Everything a v1 file cannot bring back, spelled out for the operator. */
 export const LEGACY_LOSS_WARNING =
   'This is a version 1 backup. It does not contain rebuy events, player notes, ' +
-  'session templates, settlement records, session status, or which sessions were ' +
-  'deleted. Restoring it will not recreate any of those, and any session it ' +
+  'session templates, seasons, settlement records, session status, or which ' +
+  'sessions were deleted. Restoring it will not recreate any of those, and any session it ' +
   'restores will come back as a completed, non-deleted session.';
 
 /**
@@ -125,7 +129,7 @@ export class BackupService {
     const viaSession = groupId ? { session: { groupId } } : {};
     const viaPlayer = groupId ? { player: { groupId } } : {};
 
-    const [groups, players, sessions, entries, rebuyEvents, playerNotes, templates] =
+    const [groups, players, sessions, entries, rebuyEvents, playerNotes, templates, seasons] =
       await Promise.all([
         prisma.group.findMany({ where: groupScope }),
         prisma.player.findMany({ where: byGroup }),
@@ -136,13 +140,23 @@ export class BackupService {
         prisma.rebuyEvent.findMany({ where: viaSession }),
         prisma.playerNote.findMany({ where: viaPlayer }),
         prisma.sessionTemplate.findMany({ where: byGroup }),
+        prisma.season.findMany({ where: byGroup }),
       ]);
 
     return {
       version: BACKUP_VERSION,
       exportDate: new Date().toISOString(),
       scope: { groupIds: groups.map((g) => g.id) },
-      data: { groups, players, sessions, entries, rebuyEvents, playerNotes, templates },
+      data: {
+        groups,
+        players,
+        sessions,
+        entries,
+        rebuyEvents,
+        playerNotes,
+        templates,
+        seasons,
+      },
     };
   }
 
@@ -288,6 +302,7 @@ export class BackupService {
             await tx.sessionEntry.deleteMany({ where: { session: { groupId: inScope } } });
             await tx.playerNote.deleteMany({ where: { player: { groupId: inScope } } });
             await tx.sessionTemplate.deleteMany({ where: { groupId: inScope } });
+            await tx.season.deleteMany({ where: { groupId: inScope } });
             await tx.session.deleteMany({ where: { groupId: inScope } });
             await tx.player.deleteMany({ where: { groupId: inScope } });
             await tx.group.deleteMany({ where: { id: inScope } });
@@ -358,6 +373,15 @@ export class BackupService {
               find: (id) => tx.playerNote.findUnique({ where: { id } }),
               update: (id, data) => tx.playerNote.update({ where: { id }, data }),
               create: (data) => tx.playerNote.create({ data }),
+            },
+            {
+              kind: 'seasons',
+              model: 'Season',
+              rows: backup.data.seasons ?? [],
+              label: (r) => `Season ${r.name}`,
+              find: (id) => tx.season.findUnique({ where: { id } }),
+              update: (id, data) => tx.season.update({ where: { id }, data }),
+              create: (data) => tx.season.create({ data }),
             },
             {
               kind: 'templates',
