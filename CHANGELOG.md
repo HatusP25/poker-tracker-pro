@@ -10,6 +10,30 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-08-03 — Shareable image cards (F-09)
+
+"Copy for WhatsApp" was the right instinct, but text gets skimmed in a group chat — images get
+forwarded. Three cards, one tap each, rendered client-side. **Zero schema and zero new data**:
+every input already existed.
+
+- **Night result card** — results in profit order with night-title emoji, the settle-up transfers,
+  and the belt line. Built from the *same* input object as the WhatsApp text (extracted to
+  `nightShareData.ts`), so the two can never disagree about who won or who owes whom.
+  On the settlement screen and session detail.
+- **Belt card** — the new holder, who they took it from, nights held and defenses. On the Belt card
+  in Insights.
+- **Season Wrapped card** — champion, best night, most nights, biggest mover, most rebuys.
+  Superlatives with no winner are skipped rather than printed blank. On the Poker Wrapped card.
+
+Sharing uses the OS share sheet where it exists (every phone, which is where forwarding actually
+happens) and falls back to a download. Dismissing the share sheet is treated as a cancel, not a
+failure — no surprise download.
+
+### Tests
+- +23 client unit on the layout (ordering matches the text message, colour by sign, sections
+  omitted when empty, nothing laid out beyond the card), +1 E2E that generates a real PNG in a
+  browser and checks the file signature.
+
 ### 2026-08-02 — Session summary refactor + schema-driven backup (F-08)
 
 Internal; no user-visible behaviour change, verified by the integration suite staying green.

@@ -28,8 +28,10 @@ import RebuyItinerary from '@/components/live/RebuyItinerary';
 import SettlementList from '@/components/session/SettlementList';
 import NightTitleChips from '@/components/session/NightTitleChips';
 import { parseLocalDate } from '@/lib/dateUtils';
-import { formatNightMessage, getCurrencySymbol } from '@/lib/nightMessage';
-import { deriveBeltLine } from '@/lib/beltLine';
+import { formatNightMessage } from '@/lib/nightMessage';
+import { buildNightShareInput, nightCardFilename } from '@/lib/nightShareData';
+import { buildNightCardScene } from '@/lib/shareCard';
+import ShareCardButton from '@/components/share/ShareCardButton';
 import type { Settlement } from '@/types';
 
 const SessionDetail = () => {
@@ -109,25 +111,24 @@ const SessionDetail = () => {
   const settlements: Settlement[] = session.settlements ? JSON.parse(session.settlements) : [];
   const isCompleted = session.status === 'COMPLETED';
 
-  const handleCopyForWhatsApp = async () => {
-    const currency = getCurrencySymbol(session.group?.currency);
-    const beltLine = deriveBeltLine({
-      sessionDate: session.date,
-      sessionPlayerIds: session.entries?.map((e) => e.playerId) || [],
+  // One description of the night, shared by the text and the image so they can
+  // never disagree.
+  const shareInput = () =>
+    buildNightShareInput({
+      date: session.date,
+      currency: session.group?.currency,
+      entries: entriesWithStats.map((entry) => ({
+        playerId: entry.playerId,
+        playerName: entry.player?.name || 'Unknown',
+        profit: entry.profit,
+      })),
+      settlements,
+      titles: summary?.titles || [],
       belt,
     });
 
-    const message = formatNightMessage({
-      date: session.date,
-      currency,
-      results: entriesWithStats.map((entry) => ({
-        name: entry.player?.name || 'Unknown',
-        profit: entry.profit,
-        titles: (summary?.titles || []).filter((t) => t.playerId === entry.playerId),
-      })),
-      settlements,
-      belt: beltLine ? { line: beltLine } : undefined,
-    });
+  const handleCopyForWhatsApp = async () => {
+    const message = formatNightMessage(shareInput());
 
     try {
       await navigator.clipboard.writeText(message);
@@ -365,6 +366,11 @@ const SessionDetail = () => {
                   </CardTitle>
                   <CardDescription>Who owes whom for this session</CardDescription>
                 </div>
+                <ShareCardButton
+                  size="sm"
+                  buildScene={() => buildNightCardScene(shareInput())}
+                  filename={nightCardFilename(session.date)}
+                />
                 <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Copy for WhatsApp

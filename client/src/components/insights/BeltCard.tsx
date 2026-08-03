@@ -5,6 +5,8 @@ import { Award, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBelt } from '@/hooks/useInsights';
 import { formatLocalDate } from '@/lib/dateUtils';
 import BeltTimeline from './BeltTimeline';
+import ShareCardButton from '@/components/share/ShareCardButton';
+import { buildBeltCardScene } from '@/lib/shareCard';
 import type { BeltReign } from '@/types';
 
 interface BeltCardProps {
@@ -73,6 +75,22 @@ const BeltCard = ({ groupId }: BeltCardProps) => {
               <p className="text-sm text-muted-foreground">
                 The belt is at stake every time {data.current.playerName} plays.
               </p>
+            )}
+
+            {data?.current && (
+              <ShareCardButton
+                size="sm"
+                label="Share the belt"
+                buildScene={() =>
+                  buildBeltCardScene({
+                    holderName: data.current!.playerName,
+                    takenFromName: data.current!.takenFromPlayerName,
+                    nightsHeld: data.current!.nightsHeld,
+                    defenses: data.current!.defenses,
+                  })
+                }
+                filename={`poker-belt-${data.current.playerName.toLowerCase().replace(/\s+/g, '-')}.png`}
+              />
             )}
 
             {data && data.history.length > 0 && (

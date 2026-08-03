@@ -10,6 +10,48 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-08-03 — Shareable image cards (F-09)
+
+**Why** The WhatsApp text shipped in the Banter Pack clearly landed, but text is skimmed in a group
+chat while images get forwarded and re-posted. Roadmap F-09; the highest social return on the list
+and the cheapest, since every input already exists.
+
+**Design — pure layout, impure rendering.** `client/src/lib/shareCard.ts` builds a declarative
+`Scene` (positioned text/rect/line items with colours) and knows nothing about canvas, so all the
+layout maths is unit-testable. `renderShareCard.ts` turns a scene into a PNG and hands it to the
+share sheet. Splitting there is what makes 23 meaningful unit tests possible on something that is
+ultimately an image.
+
+**Changed**
+- `shareCard.ts` (new, +23 unit tests) — `buildNightCardScene`, `buildBeltCardScene`,
+  `buildSeasonCardScene`. Tests pin the things that would actually be wrong in a shared image:
+  players ordered by profit exactly as the text message orders them, colour by sign, sections
+  omitted when empty rather than printed blank, height growing with content, and every item inside
+  the card bounds.
+- `renderShareCard.ts` (new) — 2x canvas for crispness when a chat client scales it, emoji-capable
+  font stack, `navigator.share` with a download fallback. An `AbortError` from the share sheet is
+  reported as `cancelled`, so dismissing it doesn't trigger a download the user didn't ask for.
+- `nightShareData.ts` (new) — `buildNightShareInput`, the single description of a night. Both
+  SettlementView and SessionDetail had duplicated this inline; now the text and the image are
+  built from one object and cannot disagree.
+- `ShareCardButton.tsx` (new) — builds the scene lazily, so nothing is laid out until someone
+  actually shares.
+- Wired into SettlementView, SessionDetail, BeltCard and SeasonRecapModule.
+- E2E `share-card.spec.ts` — clicks the button, captures the download, and asserts the bytes start
+  with the PNG signature and are a plausible size. Headless Chromium has no share sheet, so this
+  exercises the fallback path.
+
+**Verified visually, not just asserted.** Bundled the real modules with esbuild and rendered all
+three cards in headless Chromium. The first pass exposed something no assertion would have: the
+belt card mixed a centred name with left/right rows and left a dead gap, reading as unfinished.
+Reworked it into a proper hero block (centred name at 104px, one centred stat line) and gave every
+card more air below its header.
+
+**Verification** server unit 236 ✓ · integration 110 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 95 ✓ · client build ✓ · E2E 17 ✓ against the production artifact.
+
+---
+
 ## 2026-08-02 — Session summary refactor + schema-driven backup (F-08)
 
 **Why** Two problems named in the analysis (§3.5) and one pattern that had bitten three times.

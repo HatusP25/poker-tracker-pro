@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Crown, Users, TrendingUp, Star, RefreshCw } from 'lucide-react';
 import { useSeasonRecap } from '@/hooks/useInsights';
 import { formatSignedCurrency } from './charts/chartTheme';
+import ShareCardButton from '@/components/share/ShareCardButton';
+import { buildSeasonCardScene } from '@/lib/shareCard';
 
 interface SeasonRecapModuleProps {
   groupId: string;
@@ -50,15 +52,37 @@ const SeasonRecapModule = ({ groupId }: SeasonRecapModuleProps) => {
           </h2>
           <p className="text-muted-foreground">Your season in review</p>
         </div>
-        <select
-          className="rounded-md border border-border bg-background p-2 text-sm"
-          value={year}
-          onChange={(e) => setYear(parseInt(e.target.value))}
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          {data && data.totalSessions > 0 && (
+            <ShareCardButton
+              size="sm"
+              label="Share"
+              buildScene={() =>
+                buildSeasonCardScene({
+                  period: data.period,
+                  currency: '$',
+                  totalSessions: data.totalSessions,
+                  totalPot: data.totalPot,
+                  champion: data.champion,
+                  attendanceKing: data.attendanceKing,
+                  biggestMover: data.biggestMover,
+                  bestSingleNight: data.bestSingleNight,
+                  mostRebuys: data.mostRebuys,
+                })
+              }
+              filename={`poker-wrapped-${data.period}.png`}
+            />
+          )}
+          <select
+            className="rounded-md border border-border bg-background p-2 text-sm"
+            value={year}
+            onChange={(e) => setYear(parseInt(e.target.value))}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <Card>
