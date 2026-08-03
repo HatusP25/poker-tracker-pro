@@ -10,6 +10,29 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-08-03 — Player nicknames (F-10)
+
+Home games run on nicknames, and the Belt and trophy case were personality features with no
+personality attached to them — a player was a name and an unused avatar URL.
+
+- **`Player.nickname`** (additive, nullable). Set it from Add/Edit Player; clear it by emptying the
+  field. Capped at 24 characters so it still fits on a share card.
+- **Shown where the app is telling a story**: the Belt, night titles, the player page, the players
+  list, and the shared images — rendered as `Lucho "The Closer"`.
+- **Not shown where it would cost a column**: leaderboard, ranking tables, charts and records keep
+  the plain name.
+- A nickname that just repeats the name is ignored rather than rendered as `Ana "Ana"`.
+- The belt share card steps its font size down for long names, so a name plus a nickname can't run
+  off the edge of an image people post.
+
+Nicknames flow through backup/restore with no backup-code change at all — the schema-driven row
+mapping from F-08 picked the new column up automatically, which is the first real proof that fix
+works.
+
+### Tests
+- +9 client unit on the display rule, +2 on hero sizing, +8 integration (CRUD, trimming, clearing,
+  the length cap, carriage on session entries, and a backup round trip).
+
 ### 2026-08-03 — Shareable image cards (F-09)
 
 "Copy for WhatsApp" was the right instinct, but text gets skimmed in a group chat — images get

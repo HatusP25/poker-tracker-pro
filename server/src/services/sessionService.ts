@@ -46,6 +46,7 @@ export class SessionService {
               select: {
                 id: true,
                 name: true,
+                nickname: true,
               },
             },
           },
@@ -72,6 +73,7 @@ export class SessionService {
               select: {
                 id: true,
                 name: true,
+                nickname: true,
                 isActive: true,
               },
             },
@@ -83,6 +85,7 @@ export class SessionService {
               select: {
                 id: true,
                 name: true,
+                nickname: true,
               },
             },
           },

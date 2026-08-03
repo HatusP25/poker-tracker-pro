@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Award, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBelt } from '@/hooks/useInsights';
+import { usePlayersByGroup } from '@/hooks/usePlayers';
+import { displayName } from '@/lib/displayName';
 import { formatLocalDate } from '@/lib/dateUtils';
 import BeltTimeline from './BeltTimeline';
 import ShareCardButton from '@/components/share/ShareCardButton';
@@ -35,7 +37,15 @@ const ReignRow = ({ reign, isCurrent }: { reign: BeltReign; isCurrent: boolean }
 
 const BeltCard = ({ groupId }: BeltCardProps) => {
   const { data, isLoading } = useBelt(groupId);
+  const { data: players = [] } = usePlayersByGroup(groupId);
   const [showLineage, setShowLineage] = useState(false);
+
+  // The belt is the group's flagship personality surface, so show nicknames. The
+  // API returns plain names; resolve them against the roster this view already has.
+  const named = (playerId: string, fallback: string) => {
+    const player = players.find((p) => p.id === playerId);
+    return player ? displayName(player) : fallback;
+  };
 
   return (
     <section>
@@ -52,7 +62,10 @@ const BeltCard = ({ groupId }: BeltCardProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              🥇 {data?.current ? data.current.playerName : 'No champion yet'}
+              🥇{' '}
+              {data?.current
+                ? named(data.current.playerId, data.current.playerName)
+                : 'No champion yet'}
             </CardTitle>
             {data?.current ? (
               <CardDescription>
@@ -73,7 +86,8 @@ const BeltCard = ({ groupId }: BeltCardProps) => {
             )}
             {data?.current && (
               <p className="text-sm text-muted-foreground">
-                The belt is at stake every time {data.current.playerName} plays.
+                The belt is at stake every time{' '}
+                {named(data.current.playerId, data.current.playerName)} plays.
               </p>
             )}
 
@@ -83,7 +97,7 @@ const BeltCard = ({ groupId }: BeltCardProps) => {
                 label="Share the belt"
                 buildScene={() =>
                   buildBeltCardScene({
-                    holderName: data.current!.playerName,
+                    holderName: named(data.current!.playerId, data.current!.playerName),
                     takenFromName: data.current!.takenFromPlayerName,
                     nightsHeld: data.current!.nightsHeld,
                     defenses: data.current!.defenses,

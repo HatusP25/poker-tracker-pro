@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { isValidPlayerName, ValidationError } from '../utils/validators';
+import { isValidPlayerName, isValidNickname, ValidationError } from '../utils/validators';
 
 export class PlayerService {
   /**
@@ -54,11 +54,16 @@ export class PlayerService {
   async createPlayer(data: {
     groupId: string;
     name: string;
+    nickname?: string | null;
     avatarUrl?: string;
     isActive?: boolean;
   }) {
     if (!isValidPlayerName(data.name)) {
       throw new ValidationError('Player name must be between 2 and 50 characters');
+    }
+
+    if (!isValidNickname(data.nickname)) {
+      throw new ValidationError('Nickname must be 24 characters or fewer');
     }
 
     // Check for duplicate player name in the same group
@@ -77,6 +82,7 @@ export class PlayerService {
       data: {
         groupId: data.groupId,
         name: data.name.trim(),
+        nickname: data.nickname?.trim() || null,
         avatarUrl: data.avatarUrl,
         isActive: data.isActive ?? true,
       },
@@ -88,10 +94,14 @@ export class PlayerService {
    */
   async updatePlayer(
     id: string,
-    data: { name?: string; avatarUrl?: string; isActive?: boolean }
+    data: { name?: string; nickname?: string | null; avatarUrl?: string; isActive?: boolean }
   ) {
     if (data.name !== undefined && !isValidPlayerName(data.name)) {
       throw new ValidationError('Player name must be between 2 and 50 characters');
+    }
+
+    if (data.nickname !== undefined && !isValidNickname(data.nickname)) {
+      throw new ValidationError('Nickname must be 24 characters or fewer');
     }
 
     // If updating name, check for duplicates
@@ -118,6 +128,7 @@ export class PlayerService {
       where: { id },
       data: {
         ...(data.name && { name: data.name.trim() }),
+        ...(data.nickname !== undefined && { nickname: data.nickname?.trim() || null }),
         ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
       },

@@ -10,6 +10,50 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-08-03 — Player nicknames (F-10)
+
+**Why** Roadmap F-10. The Belt and the trophy case are personality features, but a `Player` was a
+name and an avatar URL nothing ever wrote to. Nicknames are what a home game actually runs on, and
+they pair directly with F-09's share cards — a card wants the handle, not the legal name.
+
+**Scope call.** F-10 as written also covered avatar *uploads*, which share a storage decision with
+F-12 (Railway volume vs object store) that is the user's to make. Nicknames need no such decision,
+so they shipped alone; avatar upload stays with F-12.
+
+**Where a nickname shows, and where it doesn't.** Story surfaces get it — the Belt, night titles,
+player page, players list, share cards. Data-dense surfaces keep the plain name: leaderboard,
+ranking tables, charts, Hall of Fame records. A long handle in a table column costs more than it
+adds.
+
+**Changed**
+- Migration `20260803202604_add_player_nickname` — one nullable column; no row read or rewritten.
+- `client/src/lib/displayName.ts` (new, +9 unit tests) — `displayName` / `hasNickname`. Trims,
+  ignores whitespace-only handles, and ignores a nickname that merely repeats the name so nobody
+  gets `Ana "Ana"`.
+- `isValidNickname` caps at 24 characters. Blank is *valid* and means "no nickname" — that is how
+  one is cleared, and the service stores it as null.
+- Threaded through the player selects on session includes, so `session.entries[].player.nickname`
+  reaches the share cards.
+- `BeltCard` resolves nicknames against the roster it already fetches, so no API shape changed.
+- `NightTitleChips` takes an optional `playerId -> display name` map and falls back to the server's
+  plain name.
+- `shareCard.heroSize` steps the belt hero down for long names (+2 tests).
+
+**Caught during verification.** The first UI check showed no nicknames at all. The cause was not
+the code: **port 3001 was held by a stale dev server from the main repo**, whose Prisma client
+predates the column, so the API returned `nickname: null` for everyone. Worth recording because the
+symptom looked exactly like a broken feature.
+
+**F-08 paying off.** Nicknames survive a backup round trip with *zero* change to backup code — the
+schema-driven row mapping picked the new column up on its own. Pinned by a test, and the first real
+demonstration that the three-strikes bug class is closed.
+
+**Verification** server unit 236 ✓ · integration 118 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 106 ✓ · build ✓ · E2E 17 ✓. Visually confirmed in the running app (players list, night
+titles, Belt) and in rendered share cards.
+
+---
+
 ## 2026-08-03 — Shareable image cards (F-09)
 
 **Why** The WhatsApp text shipped in the Banter Pack clearly landed, but text is skimmed in a group

@@ -33,9 +33,9 @@ export const playersApi = {
       params: { activeOnly },
     }),
   getById: (id: string) => api.get<Player>(`/players/${id}`),
-  create: (data: { groupId: string; name: string; avatarUrl?: string }) =>
+  create: (data: { groupId: string; name: string; nickname?: string | null; avatarUrl?: string }) =>
     api.post<Player>('/players', data),
-  update: (id: string, data: { name?: string; avatarUrl?: string; isActive?: boolean }) =>
+  update: (id: string, data: { name?: string; nickname?: string | null; avatarUrl?: string; isActive?: boolean }) =>
     api.patch<Player>(`/players/${id}`, data),
   toggleActive: (id: string) => api.patch<Player>(`/players/${id}/toggle-active`),
   delete: (id: string) => api.delete(`/players/${id}`),

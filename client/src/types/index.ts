@@ -16,6 +16,8 @@ export interface Player {
   id: string;
   groupId: string;
   name: string;
+  /** Optional handle shown on personality surfaces; see lib/displayName.ts. */
+  nickname?: string | null;
   avatarUrl: string | null;
   isActive: boolean;
   createdAt: string;
@@ -67,6 +69,7 @@ export interface SessionEntry {
   player?: {
     id: string;
     name: string;
+    nickname?: string | null;
   };
   profit?: number;
   rebuys?: number;

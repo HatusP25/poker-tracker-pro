@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  heroSize,
   buildNightCardScene,
   buildBeltCardScene,
   buildSeasonCardScene,
@@ -207,6 +208,30 @@ describe('buildBeltCardScene', () => {
         buildBeltCardScene({ holderName: 'Ana', takenFromName: 'Dave', nightsHeld: 3, defenses: 2 })
       )
     ).toBe(true);
+  });
+
+  it('shrinks the hero so a long name and nickname still fit the width', () => {
+    const short = buildBeltCardScene({
+      holderName: 'Ana',
+      takenFromName: null,
+      nightsHeld: 1,
+      defenses: 0,
+    });
+    const long = buildBeltCardScene({
+      holderName: 'Maximiliano "The Human Calculator"',
+      takenFromName: null,
+      nightsHeld: 1,
+      defenses: 0,
+    });
+
+    expect(textItem(long, 'Maximiliano').size).toBeLessThan(textItem(short, 'Ana').size);
+  });
+
+  it('never lets the hero text exceed the card width', () => {
+    for (const name of ['Al', 'Ana "The Closer"', 'Maximiliano "The Human Calculator"']) {
+      // Same approximation the sizer uses; the point is it stays bounded.
+      expect(name.length * heroSize(name) * 0.55).toBeLessThanOrEqual(1080 - 72 * 2);
+    }
   });
 });
 

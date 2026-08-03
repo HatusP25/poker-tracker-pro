@@ -30,6 +30,9 @@ model Player {
   id        String   @id @default(cuid())
   groupId   String
   name      String
+  // Optional handle shown on the personality surfaces (belt, trophy case, share
+  // cards). Data-dense views keep using `name`.
+  nickname  String?
   avatarUrl String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())

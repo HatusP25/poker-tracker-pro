@@ -10,6 +10,7 @@ import { useCreatePlayer } from '@/hooks/usePlayers';
 
 const createPlayerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50, 'Name must be less than 50 characters'),
+  nickname: z.string().max(24, 'Nickname must be 24 characters or fewer').optional(),
   avatarUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 });
 
@@ -34,6 +35,7 @@ const CreatePlayerDialog = ({ open, onOpenChange, groupId }: CreatePlayerDialogP
     resolver: zodResolver(createPlayerSchema),
     defaultValues: {
       name: '',
+      nickname: '',
       avatarUrl: '',
     },
   });
@@ -44,6 +46,7 @@ const CreatePlayerDialog = ({ open, onOpenChange, groupId }: CreatePlayerDialogP
       await createPlayer.mutateAsync({
         groupId,
         name: data.name,
+        nickname: data.nickname?.trim() || null,
         avatarUrl: data.avatarUrl || undefined,
       });
       reset();
@@ -71,6 +74,17 @@ const CreatePlayerDialog = ({ open, onOpenChange, groupId }: CreatePlayerDialogP
               <Label htmlFor="name">Player Name</Label>
               <Input id="name" placeholder="John Doe" {...register('name')} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nickname">Nickname (optional)</Label>
+              <Input id="nickname" placeholder="The Closer" {...register('nickname')} />
+              {errors.nickname && (
+                <p className="text-sm text-destructive">{errors.nickname.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Shown on the belt, trophy case and shared images.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="avatarUrl">Avatar URL (optional)</Label>
