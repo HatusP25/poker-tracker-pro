@@ -28,10 +28,12 @@ import RebuyItinerary from '@/components/live/RebuyItinerary';
 import SettlementList from '@/components/session/SettlementList';
 import NightTitleChips from '@/components/session/NightTitleChips';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { rebuyCountsByPlayer } from '@/lib/nightRebuys';
 import { formatNightMessage } from '@/lib/nightMessage';
 import { buildNightShareInput, nightCardFilename } from '@/lib/nightShareData';
 import { buildNightCardScene } from '@/lib/shareCard';
 import { displayName } from '@/lib/displayName';
+import { formatCount } from '@/lib/viz';
 import ShareCardButton from '@/components/share/ShareCardButton';
 import type { Settlement } from '@/types';
 
@@ -91,11 +93,20 @@ const SessionDetail = () => {
   const totalBuyIn = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
   const totalCashOut = session.entries?.reduce((sum, e) => sum + e.cashOut, 0) || 0;
 
-  // Calculate stats
+  // Rebuys come from the night's actual rebuy data — recorded rows first, a
+  // reconstruction against the group's own default second (lib/nightRebuys.ts).
+  // This used to be `buyIn > 5 ? (buyIn - 5) / 5 : 0`, which hardcoded a $5
+  // buy-in and printed fractions.
+  const rebuysByPlayer = rebuyCountsByPlayer({
+    entries: session.entries || [],
+    rebuyEvents: session.rebuyEvents,
+    defaultBuyIn: session.group?.defaultBuyIn,
+  });
+
   const entriesWithStats = session.entries?.map((entry) => ({
     ...entry,
     profit: entry.cashOut - entry.buyIn,
-    rebuys: entry.buyIn > 5 ? (entry.buyIn - 5) / 5 : 0,
+    rebuys: rebuysByPlayer.get(entry.playerId) ?? 0,
   })) || [];
 
   const winner = entriesWithStats.reduce((max, entry) =>
@@ -354,7 +365,7 @@ const SessionDetail = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">
-                        {entry.rebuys > 0 ? `${entry.rebuys.toFixed(1)}x` : '-'}
+                        {entry.rebuys > 0 ? formatCount(entry.rebuys) : '—'}
                       </TableCell>
                     </TableRow>
                   ))}
