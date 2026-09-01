@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
@@ -17,10 +17,12 @@ const DataEntry = lazy(() => import('@/pages/DataEntry'));
 const Sessions = lazy(() => import('@/pages/Sessions'));
 const SessionDetail = lazy(() => import('@/pages/SessionDetail'));
 const Players = lazy(() => import('@/pages/Players'));
-const PlayerDetail = lazy(() => import('@/pages/PlayerDetail'));
-const Rankings = lazy(() => import('@/pages/Rankings'));
-const Analytics = lazy(() => import('@/pages/Analytics'));
 const Insights = lazy(() => import('@/pages/Insights'));
+const StatsHub = lazy(() => import('@/pages/Stats/StatsHub'));
+const StandingsTab = lazy(() => import('@/pages/Stats/StandingsTab'));
+const TrendsTab = lazy(() => import('@/pages/Stats/TrendsTab'));
+const RivalsTab = lazy(() => import('@/pages/Stats/RivalsTab'));
+const PlayerTab = lazy(() => import('@/pages/Stats/PlayerTab'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const LiveSessionStart = lazy(() => import('@/pages/LiveSessionStart'));
 const LiveSessionView = lazy(() => import('@/pages/LiveSessionView'));
@@ -36,6 +38,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+/** `/players/:id` moved into the hub; carry the id across. */
+const RedirectToPlayerTab = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/stats/player/${id}` : '/stats/player'} replace />;
+};
 
 const App = () => {
   return (
@@ -89,30 +97,32 @@ const App = () => {
                     </Suspense>
                   }
                 />
+                {/* The Stats hub. Standings, Trends, Rivals and the player card were
+                    four separate pages with enough overlap that the same figure
+                    appeared three times under three definitions. They are peers, so
+                    they are tabs. */}
                 <Route
-                  path="/players/:id"
+                  path="/stats"
                   element={
                     <Suspense fallback={<RouteLoader />}>
-                      <PlayerDetail />
+                      <StatsHub />
                     </Suspense>
                   }
-                />
-                <Route
-                  path="/rankings"
-                  element={
-                    <Suspense fallback={<RouteLoader />}>
-                      <Rankings />
-                    </Suspense>
-                  }
-                />
-                <Route
-                  path="/analytics"
-                  element={
-                    <Suspense fallback={<RouteLoader />}>
-                      <Analytics />
-                    </Suspense>
-                  }
-                />
+                >
+                  <Route index element={<Navigate to="/stats/standings" replace />} />
+                  <Route path="standings" element={<StandingsTab />} />
+                  <Route path="trends" element={<TrendsTab />} />
+                  <Route path="rivals" element={<RivalsTab />} />
+                  <Route path="player" element={<PlayerTab />} />
+                  <Route path="player/:id" element={<PlayerTab />} />
+                </Route>
+
+                {/* Where the hub's surfaces used to live. Existing links, bookmarks
+                    and e2e deep-links keep working. */}
+                <Route path="/rankings" element={<Navigate to="/stats/standings" replace />} />
+                <Route path="/analytics" element={<Navigate to="/stats/trends" replace />} />
+                <Route path="/players/:id" element={<RedirectToPlayerTab />} />
+
                 <Route
                   path="/insights"
                   element={

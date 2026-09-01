@@ -59,7 +59,8 @@ npm run dev
 | G + D | Dashboard |
 | G + S | Sessions |
 | G + P | Players |
-| G + R | Rankings |
+| G + R | Standings |
+| G + A | Trends |
 | G + I | Insights |
 | N + S | New Session |
 | N + P | New Player |

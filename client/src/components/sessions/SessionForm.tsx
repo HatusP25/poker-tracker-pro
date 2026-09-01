@@ -45,6 +45,8 @@ interface SessionFormProps {
   defaultBuyIn: number;
   onSuccess?: () => void;
   cloneFrom?: CloneFromData;
+  /** ISO code from `group.currency`; falls back to "$". */
+  currency?: string | null;
 }
 
 interface EntryState {
@@ -54,7 +56,7 @@ interface EntryState {
   cashOut: number;
 }
 
-const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom }: SessionFormProps) => {
+const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom, currency }: SessionFormProps) => {
   const [entries, setEntries] = useState<EntryState[]>([
     { id: '1', playerId: '', buyIn: defaultBuyIn, cashOut: 0 },
     { id: '2', playerId: '', buyIn: defaultBuyIn, cashOut: 0 },
@@ -342,6 +344,7 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom }: SessionFor
                   buyIn={entry.buyIn}
                   cashOut={entry.cashOut}
                   defaultBuyIn={defaultBuyIn}
+                  currency={currency}
                   onPlayerChange={(playerId) => updateEntry(entry.id, 'playerId', playerId)}
                   onBuyInChange={(value) => updateEntry(entry.id, 'buyIn', value)}
                   onCashOutChange={(value) => updateEntry(entry.id, 'cashOut', value)}
@@ -359,7 +362,12 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom }: SessionFor
           </Button>
 
           {/* Balance Indicator */}
-          <BalanceIndicator totalBuyIn={totalBuyIn} totalCashOut={totalCashOut} threshold={1} />
+          <BalanceIndicator
+            totalBuyIn={totalBuyIn}
+            totalCashOut={totalCashOut}
+            threshold={1}
+            currency={currency}
+          />
         </CardContent>
       </Card>
 

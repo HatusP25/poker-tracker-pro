@@ -1,104 +1,102 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Flame, Award } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatCount, formatMoney } from '@/lib/viz';
 import type { StreakUpdate, Milestone } from '@/types';
+
+/**
+ * What this night did to people's runs.
+ *
+ * Was three stacked colour families — green-50/red-50/yellow-50 tiles, each
+ * with a `dark:` half that could never render — plus a hardcoded
+ * `bg-yellow-600` badge. Streaks are money outcomes, so they take the semantic
+ * pair; milestones are neither up nor down, so they take a plain surface and
+ * earn their attention from the emoji and the sentence instead of a fourth
+ * colour.
+ */
+
+const MILESTONE_EMOJI: Record<Milestone['type'], string> = {
+  best_session: '🏆',
+  total_games: '🎯',
+  total_profit: '💰',
+  top_3: '⭐',
+};
 
 interface StreaksSectionProps {
   streaks: StreakUpdate[];
   milestones: Milestone[];
+  currency?: string | null;
+  className?: string;
 }
 
-const StreaksSection = ({ streaks, milestones }: StreaksSectionProps) => {
-  // Don't render if no streaks or milestones
-  if (streaks.length === 0 && milestones.length === 0) {
-    return null;
-  }
+const StreaksSection = ({ streaks, milestones, currency, className }: StreaksSectionProps) => {
+  if (streaks.length === 0 && milestones.length === 0) return null;
+
+  const milestoneValue = (milestone: Milestone) => {
+    if (milestone.value === undefined) return null;
+    if (milestone.type === 'total_profit') {
+      return formatMoney(Number(milestone.value), { currency, signed: true, decimals: 2 });
+    }
+    if (milestone.type === 'best_session') {
+      return formatMoney(Number(milestone.value), { currency, signed: true, decimals: 2 });
+    }
+    return formatCount(Number(milestone.value));
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Flame className="h-5 w-5" />
-          Streaks & Milestones
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Streaks */}
-        {streaks.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Active Streaks</h4>
-            <div className="space-y-2">
-              {streaks.map((streak) => (
-                <div
-                  key={streak.playerId}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${
-                    streak.type === 'win'
-                      ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900'
-                      : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900'
-                  }`}
-                >
-                  <div className="text-2xl">
-                    {streak.type === 'win' ? '🔥' : '😤'}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{streak.playerName}</p>
-                    <p className={`text-sm ${streak.type === 'win' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                      {streak.isNew ? 'Started a' : 'Extended'} {streak.count}-game {streak.type} streak!
-                    </p>
-                  </div>
-                  <Badge
-                    variant={streak.type === 'win' ? 'default' : 'destructive'}
-                    className="ml-auto"
-                  >
-                    {streak.count}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+    <section className={cn('space-y-3', className)}>
+      <h3 className="eyebrow">Runs &amp; milestones</h3>
 
-        {/* Milestones */}
-        {milestones.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Award className="h-4 w-4" />
-              Milestones Achieved
-            </h4>
-            <div className="space-y-2">
-              {milestones.map((milestone, index) => (
-                <div
-                  key={`${milestone.playerId}-${index}`}
-                  className="flex items-center gap-3 p-3 rounded-lg border bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900"
-                >
-                  <div className="text-2xl">
-                    {milestone.type === 'best_session' && '🏆'}
-                    {milestone.type === 'total_games' && '🎯'}
-                    {milestone.type === 'total_profit' && '💰'}
-                    {milestone.type === 'top_3' && '⭐'}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{milestone.playerName}</p>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                      {milestone.description}
-                    </p>
-                  </div>
-                  {milestone.value !== undefined && (
-                    <Badge className="ml-auto bg-yellow-600 hover:bg-yellow-700">
-                      {milestone.type === 'total_profit'
-                        ? `$${Number(milestone.value).toFixed(2)}`
-                        : milestone.type === 'best_session'
-                        ? `+$${Number(milestone.value).toFixed(2)}`
-                        : milestone.value}
-                    </Badge>
-                  )}
-                </div>
-              ))}
+      <ul className="space-y-2">
+        {streaks.map((streak) => {
+          const winning = streak.type === 'win';
+          return (
+            <li
+              key={streak.playerId}
+              className={cn(
+                'flex items-center gap-3 rounded-lg border px-4 py-3',
+                winning ? 'border-profit/25 bg-profit-tint/60' : 'border-loss/25 bg-loss-tint/60'
+              )}
+            >
+              <span aria-hidden className="text-lg leading-none">
+                {winning ? '🔥' : '😤'}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-label font-semibold">{streak.playerName}</p>
+                <p className="text-label-sm text-muted-foreground">
+                  {streak.isNew ? 'Started a' : 'Extended a'} {formatCount(streak.count)}-game{' '}
+                  {winning ? 'winning' : 'losing'} run
+                </p>
+              </div>
+              <Badge variant={winning ? 'profit' : 'loss'} className="shrink-0 tnum">
+                {formatCount(streak.count)}
+              </Badge>
+            </li>
+          );
+        })}
+
+        {milestones.map((milestone, index) => (
+          <li
+            key={`${milestone.playerId}-${milestone.type}-${index}`}
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface-2 px-4 py-3"
+          >
+            <span aria-hidden className="text-lg leading-none">
+              {MILESTONE_EMOJI[milestone.type]}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-label font-semibold">
+                {milestone.playerName}
+              </p>
+              <p className="text-label-sm text-muted-foreground">{milestone.description}</p>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            {milestone.value !== undefined && (
+              <span className="shrink-0 font-display text-label-sm font-semibold tnum text-muted-foreground">
+                {milestoneValue(milestone)}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 };
 

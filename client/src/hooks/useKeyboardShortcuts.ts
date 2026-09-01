@@ -44,10 +44,10 @@ export const useKeyboardShortcuts = () => {
             navigate('/players');
             break;
           case 'r':
-            navigate('/rankings');
+            navigate('/stats/standings');
             break;
           case 'a':
-            navigate('/analytics');
+            navigate('/stats/trends');
             break;
           case 'i':
             navigate('/insights');

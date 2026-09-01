@@ -1,44 +1,75 @@
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Scale } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatMoney } from '@/lib/viz';
 
 interface BalanceIndicatorProps {
   totalBuyIn: number;
   totalCashOut: number;
   threshold?: number;
+  currency?: string | null;
+  className?: string;
 }
 
-const BalanceIndicator = ({ totalBuyIn, totalCashOut, threshold = 1 }: BalanceIndicatorProps) => {
+/**
+ * Does the money on the table add up?
+ *
+ * This is a correctness read-out, not decoration: it must keep saying exactly
+ * what it said before — buy-in, cash-out, and the difference — because it is
+ * how someone catches a mistyped cash-out before the settlement is computed.
+ * What changed is the volume. A balanced night is the normal case and no longer
+ * shouts in green; an unbalanced one keeps a loud, loss-toned frame, because
+ * that is the one you must not scroll past.
+ */
+const BalanceIndicator = ({
+  totalBuyIn,
+  totalCashOut,
+  threshold = 1,
+  currency,
+  className,
+}: BalanceIndicatorProps) => {
   const difference = Math.abs(totalBuyIn - totalCashOut);
   const isBalanced = difference <= threshold;
+  const money = (value: number) => formatMoney(value, { currency, decimals: 2 });
 
   return (
     <div
-      className={`p-4 rounded-lg border ${
-        isBalanced
-          ? 'bg-green-500/10 border-green-500/50'
-          : 'bg-destructive/10 border-destructive/50'
-      }`}
+      className={cn(
+        'flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border px-4 py-3',
+        isBalanced ? 'border-border bg-surface-2/60' : 'border-loss/50 bg-loss-tint',
+        className
+      )}
+      data-testid="balance-indicator"
     >
-      <div className="flex items-center gap-3">
+      <span className="flex items-center gap-2">
         {isBalanced ? (
-          <CheckCircle className="h-5 w-5 text-green-500" />
+          <Scale className="h-4 w-4 shrink-0 text-profit" aria-hidden />
         ) : (
-          <AlertCircle className="h-5 w-5 text-destructive" />
+          <AlertTriangle className="h-4 w-4 shrink-0 text-loss" aria-hidden />
         )}
-        <div className="flex-1">
-          <h4 className="font-medium">
-            {isBalanced ? 'Session Balanced' : 'Session Unbalanced'}
-          </h4>
-          <div className="text-sm text-muted-foreground mt-1">
-            <div className="flex gap-4">
-              <span>Total Buy-In: ${totalBuyIn.toFixed(2)}</span>
-              <span>Total Cash-Out: ${totalCashOut.toFixed(2)}</span>
-              <span className={difference > threshold ? 'text-destructive font-medium' : ''}>
-                Difference: ${difference.toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+        <span
+          className={cn(
+            'font-display text-label font-semibold',
+            isBalanced ? 'text-foreground' : 'text-loss'
+          )}
+        >
+          {isBalanced ? 'Session balanced' : 'Session unbalanced'}
+        </span>
+      </span>
+
+      <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-label-sm text-muted-foreground tnum">
+        <span>
+          <span className="eyebrow mr-1.5">In</span>
+          {money(totalBuyIn)}
+        </span>
+        <span>
+          <span className="eyebrow mr-1.5">Out</span>
+          {money(totalCashOut)}
+        </span>
+        <span className={cn(!isBalanced && 'font-semibold text-loss')}>
+          <span className="eyebrow mr-1.5">Diff</span>
+          {money(difference)}
+        </span>
+      </span>
     </div>
   );
 };

@@ -10,6 +10,98 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-09-01 — The stats restructure
+
+The numbers were right and almost nobody could get anything out of them. Every headline metric was
+a superlative exactly one person owned — balance, rank, biggest win, champion — so a player down $60
+across twenty nights opened the app and found nothing about themselves. Four pages told the same
+story four times: "biggest win" appeared in four places under three different definitions, three
+components drew a cumulative-profit line, five drew a streak. And the whole thing looked unfinished,
+because `--card` and `--background` were set to the same colour, so every card in the app was the
+same shade as the page behind it.
+
+**Every player has a story.** The server now derives a catalogue of per-player angles — rivalries,
+attendance, droughts, day/venue/table-size splits, rebuy dollars, early departures, night ranks,
+form — scores them for specificity, evidence and recency, and returns the best few as *structured
+facts*. The client writes every word. Losing and absent angles are weighted as highly as winning
+ones, and a guaranteed fallback means the list is never empty. On the real group, the player who is
+down $55 leads with *"Lucho has finished ahead of Muel on 13 of their 19 nights together — that is a
+nemesis, not a coincidence."*
+
+**Four stats pages became `/stats`, a hub of four tabs.** Standings (a board, not a table — the
+champion on a podium, a story line on every row, and the players who don't clear the minimum still
+on the page). Trends (fewer, bigger charts: the Money Race as a hero, each night's swing, and a
+day/venue/table-size matrix drawn for the first time). Rivals (every head-to-head record in the
+group on one grid, plus who owns whom). Player (the card — identity, headline, story, then detail).
+`/rankings`, `/analytics` and `/players/:id` redirect in, so existing links keep working. Insights
+stays the story feed and keeps its own area.
+
+**The Dashboard stopped being a fourth copy of the toolbox** and became the pulse: what happened
+last night, who holds the belt, who's hot, and — since there is no login — a "take your seat" pick
+so the page can talk to *you* instead of about whoever is winning.
+
+**Data that was already there, finally on a screen.** Nemesis and favourite victim were computed,
+shipped over the wire and rendered nowhere. So were rebuy dollars, attendance, the co-attendance
+matrix, and profit by day, venue and table size. Splits are per player, not per group — summed
+across the table they are always ~$0, because poker is zero-sum.
+
+**Presentation.** A real elevation ladder so cards are objects; three-way profit/loss tokens
+(an exact $0.00 is no longer green); a display type scale with `tabular-nums` on every figure;
+per-player identity colour used consistently everywhere; one chart theme driven by CSS variables
+instead of three competing systems; nine new primitives replacing markup that was copy-pasted
+fifteen times; and a mobile navigation, where below 768px there had been none at all — every page
+was a dead end on a phone.
+
+### Fixed
+- **In-progress sessions counted as catastrophic losses in every group statistic.** A live night
+  stores `cashOut = 0`, and no stats query filtered on `status`, so everyone at the table appeared
+  to have lost their whole buy-in in the leaderboard, records, form and the season recap.
+- **"Last 5 games" was not ordered** — `recentFormWinRate` sliced an array fetched with no
+  `orderBy`, so recent form was whatever order Postgres happened to return.
+- **`cn()` was silently deleting the new type scale.** tailwind-merge classifies `text-*` by
+  pattern, so `text-display-2` and `text-stat` were filed as colours and dropped whenever a colour
+  shared the call — every hero numeral rendered at inherited size.
+- **Recharts was on the critical path of every route.** `manualChunks` in object form pulled `clsx`
+  into the recharts chunk; `clsx` is both a recharts dependency and what `cn()` uses, so all 18
+  route chunks imported the 415 kB bundle and it was preloaded in `index.html`.
+- **Player colours collided** — nine hues hashed per id is a ~74% collision at five players, and two
+  of five shared a hue in every chart, chip and avatar.
+- **Fractional rebuys on the client.** `SessionDetail` and the data-entry row hardcoded a $5 buy-in
+  and did arithmetic on it, rendering "6.0x" for what was one recorded $30 rebuy. F-07 made
+  `RebuyEvent` the single source of truth on the server; the client never got the memo.
+- **A live night was accused of being unbalanced** in loss-red, when of course it is short by the
+  whole pot until cash-outs are recorded.
+- `getDashboardStats` threw on a session with no entries (`reduce` with no initial value);
+  `PlayerDetail` divided by `totalGames` with no zero guard and printed `NaN%`; Analytics seeded
+  `biggestWin` at 0 so an all-losses range read "+$0.00", and keyed participation by player *name*
+  so duplicates merged; two components sorted the query cache in place; the leaderboard's client
+  sort desynchronised from the server's rank column; `tailwindcss-animate` was never installed, so
+  every dialog animation class in the app generated no CSS.
+
+### Tests
+Server unit 262 → **344** (+35 `statsRules`, +47 `anglesRules`), integration 138 → **163**
+(+11 in-progress sessions, +14 angles), client unit 106 → **412**, e2e 18. Both typechecks clean.
+
+
+### 2026-08-31 — Stats correctness + the angles engine
+
+- **A live night no longer wrecks every statistic.** An in-progress session stores no cash-outs, so
+  everyone at the table was showing up as a total loss in the leaderboard, player stats, dashboard,
+  streaks, records, rivalries, form and the season recap. Statistics now count completed nights
+  only. The live table's own session view and zero-sum check are unchanged.
+- **"Last 5 games" is actually the last 5 games.** Recent form sliced an unordered list, so it was
+  whatever order the database happened to return.
+- **A session with no players no longer breaks the dashboard.**
+- **New: the angles matrix** (`GET /stats/groups/:groupId/angles`) — day-of-week, venue effect on
+  profit, table size, attendance rate and streak, longest drought, rebuy dollars, early departures,
+  best-night ranking, the full co-attendance matrix, and nemesis / favourite victim. All derived
+  from data already stored; no schema change.
+- **Every player gets a story.** The server scores each player's candidate angles for specificity,
+  evidence and recency and returns the best few as structured facts — weighted so that a player who
+  is down, new, or has stopped showing up gets a real line about themselves, not the winner's
+  leftovers. Nobody ever gets nothing.
+- `statsService`'s formulas moved into tested pure functions (`statsRules.ts`).
+
 ### 2026-08-03 — Configurable seasons (F-11)
 
 Poker Wrapped was hardcoded to the calendar year, but groups think in seasons that start when they

@@ -43,6 +43,10 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 ## P2 — Worth doing, not urgent
 
+*(The stats restructure shipped 2026-09-01 — see [CHANGELOG.md](CHANGELOG.md). It closed the
+"limited mobile charts" gap from the old product-gap analysis and the never-built IMP-002
+day-of-week analytics, which now exists as one of three per-player splits.)*
+
 - **[P2·S] Avatar uploads.** Split out of F-10, which shipped nicknames. Blocked on the same
   storage decision as F-12.
 - **[P2·L] F-12 Photo upload + gallery.** `Session.photoUrls` has always been inert.
@@ -61,8 +65,18 @@ Legend: `P0` before anything else · `P1` now-ish · `P2` soon · `P3` someday. 
 
 ## Hygiene
 
-*(all cleared 2026-08-02 — Vite scaffold deleted, dead trend endpoints retired, stale ai-audit
-docs marked superseded)*
+*(cleared 2026-08-02 — Vite scaffold deleted, dead trend endpoints retired, stale ai-audit docs
+marked superseded)*
+
+Opened by the 2026-09-01 stats restructure:
+
+- **[P3·S] `client/src/lib/locationStats.ts` is orphaned.** Its only consumer was the venue chart,
+  which was replaced by the per-player split matrix. Keep or delete — it is unit-tested either way.
+- **[P3·S] Orphaned `dark:` variant pairs in `players/TrophyCase.tsx`.** The app is hard-locked
+  dark, so the light half of each pair can never render. Cleared everywhere else.
+- **[P3·S] `/angles` takes no window.** Story angles are career-wide, so a season- or
+  timeframe-scoped standings board says so rather than qualifying every chip. Only worth doing if
+  season-scoped stories are actually wanted.
 
 ---
 

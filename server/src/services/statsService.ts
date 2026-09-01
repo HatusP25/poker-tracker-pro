@@ -8,46 +8,31 @@ import {
   BalanceCheck,
 } from '../types';
 import {
-  calculateProfit,
-  calculateROI,
-  calculateWinRate,
-  calculateAvgProfit,
-  isSessionBalanced,
-  calculateStreak,
-  calculateLongestWinStreak,
-  calculateLongestLossStreak,
-  round,
-} from '../utils/calculations';
-import { resolveRebuyCount } from '../utils/rebuys';
+  COMPLETED_SESSION_FILTER,
+  computeBalanceCheck,
+  computeDashboardStats,
+  computeLeaderboard,
+  computePerformanceTrend,
+  computePlayerStats,
+  computePlayerStreaks,
+  computeSessionStats,
+  getTimeframeStart,
+  type PlayerEntryRow,
+  type PlayerStreakSummary,
+  type RosterPlayerRow,
+  type TrendPoint,
+} from './statsRules';
+
+// Re-exported so both keep their original import paths.
+export { getTimeframeStart, COMPLETED_SESSION_FILTER } from './statsRules';
 
 /**
- * Compute the inclusive start date for a leaderboard timeframe, relative to `now`.
- * Returns null for 'all' (no filtering).
+ * Stats endpoints: fetch rows, delegate the arithmetic to `statsRules`.
  *
- * - 'year'  -> Jan 1 of the current year (YTD)
- * - 'month' -> 1st of the current month
- * - 'week'  -> start of the current week, Sunday-based
- *
- * Pure function, no DB access, so it's unit-testable in isolation.
+ * Every group-history query is scoped by `COMPLETED_SESSION_FILTER`. Single-session
+ * endpoints (`getSessionStats`, `checkSessionBalance`) deliberately are not — they
+ * are asked about one specific session, including one still in progress.
  */
-export function getTimeframeStart(timeframe: LeaderboardTimeframe, now: Date): Date | null {
-  switch (timeframe) {
-    case 'year':
-      return new Date(now.getFullYear(), 0, 1);
-    case 'month':
-      return new Date(now.getFullYear(), now.getMonth(), 1);
-    case 'week': {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      weekStart.setHours(0, 0, 0, 0);
-      return weekStart;
-    }
-    case 'all':
-    default:
-      return null;
-  }
-}
-
 export class StatsService {
   /**
    * Get comprehensive statistics for a single player
@@ -57,16 +42,10 @@ export class StatsService {
       where: { id: playerId },
       include: {
         entries: {
-          where: {
-            session: {
-              deletedAt: null,
-            },
-          },
-          include: {
-            session: true,
-          },
+          where: { session: COMPLETED_SESSION_FILTER },
+          include: { session: { select: { date: true } } },
         },
-        group: true,
+        group: { select: { defaultBuyIn: true } },
       },
     });
 
@@ -74,119 +53,29 @@ export class StatsService {
       throw new Error('Player not found');
     }
 
-    const entries = player.entries;
-    const totalGames = entries.length;
-
-    if (totalGames === 0) {
-      return {
-        playerId: player.id,
-        playerName: player.name,
-        totalGames: 0,
-        totalBuyIn: 0,
-        totalCashOut: 0,
-        balance: 0,
-        roi: 0,
-        winRate: 0,
-        avgProfit: 0,
-        avgBuyIn: 0,
-        cashOutRate: 0,
-        recentFormWinRate: 0,
-        winningSessionsCount: 0,
-        losingSessionsCount: 0,
-        breakEvenSessionsCount: 0,
-        bestSession: 0,
-        worstSession: 0,
-        totalRebuys: 0,
-        rebuyRate: 0,
-        currentStreak: { type: 'none', count: 0 },
-        longestWinStreak: 0,
-        longestLossStreak: 0,
-      };
-    }
-
-    const totalBuyIn = entries.reduce((sum, e) => sum + e.buyIn, 0);
-    const totalCashOut = entries.reduce((sum, e) => sum + e.cashOut, 0);
-    const balance = totalCashOut - totalBuyIn;
-
-    const sessionResults = entries.map(e => ({
-      profit: calculateProfit(e.cashOut, e.buyIn),
-      date: e.session.date,
-    }));
-
-    const winningSessionsCount = sessionResults.filter(r => r.profit > 0).length;
-    const losingSessionsCount = sessionResults.filter(r => r.profit < 0).length;
-    const breakEvenSessionsCount = sessionResults.filter(r => r.profit === 0).length;
-
-    const profits = sessionResults.map(r => r.profit);
-    const bestSession = profits.length > 0 ? Math.max(...profits) : 0;
-    const worstSession = profits.length > 0 ? Math.min(...profits) : 0;
-
-    // Prefer recorded RebuyEvent rows; fall back per session to the derivation for
-    // nights that never had any. The old arithmetic returned *fractions* — three
-    // $7 buy-ins at a $5 default reported "1.2 rebuys" — and disagreed with every
-    // other rebuy consumer in the app.
+    // Recorded rebuy events per night; the pure function falls back to
+    // reconstructing them from the buy-in for nights that recorded none.
     const recordedRebuys = await prisma.rebuyEvent.groupBy({
       by: ['sessionId'],
-      where: { playerId, session: { deletedAt: null } },
+      where: { playerId, session: COMPLETED_SESSION_FILTER },
       _count: { _all: true },
     });
-    const recordedBySession = new Map(recordedRebuys.map(r => [r.sessionId, r._count._all]));
+    const recordedBySession = new Map(recordedRebuys.map((r) => [r.sessionId, r._count._all]));
 
-    const totalRebuys = entries.reduce(
-      (sum, e) =>
-        sum +
-        resolveRebuyCount(
-          e.buyIn,
-          recordedBySession.get(e.sessionId) ?? 0,
-          player.group.defaultBuyIn
-        ),
-      0
-    );
+    const entries: PlayerEntryRow[] = player.entries.map((e) => ({
+      sessionId: e.sessionId,
+      date: e.session.date,
+      buyIn: e.buyIn,
+      cashOut: e.cashOut,
+      recordedRebuyCount: recordedBySession.get(e.sessionId) ?? 0,
+    }));
 
-    const currentStreak = calculateStreak(sessionResults);
-    const longestWinStreak = calculateLongestWinStreak(sessionResults);
-    const longestLossStreak = calculateLongestLossStreak(sessionResults);
-
-    // Calculate new metrics
-    const avgBuyIn = totalGames > 0 ? totalBuyIn / totalGames : 0;
-    const cashOutRate = totalBuyIn > 0 ? (totalCashOut / totalBuyIn) * 100 : 0;
-    const rebuyRate = totalGames > 0 ? (totalRebuys / totalGames) * 100 : 0;
-
-    // Calculate recent form (last 5 games)
-    const last5Games = sessionResults.slice(-5);
-    const last5Wins = last5Games.filter(r => r.profit > 0).length;
-    const recentFormWinRate = last5Games.length > 0 ? (last5Wins / last5Games.length) * 100 : 0;
-
-    return {
-      playerId: player.id,
-      playerName: player.name,
-      totalGames,
-      totalBuyIn: round(totalBuyIn),
-      totalCashOut: round(totalCashOut),
-      balance: round(balance),
-      roi: round(calculateROI(totalCashOut, totalBuyIn)),
-      winRate: round(calculateWinRate(winningSessionsCount, totalGames)),
-      avgProfit: round(calculateAvgProfit(balance, totalGames)),
-      avgBuyIn: round(avgBuyIn),
-      cashOutRate: round(cashOutRate),
-      recentFormWinRate: round(recentFormWinRate),
-      winningSessionsCount,
-      losingSessionsCount,
-      breakEvenSessionsCount,
-      bestSession: round(bestSession),
-      worstSession: round(worstSession),
-      totalRebuys: round(totalRebuys),
-      rebuyRate: round(rebuyRate),
-      currentStreak,
-      longestWinStreak,
-      longestLossStreak,
-    };
+    return computePlayerStats(player.id, player.name, entries, player.group.defaultBuyIn);
   }
 
   /**
    * Get leaderboard for a group
-   * OPTIMIZED: Single query with includes - NO N+1 problem
-   * Fetches all players with their entries and sessions in one database call
+   * Single query with includes - NO N+1 problem.
    */
   async getLeaderboard(
     groupId: string,
@@ -195,139 +84,60 @@ export class StatsService {
   ): Promise<LeaderboardEntry[]> {
     const timeframeStart = getTimeframeStart(timeframe, new Date());
 
-    // Single optimized query - fetches all data at once
-    // Filter out entries from deleted sessions (and, when a timeframe is
-    // given, sessions dated before the timeframe's start).
     const players = await prisma.player.findMany({
       where: { groupId },
       include: {
         entries: {
           where: {
             session: {
-              deletedAt: null,
+              ...COMPLETED_SESSION_FILTER,
               ...(timeframeStart ? { date: { gte: timeframeStart } } : {}),
             },
           },
-          include: {
-            session: true,
-          },
+          include: { session: { select: { date: true } } },
         },
-        group: true,
       },
     });
 
-    const leaderboard: LeaderboardEntry[] = [];
-
-    for (const player of players) {
-      const entries = player.entries;
-      const totalGames = entries.length;
-
-      if (totalGames < minGames) {
-        continue;
-      }
-
-      const totalBuyIn = entries.reduce((sum, e) => sum + e.buyIn, 0);
-      const totalCashOut = entries.reduce((sum, e) => sum + e.cashOut, 0);
-      const balance = totalCashOut - totalBuyIn;
-
-      const sessionResults = entries.map(e => ({
-        profit: calculateProfit(e.cashOut, e.buyIn),
+    const rows: RosterPlayerRow[] = players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isActive: p.isActive,
+      entries: p.entries.map((e) => ({
+        sessionId: e.sessionId,
         date: e.session.date,
-      }));
+        buyIn: e.buyIn,
+        cashOut: e.cashOut,
+      })),
+    }));
 
-      const winningSessionsCount = sessionResults.filter(r => r.profit > 0).length;
-
-      // Calculate best session and recent form
-      const profits = sessionResults.map(r => r.profit);
-      const bestSession = profits.length > 0 ? Math.max(...profits) : 0;
-
-      const last5Games = sessionResults.slice(-5);
-      const last5Wins = last5Games.filter(r => r.profit > 0).length;
-      const recentFormWinRate = last5Games.length > 0 ? (last5Wins / last5Games.length) * 100 : 0;
-
-      leaderboard.push({
-        rank: 0, // Will be set after sorting
-        playerId: player.id,
-        playerName: player.name,
-        totalGames,
-        totalBuyIn: round(totalBuyIn),
-        totalCashOut: round(totalCashOut),
-        balance: round(balance),
-        roi: round(calculateROI(totalCashOut, totalBuyIn)),
-        winRate: round(calculateWinRate(winningSessionsCount, totalGames)),
-        avgProfit: round(calculateAvgProfit(balance, totalGames)),
-        bestSession: round(bestSession),
-        recentFormWinRate: round(recentFormWinRate),
-        currentStreak: calculateStreak(sessionResults),
-        isActive: player.isActive,
-      });
-    }
-
-    // Sort by balance (descending) and assign ranks
-    leaderboard.sort((a, b) => b.balance - a.balance);
-    leaderboard.forEach((entry, index) => {
-      entry.rank = index + 1;
-    });
-
-    return leaderboard;
+    return computeLeaderboard(rows, minGames);
   }
 
   /**
-   * Get statistics for a single session
+   * Get statistics for a single session (in-progress included — it is about that
+   * one session, not the group's history).
    */
   async getSessionStats(sessionId: string): Promise<SessionStats> {
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
-      include: {
-        entries: {
-          include: {
-            player: true,
-          },
-        },
-      },
+      include: { entries: { include: { player: { select: { name: true } } } } },
     });
 
     if (!session) {
       throw new Error('Session not found');
     }
 
-    const totalBuyIn = session.entries.reduce((sum, e) => sum + e.buyIn, 0);
-    const totalCashOut = session.entries.reduce((sum, e) => sum + e.cashOut, 0);
-    const balance = totalCashOut - totalBuyIn;
-
-    const entriesWithProfit = session.entries.map(e => ({
-      ...e,
-      profit: calculateProfit(e.cashOut, e.buyIn),
-    }));
-
-    const sorted = [...entriesWithProfit].sort((a, b) => b.profit - a.profit);
-    const biggestWinner = sorted.length > 0 && sorted[0].profit > 0
-      ? {
-          playerId: sorted[0].playerId,
-          playerName: sorted[0].player.name,
-          profit: round(sorted[0].profit),
-        }
-      : null;
-
-    const biggestLoser = sorted.length > 0 && sorted[sorted.length - 1].profit < 0
-      ? {
-          playerId: sorted[sorted.length - 1].playerId,
-          playerName: sorted[sorted.length - 1].player.name,
-          profit: round(sorted[sorted.length - 1].profit),
-        }
-      : null;
-
-    return {
-      sessionId: session.id,
+    return computeSessionStats({
+      id: session.id,
       date: session.date,
-      playerCount: session.entries.length,
-      totalBuyIn: round(totalBuyIn),
-      totalCashOut: round(totalCashOut),
-      balance: round(balance),
-      isBalanced: isSessionBalanced(totalBuyIn, totalCashOut),
-      biggestWinner,
-      biggestLoser,
-    };
+      entries: session.entries.map((e) => ({
+        playerId: e.playerId,
+        playerName: e.player.name,
+        buyIn: e.buyIn,
+        cashOut: e.cashOut,
+      })),
+    });
   }
 
   /**
@@ -337,21 +147,11 @@ export class StatsService {
     const group = await prisma.group.findUnique({
       where: { id: groupId },
       include: {
-        players: true,
+        players: { select: { isActive: true } },
         sessions: {
-          where: {
-            deletedAt: null,
-          },
-          include: {
-            entries: {
-              include: {
-                player: true,
-              },
-            },
-          },
-          orderBy: {
-            date: 'desc',
-          },
+          where: COMPLETED_SESSION_FILTER,
+          include: { entries: { include: { player: { select: { name: true } } } } },
+          orderBy: { date: 'desc' },
         },
       },
     });
@@ -360,177 +160,80 @@ export class StatsService {
       throw new Error('Group not found');
     }
 
-    const totalSessions = group.sessions.length;
-    const totalPlayers = group.players.length;
-    const activePlayers = group.players.filter(p => p.isActive).length;
-
-    // Get leaderboard once and reuse for both netGroupProfit and topPlayers
     const leaderboard = await this.getLeaderboard(groupId);
-    const netGroupProfit = leaderboard.reduce((sum, p) => sum + p.balance, 0);
 
-    // Calculate average session size (average pot)
-    const totalBuyIns = group.sessions.reduce(
-      (sum, s) => sum + s.entries.reduce((entrySum, e) => entrySum + e.buyIn, 0),
-      0
-    );
-    const avgSessionSize = totalSessions > 0 ? totalBuyIns / totalSessions : 0;
-
-    const lastSessionDate = group.sessions.length > 0 ? group.sessions[0].date : null;
-
-    // Get top 3 players from already-fetched leaderboard
-    const topPlayers = leaderboard.slice(0, 3).map(p => ({
-      playerId: p.playerId,
-      playerName: p.playerName,
-      balance: p.balance,
-      roi: p.roi,
-      totalGames: p.totalGames,
-    }));
-
-    // Get recent 5 sessions
-    const recentSessions = group.sessions.slice(0, 5).map(s => {
-      const entriesWithProfit = s.entries.map(e => ({
-        ...e,
-        profit: calculateProfit(e.cashOut, e.buyIn),
-      }));
-      const winner = entriesWithProfit.reduce((max, e) =>
-        e.profit > max.profit ? e : max
-      );
-
-      return {
-        sessionId: s.id,
+    return computeDashboardStats({
+      sessions: group.sessions.map((s) => ({
+        id: s.id,
         date: s.date,
-        playerCount: s.entries.length,
-        winner: winner.player.name,
-        totalPot: round(s.entries.reduce((sum, e) => sum + e.buyIn, 0)),
-      };
+        entries: s.entries.map((e) => ({
+          playerId: e.playerId,
+          playerName: e.player.name,
+          buyIn: e.buyIn,
+          cashOut: e.cashOut,
+        })),
+      })),
+      players: group.players,
+      leaderboard,
     });
-
-    return {
-      totalSessions,
-      totalPlayers,
-      activePlayers,
-      netGroupProfit: round(netGroupProfit),
-      avgSessionSize: round(avgSessionSize),
-      lastSessionDate,
-      topPlayers,
-      recentSessions,
-    };
   }
 
   /**
-   * Check if a session is balanced
+   * Check if a session is balanced (in-progress included, by design — this is the
+   * zero-sum check the live table itself relies on).
    */
   async checkSessionBalance(sessionId: string, threshold = 1): Promise<BalanceCheck> {
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
-      include: {
-        entries: true,
-      },
+      include: { entries: { select: { buyIn: true, cashOut: true } } },
     });
 
     if (!session) {
       throw new Error('Session not found');
     }
 
-    const totalBuyIn = session.entries.reduce((sum, e) => sum + e.buyIn, 0);
-    const totalCashOut = session.entries.reduce((sum, e) => sum + e.cashOut, 0);
-    const difference = totalCashOut - totalBuyIn;
-
-    return {
-      sessionId: session.id,
-      totalBuyIn: round(totalBuyIn),
-      totalCashOut: round(totalCashOut),
-      difference: round(difference),
-      isBalanced: isSessionBalanced(totalBuyIn, totalCashOut, threshold),
-      threshold,
-    };
+    return computeBalanceCheck(session.id, session.entries, threshold);
   }
-
 
   /**
    * Get player streaks (current win/loss streaks)
    */
-  async getPlayerStreaks(groupId: string) {
+  async getPlayerStreaks(groupId: string): Promise<PlayerStreakSummary[]> {
     const players = await prisma.player.findMany({
-      where: {
-        groupId,
-        isActive: true,
-      },
+      where: { groupId, isActive: true },
       include: {
         entries: {
-          where: {
-            session: {
-              deletedAt: null,
-            },
-          },
-          include: {
-            session: true,
-          },
-          orderBy: {
-            session: {
-              date: 'desc',
-            },
-          },
+          where: { session: COMPLETED_SESSION_FILTER },
+          include: { session: { select: { date: true } } },
         },
       },
     });
 
-    return players.map((player) => {
-      const entries = player.entries;
-
-      if (entries.length === 0) {
-        return {
-          playerId: player.id,
-          playerName: player.name,
-          currentStreak: 0,
-          streakType: 'none' as const,
-          longestWinStreak: 0,
-          longestLossStreak: 0,
-        };
-      }
-
-      // Convert entries to the format expected by streak calculation functions
-      const sessionResults = entries.map((e) => ({
-        profit: calculateProfit(e.cashOut, e.buyIn), // Fixed: cashOut first, then buyIn
-        date: new Date(e.session.date),
-      }));
-
-      const streakInfo = calculateStreak(sessionResults);
-      const longestWinStreak = calculateLongestWinStreak(sessionResults);
-      const longestLossStreak = calculateLongestLossStreak(sessionResults);
-
-      return {
-        playerId: player.id,
-        playerName: player.name,
-        currentStreak: streakInfo.count,
-        streakType: streakInfo.type,
-        longestWinStreak,
-        longestLossStreak,
-      };
-    });
+    return computePlayerStreaks(
+      players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        isActive: p.isActive,
+        entries: p.entries.map((e) => ({
+          sessionId: e.sessionId,
+          date: e.session.date,
+          buyIn: e.buyIn,
+          cashOut: e.cashOut,
+        })),
+      }))
+    );
   }
 
   /**
    * Get player performance trend (cumulative profit over time)
    */
-  async getPlayerPerformanceTrend(playerId: string) {
+  async getPlayerPerformanceTrend(playerId: string): Promise<TrendPoint[]> {
     const player = await prisma.player.findUnique({
       where: { id: playerId },
       include: {
         entries: {
-          where: {
-            session: {
-              deletedAt: null,
-            },
-          },
-          include: {
-            session: true,
-          },
-          orderBy: {
-            session: {
-              date: 'asc',
-            },
-          },
+          where: { session: COMPLETED_SESSION_FILTER },
+          include: { session: { select: { date: true } } },
         },
       },
     });
@@ -539,21 +242,15 @@ export class StatsService {
       throw new Error('Player not found');
     }
 
-    let cumulativeProfit = 0;
-    const performanceData = player.entries.map((entry) => {
-      const sessionProfit = calculateProfit(entry.cashOut, entry.buyIn);
-      cumulativeProfit += sessionProfit;
-
-      return {
-        date: new Date(entry.session.date).toISOString().split('T')[0],
-        sessionProfit: round(sessionProfit),
-        cumulativeProfit: round(cumulativeProfit),
-      };
-    });
-
-    return performanceData;
+    return computePerformanceTrend(
+      player.entries.map((e) => ({
+        sessionId: e.sessionId,
+        date: e.session.date,
+        buyIn: e.buyIn,
+        cashOut: e.cashOut,
+      }))
+    );
   }
-
 }
 
 export const statsService = new StatsService();

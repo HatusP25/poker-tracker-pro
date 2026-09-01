@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Season, Group, Player, PlayerNote, Session, PlayerStats, LeaderboardEntry, LeaderboardTimeframe, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap, BeltLineage, AchievementsResponse } from '@/types';
+import type { Season, Group, Player, PlayerNote, Session, PlayerStats, LeaderboardEntry, LeaderboardTimeframe, DashboardStats, GroupRecords, HeadToHeadResponse, PlayerForm, SeasonRecap, BeltLineage, AchievementsResponse, GroupAnglesResponse } from '@/types';
 
 // Shared secret for mutating requests. Only present when the deployment sets one
 // (see server/src/middleware/requireApiKey.ts); local dev leaves it undefined and
@@ -141,6 +141,16 @@ export const insightsApi = {
     api.get<BeltLineage>(`/stats/groups/${groupId}/belt`),
   getAchievements: (groupId: string) =>
     api.get<AchievementsResponse>(`/stats/groups/${groupId}/achievements`),
+};
+
+// Angles — the whole derived-metrics matrix for a group in one request: splits
+// (day / venue / table size), attendance, droughts, rebuy dollars, departures,
+// night ranks, co-attendance and each player's scored story angles. One endpoint
+// on purpose: the client slices this single cached payload for the stats hub, the
+// rivals grid and every player card instead of fetching per player.
+export const anglesApi = {
+  getGroupAngles: (groupId: string) =>
+    api.get<GroupAnglesResponse>(`/stats/groups/${groupId}/angles`),
 };
 
 // Seasons — group-defined stretches of play. A group with none falls back to

@@ -124,6 +124,7 @@ const DataEntry = () => {
       <SessionForm
         groupId={selectedGroup.id}
         defaultBuyIn={selectedGroup.defaultBuyIn}
+        currency={selectedGroup.currency}
         onSuccess={handleSuccess}
         cloneFrom={cloneFrom}
       />

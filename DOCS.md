@@ -168,18 +168,29 @@ After each session (live or historical), view:
 
 - Player leaderboards with sortable columns
 - ROI, win rate, and streak tracking
-- 7 interactive charts on Analytics page
-- Individual player performance pages
+- Charts on the Stats hub's Trends tab
+- Individual player cards on the Stats hub's Player tab
+
+### The Stats Hub
+
+`/stats` — four routed tabs. The tab is in the URL, so it is linkable and survives a reload.
+`/rankings`, `/analytics` and `/players/:id` redirect here.
+
+| Tab | Route | What it answers |
+|-----|-------|-----------------|
+| Standings | `/stats/standings` | Who is up, and what else is true about each player |
+| Trends | `/stats/trends` | The money race, each night's swing, and who wins when and where |
+| Rivals | `/stats/rivals` | Every head-to-head record in the group, on one grid |
+| Player | `/stats/player/:id` | One player's card — their story, then their detail |
 
 ### Insights — The Story of Your Game
 
-A narrative-first area (`/insights`, shortcut `G + I`) separate from the Analytics
-toolbox. All modules are read-only and derived from existing data (no schema changes):
+A narrative-first area (`/insights`, shortcut `G + I`) separate from the `/stats` hub. All modules are read-only and derived from existing data (no schema changes):
 
 - **Hall of Fame & Records**: biggest win/loss/comeback, longest streaks, most rebuys,
   best ROI night, biggest pot — each links to the session where it happened.
-- **Rivalries / Head-to-Head**: pick two players for their record, profit differential,
-  and current streak; auto-surfaced biggest rivalry plus per-player bogey / favorite victim.
+- **Rivalries**: the auto-surfaced biggest feud, told in full. Every other matchup lives on
+  the hub's Rivals tab (`/stats/rivals`), which draws the whole head-to-head grid.
 - **Form & Momentum**: hot/cold board with trajectory arrows, heater/slump badges, and
   per-player momentum sparklines.
 - **Season Recap ("Poker Wrapped")**: champion, biggest mover, attendance king, best
@@ -202,8 +213,8 @@ toolbox. All modules are read-only and derived from existing data (no schema cha
 | G + E | Go to Data Entry |
 | G + S | Go to Sessions |
 | G + P | Go to Players |
-| G + R | Go to Rankings |
-| G + A | Go to Analytics |
+| G + R | Go to Standings (`/stats/standings`) |
+| G + A | Go to Trends (`/stats/trends`) |
 | G + I | Go to Insights |
 | N + S | New Session |
 | N + P | New Player |
@@ -346,6 +357,11 @@ only path that computes settlements and enforces zero-sum.
 | GET | `/stats/groups/:groupId/season` | Get season recap (optional `year`) |
 | GET | `/stats/groups/:groupId/belt` | Get The Belt lineage (derived, head-to-head succession rule) |
 | GET | `/stats/groups/:groupId/achievements` | Get per-player achievements + catalog + recent unlocks (derived) |
+| GET | `/stats/groups/:groupId/angles` | Get the whole angles matrix: day/venue/table-size splits, attendance, droughts, rebuy dollars, early departures, night ranks, co-attendance, rivalries and each player's scored story angles (derived, one full-history pass) |
+
+> **Every group-history endpoint counts only `status = 'COMPLETED'`, non-deleted sessions.**
+> Single-session endpoints (`/stats/sessions/:id/stats`, `/stats/sessions/:id/balance-check`) are
+> deliberately exempt — they are asked about one specific session, including one still in progress.
 
 #### Backup & Restore
 | Method | Endpoint | Description |
@@ -459,7 +475,10 @@ model SessionEntry {
 
 ## Statistics Calculations
 
-All calculations in `/server/src/services/statsService.ts`:
+The formulas are pure functions in `/server/src/services/statsRules.ts` (leaderboard, dashboard,
+player stats, session stats, streaks, trend) and `/server/src/services/anglesRules.ts` (the derived
+metrics and the story selector). The services in `statsService.ts` / `anglesService.ts` fetch rows
+and delegate, so every formula is unit-testable without a database.
 
 ### Player Metrics
 
@@ -471,7 +490,24 @@ All calculations in `/server/src/services/statsService.ts`:
 | Avg Profit | balance / totalGames |
 | Cash-Out Rate | (totalCashOut / totalBuyIn) × 100 |
 | Rebuy Rate | (totalRebuys / totalGames) × 100 |
-| Recent Form | wins in last 5 games / 5 × 100 |
+| Recent Form | wins in the chronologically last 5 games / games in that window × 100 |
+
+### Angles (derived metrics)
+
+In `/server/src/services/anglesRules.ts`. All derived on read; no schema change (D-004), and no
+grinder/bankroll metric (D-002 — no $/hour, variance, std-dev or EV).
+
+| Metric | Definition |
+|--------|------------|
+| Day-of-week / venue / table-size split | Profit per night bucketed by `Session.date` weekday **in UTC**, normalised `Session.location` (trimmed, case-insensitive, null → "Unspecified"), and `entries.length`. `best`/`worst` are withheld unless two buckets clear `minSessions` |
+| Attendance | Nights played ÷ group nights **since that player's first appearance**, plus current/longest attendance streak and nights missed in a row |
+| Drought | Nights they played since their last winning night; `never won` is reported as such rather than as an infinite drought |
+| Rebuy dollars | Σ `RebuyEvent.amount` — recorded events, or reconstructed from the total buy-in for nights that recorded none (never buy-in arithmetic; F-07) |
+| Early departures | `SessionEntry.cashedOutAt`, counted only against nights where someone's exit was actually recorded — the response says how many those were |
+| Best-night ranking | Where a night sits in that player's own career, ties to the earlier night |
+| Co-attendance | Shared-night count for every pair, computed in one pass |
+| Nemesis / favourite victim | Head-to-head record per pair, gated on a minimum shared sample and a 60% dominance floor |
+| Story angles | Every candidate above, scored `weight × strength × confidence × recency`, deduped to one per family, best first. Never empty |
 
 ### Session Summary Analytics
 

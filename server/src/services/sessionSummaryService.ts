@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { computeNightTitles } from './banterService';
 import { NightTitle } from '../types/banter';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
+import { COMPLETED_SESSION_FILTER } from './statsRules';
 import {
   computeRankings,
   sessionsUpTo,
@@ -55,8 +56,10 @@ export class SessionSummaryService {
     }
 
     // One query for the whole group's history, instead of one per player.
+    // In-progress nights are excluded — their cashOut is 0 for everyone still at
+    // the table, which would sink every ranking and streak this summary reports.
     const history = await prisma.session.findMany({
-      where: { groupId, deletedAt: null },
+      where: { groupId, ...COMPLETED_SESSION_FILTER },
       include: { entries: { include: { player: { select: { name: true } } } } },
       orderBy: { date: 'asc' },
     });

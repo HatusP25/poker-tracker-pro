@@ -71,3 +71,76 @@ typecheck) must be green before any merge/push. Pushing `main` is a production d
 user confirmation.
 
 **Consequences:** Codified in [CLAUDE.md](../CLAUDE.md) §2. CI enforces the suite on every PR/push.
+
+---
+
+## D-006 — Statistics count only completed sessions (2026-08-31, accepted)
+
+**Context:** An in-progress session stores `cashOut = 0` for everyone still at the table. Nothing in
+the stats path filtered on `status`, so the moment a live night started, every player at it appeared
+as a catastrophic loss in the leaderboard, player stats, dashboard, streaks, trend, records,
+rivalries, form and the season recap. Only `banterService` filtered correctly.
+
+**Decision:** A session counts towards statistics only when it is `status = 'COMPLETED'` and not
+soft-deleted. `COMPLETED_SESSION_FILTER` in `server/src/services/statsRules.ts` is the single
+definition, applied in SQL by every group-history query.
+
+**Consequences:** A live night is invisible to every aggregate surface until it is ended, which is
+the only honest reading of a night with no results yet. Single-session endpoints
+(`/stats/sessions/:id/stats`, `/stats/sessions/:id/balance-check`) are deliberately exempt — they
+are asked about that one session, and the live table depends on the zero-sum check. Any new
+group-history query must use the shared filter rather than re-deriving it.
+
+---
+
+## D-007 — Every player gets a story, and the server scores it (2026-08-31, accepted)
+
+**Context:** Every headline metric in the app was a superlative exactly one person owned. A player
+down $60 across 20 nights opened the app and found nothing about themselves.
+
+**Decision:** The server derives a catalogue of per-player angles (rivalries, attendance, droughts,
+splits, rebuy dollars, departures, night ranks, form) and scores them for specificity, evidence and
+recency, returning the best few as **structured facts**. The client owns every word of the copy; the
+server never returns prose. Losing/absent angles are weighted as highly as winning ones, and a
+guaranteed career fallback means the list is never empty.
+
+**Consequences:** New angles are added to `anglesRules.ts` with a weight, a strength function, a
+minimum sample and a family; the family dedupe keeps the returned set from repeating itself. Because
+the payload is facts rather than sentences, tone and wording stay a client concern and can change
+without a server deploy.
+
+
+## D-008 — The stats hub narrows, but does not reverse, D-003 (2026-08-31, accepted)
+
+**Context:** D-003 split the app into `/analytics` (a data toolbox) and `/insights` (the story). In
+practice the toolbox spread across four pages — Dashboard, Rankings, Analytics and the player page —
+with enough overlap that "biggest win" appeared four times under three different definitions, three
+separate components drew a cumulative-profit line, and five drew a streak. "Where do I find X?" had
+no answer because X was in three places.
+
+**Decision:** The toolbox stops being its own page and becomes `/stats`, a hub of four routed tabs
+(Standings, Trends, Rivals, Player). `/rankings`, `/analytics` and `/players/:id` redirect into it,
+so existing links, bookmarks and e2e deep-links keep working. **Insights stays a separate area and
+does not absorb the charts** — D-003's actual intent, the separation of story from toolbox, is
+preserved. The Dashboard stops being a fourth copy of the toolbox and becomes a home screen.
+
+**Consequences:** The tab lives in the URL, so it is linkable and survives a reload. A new numeric
+surface belongs in a hub tab, not a new top-level route. The nav has one Stats entry instead of two,
+which is also what let the eight-item header stop overflowing at 1440px.
+
+## D-009 — Player colour is assigned across the roster, not hashed per player (2026-08-31, accepted)
+
+**Context:** Player identity colour was a hash of the player id against a nine-hue palette. With five
+players that collides about three times in four, and it did: two of five shared a hue in every chart,
+chip and avatar. Charts that used `assignPlayerColors` over their own subset also disagreed with
+chips that used the raw hash, so one player could be two colours on a single screen.
+
+**Decision:** The roster is registered once at the layout level and `playerColor(id)` reads that
+assignment, falling back to the hash for anyone outside the current group (a departed player still
+in the history keeps a stable colour). Each player still starts from their hashed preference and only
+moves if it is taken, so adding a member rarely disturbs anyone else.
+
+**Consequences:** Colour is group-scoped, not global — the same person in two groups may differ, which
+is the right trade for never colliding inside the group people actually look at. Past nine players the
+palette is exhausted and colours repeat by design; inventing a tenth hue would collide with the
+profit/loss semantics the palette deliberately avoids.

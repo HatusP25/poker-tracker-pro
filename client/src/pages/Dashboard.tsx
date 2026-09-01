@@ -1,266 +1,141 @@
-import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Users, Calendar, DollarSign, TrendingUp, Plus, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
 import { useGroupContext } from '@/context/GroupContext';
 import { useDashboardStats } from '@/hooks/useStats';
-import { parseLocalDate } from '@/lib/dateUtils';
-import StatCardSkeleton from '@/components/skeletons/StatCardSkeleton';
-import CardSkeleton from '@/components/skeletons/CardSkeleton';
-import PlayerPerformanceChart from '@/components/dashboard/PlayerPerformanceChart';
-import PlayerStreaks from '@/components/dashboard/PlayerStreaks';
+import { useBelt, useForm } from '@/hooks/useInsights';
+import { useGroupAngles } from '@/hooks/useAngles';
+import { usePlayersByGroup } from '@/hooks/usePlayers';
+import { useActiveSessions } from '@/hooks/useLiveSessions';
+import { useViewerPlayer } from '@/hooks/useViewerPlayer';
+import { formatLocalDate } from '@/lib/dateUtils';
+import LiveNowBanner from '@/components/dashboard/LiveNowBanner';
+import LastNightHero from '@/components/dashboard/LastNightHero';
+import BeltPanel from '@/components/dashboard/BeltPanel';
+import YourCard from '@/components/dashboard/YourCard';
+import AroundTheTable from '@/components/dashboard/AroundTheTable';
+import FormStrip from '@/components/dashboard/FormStrip';
+import WhereNext from '@/components/dashboard/WhereNext';
+import { beltSummary } from '@/components/dashboard/pulseCopy';
 
+/**
+ * The Pulse — the home screen.
+ *
+ * What it replaced: a page that reprinted the leaderboard, the sessions list
+ * and two Analytics charts, with "Total Sessions" and "Biggest Winner" rendered
+ * at identical size so nothing was ever the headline, and a Quick Actions block
+ * of three buttons duplicating three nav links 400px above.
+ *
+ * What it is now, top to bottom, in the order a member actually wants it:
+ *
+ *   1. a game is running *right now* (only when true)
+ *   2. what happened last night, at display scale, with the belt implication
+ *   3. who is wearing the belt
+ *   4. a sentence about *you* — the app has no login, so it asks who is looking
+ *      and remembers (`useViewerPlayer`)
+ *   5. three things about three other people, rotating daily
+ *   6. who is running hot
+ *   7. the way through to the Stats hub and the archive
+ *
+ * The leaderboard and the sessions list are linked, not copied. Nothing here
+ * sums profit across players: poker is zero-sum, so that figure is always about
+ * $0 plus data-entry drift, which is why `netGroupProfit` is computed, shipped
+ * and rendered nowhere.
+ *
+ * No Recharts on this route. `/` is the entry route and the recharts chunk is
+ * ~400 kB kept deliberately off the initial load; the only data graphic here is
+ * five hand-drawn rectangles in `FormStrip`.
+ */
 const Dashboard = () => {
   const { selectedGroup } = useGroupContext();
-  const navigate = useNavigate();
-  const { data: stats, isLoading } = useDashboardStats(selectedGroup?.id || '');
+  const groupId = selectedGroup?.id ?? '';
+
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(groupId);
+  const { data: lineage, isLoading: beltLoading } = useBelt(groupId);
+  const { data: form, isLoading: formLoading } = useForm(groupId);
+  const { data: angles, isLoading: anglesLoading } = useGroupAngles(groupId);
+  const { data: players = [] } = usePlayersByGroup(groupId);
+  const { data: liveSessions } = useActiveSessions(groupId);
+  const { playerId: viewerId, setPlayerId } = useViewerPlayer(groupId);
 
   if (!selectedGroup) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Please select a group first.</p>
-      </div>
+      <div className="py-12 text-center text-muted-foreground">Please select a group first.</div>
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome to {selectedGroup.name}</p>
-          </div>
-          <Button disabled>
-            <Plus className="h-4 w-4 mr-2" />
-            New Session
-          </Button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      </div>
-    );
-  }
+  const currency = selectedGroup.currency;
+  const belt = beltSummary(lineage);
+  const lastNight = stats?.recentSessions?.[0];
+  const firstNight = angles?.firstSessionDate;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome to {selectedGroup.name}</p>
+    <div className="space-y-8">
+      <LiveNowBanner sessions={liveSessions} currency={currency} />
+
+      {/* The masthead earns one line. The headline is the hero below it, not the
+          word "Dashboard". */}
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-stat leading-none tracking-tight text-foreground">
+            {selectedGroup.name}
+          </h1>
+          <p className="mt-1.5 text-label-sm text-muted-foreground">
+            {stats?.totalSessions ? (
+              <>
+                {stats.totalSessions} {stats.totalSessions === 1 ? 'night' : 'nights'} on the board
+                {firstNight ? ` since ${formatLocalDate(firstNight, 'MMM dd, yyyy')}` : ''} ·{' '}
+                {stats.activePlayers} active {stats.activePlayers === 1 ? 'player' : 'players'}
+              </>
+            ) : (
+              'No nights recorded yet'
+            )}
+          </p>
         </div>
-        <Button onClick={() => navigate('/entry')}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Session
-        </Button>
+
+        <Link to="/entry" className={buttonVariants()}>
+          <Plus className="h-4 w-4" aria-hidden />
+          New session
+        </Link>
+      </header>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <LastNightHero
+            groupId={groupId}
+            currency={currency}
+            night={lastNight}
+            belt={belt}
+            loading={statsLoading}
+          />
+        </div>
+        <BeltPanel belt={belt} lineage={lineage} loading={beltLoading} />
       </div>
 
-      {/* Key Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalSessions || 0}</div>
-            {stats?.lastSessionDate && (
-              <p className="text-xs text-muted-foreground">
-                Last: {format(parseLocalDate(stats.lastSessionDate), 'MMM dd, yyyy')}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <YourCard
+        groupId={groupId}
+        currency={currency}
+        players={players}
+        viewerId={viewerId}
+        onPick={setPlayerId}
+      />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Players</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalPlayers || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.activePlayers || 0} active
-            </p>
-          </CardContent>
-        </Card>
+      <AroundTheTable
+        angles={angles}
+        players={players}
+        currency={currency}
+        excludePlayerId={viewerId}
+        loading={anglesLoading}
+      />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Biggest Winner</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {stats?.topPlayers && stats.topPlayers.length > 0 ? (
-              <>
-                <div className="text-2xl font-bold">{stats.topPlayers[0].playerName}</div>
-                <p className="text-xs text-green-500 font-medium">
-                  +${stats.topPlayers[0].balance.toFixed(2)}
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-muted-foreground">-</div>
-                <p className="text-xs text-muted-foreground">No data yet</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Session Size</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${(stats?.avgSessionSize || 0).toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">Average pot</p>
-          </CardContent>
-        </Card>
+      {/* Mirrors the hero row's 2:1 the other way round, so the page has a
+          shape rather than being a stack of identical full-width slabs. */}
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <FormStrip form={form} players={players} currency={currency} loading={formLoading} />
+        <div className="lg:col-span-2">
+          <WhereNext stats={stats} players={players} currency={currency} loading={statsLoading} />
+        </div>
       </div>
-
-      {/* Top Players & Recent Sessions */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Top Players */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Top Players</CardTitle>
-                <CardDescription>Leaders by total balance</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/rankings')}>
-                View All
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!stats?.topPlayers || stats.topPlayers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No players yet. Add players to see rankings.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {stats.topPlayers.map((player, index) => (
-                  <div
-                    key={player.playerId}
-                    className="flex items-center justify-between cursor-pointer hover:bg-accent p-2 rounded-md transition-colors"
-                    onClick={() => navigate(`/players/${player.playerId}`)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium">{player.playerName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {player.totalGames} games • {player.roi.toFixed(1)}% ROI
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-bold ${player.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {player.balance >= 0 ? '+' : ''}${player.balance.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Sessions */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Recent Sessions</CardTitle>
-                <CardDescription>Latest poker games</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/sessions')}>
-                View All
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!stats?.recentSessions || stats.recentSessions.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No sessions yet. Create your first session!
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {stats.recentSessions.map((session) => (
-                  <div
-                    key={session.sessionId}
-                    className="flex items-center justify-between cursor-pointer hover:bg-accent p-2 rounded-md transition-colors"
-                    onClick={() => navigate(`/sessions/${session.sessionId}`)}
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {format(parseLocalDate(session.date), 'MMM dd, yyyy')}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {session.playerCount} players • Winner: {session.winner}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">${session.totalPot.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Total pot</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Trends & Insights */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <PlayerPerformanceChart groupId={selectedGroup.id} />
-        <PlayerStreaks groupId={selectedGroup.id} />
-      </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks to get you started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Button variant="outline" className="h-20 flex-col" onClick={() => navigate('/entry')}>
-              <Plus className="h-6 w-6 mb-2" />
-              Record New Session
-            </Button>
-            <Button variant="outline" className="h-20 flex-col" onClick={() => navigate('/players')}>
-              <Users className="h-6 w-6 mb-2" />
-              Manage Players
-            </Button>
-            <Button variant="outline" className="h-20 flex-col" onClick={() => navigate('/rankings')}>
-              <TrendingUp className="h-6 w-6 mb-2" />
-              View Leaderboard
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

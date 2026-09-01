@@ -2,9 +2,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,25 +15,52 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Calendar, MapPin, Clock, TrendingUp, TrendingDown, Trash2, RotateCcw, Loader2, Copy, MessageCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  Copy,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  Radio,
+  RotateCcw,
+  SearchX,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useSession, useDeleteSession, useRestoreSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
 import { useBelt } from '@/hooks/useInsights';
 import BalanceIndicator from '@/components/sessions/BalanceIndicator';
-import RankingChangesSection from '@/components/session/RankingChangesSection';
-import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
-import StreaksSection from '@/components/session/StreaksSection';
-import RebuyItinerary from '@/components/live/RebuyItinerary';
+import NightHeadline from '@/components/session/NightHeadline';
+import NightResultsBoard from '@/components/session/NightResultsBoard';
+import NightStory from '@/components/session/NightStory';
 import SettlementList from '@/components/session/SettlementList';
 import NightTitleChips from '@/components/session/NightTitleChips';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { rebuyCountsByPlayer } from '@/lib/nightRebuys';
+import { formatCount, formatMoney } from '@/lib/viz';
 import { formatNightMessage } from '@/lib/nightMessage';
 import { buildNightShareInput, nightCardFilename } from '@/lib/nightShareData';
 import { buildNightCardScene } from '@/lib/shareCard';
 import { displayName } from '@/lib/displayName';
 import ShareCardButton from '@/components/share/ShareCardButton';
 import type { Settlement } from '@/types';
+
+/**
+ * One night, in full.
+ *
+ * This page used to be eight bordered blocks in a row — a KPI grid, a title
+ * strip, a balance banner, three summary cards, a rebuy log and a table — each
+ * given exactly the same weight, two of the four KPI cards a different height
+ * from the other two because they stuffed a name *and* a coloured amount into
+ * the slot the others used for a short numeral.
+ *
+ * It is four now, and they are in the order someone actually reads them: what
+ * happened (the headline), how it finished (the board), who owes whom (the
+ * settlement — the bit that gets screenshotted), and what it meant (the story).
+ */
 
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -68,49 +95,56 @@ const SessionDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Loading session...</p>
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading session" />
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Session not found</p>
-        <Button onClick={() => navigate('/sessions')} className="mt-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Sessions
-        </Button>
-      </div>
+      <EmptyState
+        icon={SearchX}
+        title="That night isn't here"
+        description="It may have been deleted, or the link is wrong."
+        action={
+          <Button onClick={() => navigate('/sessions')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to sessions
+          </Button>
+        }
+      />
     );
   }
 
+  const currency = session.group?.currency;
   // Parse date as local date to avoid timezone issues
-  const formattedDate = format(parseLocalDate(session.date), 'MMMM dd, yyyy');
+  const sessionDate = parseLocalDate(session.date);
   const totalBuyIn = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
   const totalCashOut = session.entries?.reduce((sum, e) => sum + e.cashOut, 0) || 0;
 
-  // Calculate stats
+  // Rebuys come from the night's actual rebuy data — recorded rows first, a
+  // reconstruction against the group's own default second (lib/nightRebuys.ts).
+  // This used to be `buyIn > 5 ? (buyIn - 5) / 5 : 0`, which hardcoded a $5
+  // buy-in and printed fractions.
+  const rebuysByPlayer = rebuyCountsByPlayer({
+    entries: session.entries || [],
+    rebuyEvents: session.rebuyEvents,
+    defaultBuyIn: session.group?.defaultBuyIn,
+  });
+
   const entriesWithStats = session.entries?.map((entry) => ({
     ...entry,
     profit: entry.cashOut - entry.buyIn,
-    rebuys: entry.buyIn > 5 ? (entry.buyIn - 5) / 5 : 0,
+    rebuys: rebuysByPlayer.get(entry.playerId) ?? 0,
   })) || [];
 
-  const winner = entriesWithStats.reduce((max, entry) =>
-    entry.profit > (max?.profit || -Infinity) ? entry : max,
-    entriesWithStats[0]
-  );
-
-  const loser = entriesWithStats.reduce((min, entry) =>
-    entry.profit < (min?.profit || Infinity) ? entry : min,
-    entriesWithStats[0]
-  );
+  const totalRebuys = [...rebuysByPlayer.values()].reduce((sum, count) => sum + count, 0);
 
   const isDeleted = session.deletedAt !== null;
   const settlements: Settlement[] = session.settlements ? JSON.parse(session.settlements) : [];
   const isCompleted = session.status === 'COMPLETED';
+  const isLive = session.status === 'IN_PROGRESS';
 
   // One description of the night, shared by the text and the image so they can
   // never disagree.
@@ -148,10 +182,10 @@ const SessionDetail = () => {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" onClick={() => navigate('/sessions')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/sessions')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Sessions
         </Button>
         {canEdit && (
@@ -159,16 +193,18 @@ const SessionDetail = () => {
             {isDeleted ? (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleRestore}
                 disabled={restoreSession.isPending}
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
+                <RotateCcw className="mr-2 h-4 w-4" />
                 {restoreSession.isPending ? 'Restoring...' : 'Restore Session'}
               </Button>
             ) : (
               <>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => {
                     navigate('/entry', {
                       state: {
@@ -181,15 +217,17 @@ const SessionDetail = () => {
                     });
                   }}
                 >
-                  <Copy className="h-4 w-4 mr-2" />
+                  <Copy className="mr-2 h-4 w-4" />
                   Clone
                 </Button>
                 <Button
-                  variant="destructive"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
                   onClick={() => setShowDeleteDialog(true)}
                   disabled={deleteSession.isPending}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   {deleteSession.isPending ? 'Deleting...' : 'Move to Trash'}
                 </Button>
               </>
@@ -199,199 +237,112 @@ const SessionDetail = () => {
       </div>
 
       {isDeleted && (
-        <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg">
-          <p className="text-sm text-yellow-600 dark:text-yellow-500">
+        <div className="rounded-lg border border-loss/40 bg-loss-tint px-4 py-3">
+          <p className="text-label text-loss">
             This session is in the trash. It will be permanently deleted after 30 days.
           </p>
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Session Header */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <Calendar className="h-6 w-6 text-muted-foreground" />
-                  {formattedDate}
-                </CardTitle>
-                <CardDescription className="mt-2 space-y-1">
-                  {session.startTime && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      {session.startTime}
-                      {session.endTime && ` - ${session.endTime}`}
-                    </div>
-                  )}
-                  {session.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {session.location}
-                    </div>
-                  )}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          {session.notes && (
-            <CardContent>
-              <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm">{session.notes}</p>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-
-        {/* Session Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Players</CardDescription>
-              <CardTitle className="text-3xl">{session.entries?.length || 0}</CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Pot</CardDescription>
-              <CardTitle className="text-3xl">${totalBuyIn.toFixed(2)}</CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Biggest Winner</CardDescription>
-              <CardTitle className="text-xl flex items-center gap-2">
-                {winner?.player?.name || 'N/A'}
-                {winner && winner.profit > 0 && (
-                  <span className="text-green-500 text-lg flex items-center">
-                    <TrendingUp className="h-4 w-4" />
-                    ${winner.profit.toFixed(2)}
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Biggest Loser</CardDescription>
-              <CardTitle className="text-xl flex items-center gap-2">
-                {loser?.player?.name || 'N/A'}
-                {loser && loser.profit < 0 && (
-                  <span className="text-red-500 text-lg flex items-center">
-                    <TrendingDown className="h-4 w-4" />
-                    ${loser.profit.toFixed(2)}
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
-        {/* Night Titles */}
-        {summary && summary.titles.length > 0 && <NightTitleChips titles={summary.titles} nicknames={displayNames} />}
-
-        {/* Balance Check */}
-        <BalanceIndicator totalBuyIn={totalBuyIn} totalCashOut={totalCashOut} threshold={1} />
-
-        {/* Session Analytics */}
-        {summaryLoading ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        ) : summary ? (
+      {/* 1 — What happened. */}
+      <NightHeadline
+        eyebrow={
           <>
-            {/* Ranking Changes */}
-            <RankingChangesSection changes={summary.rankingChanges} />
-
-            {/* Session Highlights */}
-            <SessionHighlightsSection highlights={summary.highlights} />
-
-            {/* Streaks & Milestones */}
-            <StreaksSection streaks={summary.streaks} milestones={summary.milestones} />
+            {format(sessionDate, 'EEEE')} night
+            {isLive && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 font-display text-caption font-bold uppercase tracking-wider text-primary-foreground">
+                <Radio className="h-2.5 w-2.5 animate-pulse" aria-hidden />
+                Live
+              </span>
+            )}
           </>
-        ) : null}
-
-        {/* Rebuy History */}
-        {session.rebuyEvents && session.rebuyEvents.length > 0 && (
-          <RebuyItinerary rebuyEvents={session.rebuyEvents} />
+        }
+        title={format(sessionDate, 'MMMM d, yyyy')}
+        meta={[
+          session.startTime && {
+            icon: Clock,
+            label: session.endTime ? `${session.startTime} – ${session.endTime}` : session.startTime,
+          },
+          session.location && { icon: MapPin, label: session.location },
+          { icon: Users, label: `${formatCount(entriesWithStats.length)} players` },
+        ]}
+        stats={[
+          { label: 'Pot', value: formatMoney(totalBuyIn, { currency, decimals: 2 }) },
+          totalRebuys > 0 && { label: 'Rebuys', value: formatCount(totalRebuys) },
+        ]}
+        entries={entriesWithStats}
+        currency={currency}
+        live={isLive}
+      >
+        {summary && summary.titles.length > 0 && (
+          <NightTitleChips titles={summary.titles} nicknames={displayNames} className="mt-6" />
         )}
+      </NightHeadline>
 
-        {/* Player Entries Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Player Results</CardTitle>
-            <CardDescription>Buy-ins, cash-outs, and profits for all players</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Player</TableHead>
-                  <TableHead className="text-right">Buy-In</TableHead>
-                  <TableHead className="text-right">Cash-Out</TableHead>
-                  <TableHead className="text-right">Profit</TableHead>
-                  <TableHead className="text-center">Rebuys</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entriesWithStats
-                  .sort((a, b) => b.profit - a.profit)
-                  .map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{entry.player?.name || 'Unknown'}</TableCell>
-                      <TableCell className="text-right">${entry.buyIn.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">${entry.cashOut.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={entry.profit >= 0 ? 'text-green-500 font-medium' : 'text-red-500 font-medium'}>
-                          {entry.profit >= 0 ? '+' : ''}${entry.profit.toFixed(2)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
-                        {entry.rebuys > 0 ? `${entry.rebuys.toFixed(1)}x` : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </CardContent>
+      {session.notes && (
+        <Card className="px-5 py-4">
+          <p className="eyebrow">Note</p>
+          <p className="mt-1.5 text-label">{session.notes}</p>
         </Card>
+      )}
 
-        {/* Settlement */}
-        {isCompleted && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <span>💰</span>
-                    Settlement
-                  </CardTitle>
-                  <CardDescription>Who owes whom for this session</CardDescription>
-                </div>
-                <ShareCardButton
-                  size="sm"
-                  buildScene={() => buildNightCardScene(shareInput())}
-                  filename={nightCardFilename(session.date)}
-                />
-                <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Copy for WhatsApp
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <SettlementList sessionId={session.id} settlements={settlements} canEdit={canEdit} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {/* 2 — How it finished. */}
+      {entriesWithStats.length > 0 && (
+        <NightResultsBoard
+          rows={entriesWithStats}
+          currency={currency}
+          title="The result"
+          description={isLive ? 'Cash-outs are recorded when the night ends' : undefined}
+          showBars={!isLive}
+          footer={
+            // A night still in progress has no cash-outs, so it is *supposed* to
+            // be short by the whole pot — calling that "unbalanced" in loss red
+            // would be crying wolf. The check appears once the night is over.
+            isLive ? undefined : (
+              <BalanceIndicator
+                totalBuyIn={totalBuyIn}
+                totalCashOut={totalCashOut}
+                threshold={1}
+                currency={currency}
+              />
+            )
+          }
+        />
+      )}
+
+      {/* 3 — Who owes whom. The screenshot. */}
+      {isCompleted && (
+        <Card className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold tracking-tight">Settlement</h2>
+              <p className="text-label text-muted-foreground">Who owes whom for this night</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <ShareCardButton
+                size="sm"
+                buildScene={() => buildNightCardScene(shareInput())}
+                filename={nightCardFilename(session.date)}
+              />
+              <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Copy for WhatsApp
+              </Button>
+            </div>
+          </div>
+          <div className="mt-5">
+            <SettlementList
+              sessionId={session.id}
+              settlements={settlements}
+              canEdit={canEdit}
+              currency={currency}
+            />
+          </div>
+        </Card>
+      )}
+
+      {/* 4 — What it meant. */}
+      <NightStory summary={summary} loading={summaryLoading} currency={currency} />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

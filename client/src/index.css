@@ -2,50 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * The Standings Board — design tokens
+ *
+ * Dark-only. `index.html` puts `dark` on <html> and `AppLayout` hardcodes it
+ * again, so a light palette was never reachable; the tokens live on `:root`
+ * and there is exactly one of each. Do not add a light block or a toggle.
+ *
+ * The ground colour follows `lib/shareCard.ts` (#0B1220) rather than the old
+ * #020817: a blue-lifted near-black reads warmer and, crucially, leaves room
+ * *below* the card colour so a card can actually sit on top of something.
+ * ==========================================================================*/
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 142 76% 36%;
-    --radius: 0.5rem;
-  }
+    color-scheme: dark;
 
-  .dark {
-    --background: 222.2 84% 4.9%;
+    /* --- Elevation ladder -------------------------------------------------
+     * Previously --background, --card and --popover were all 222.2 84% 4.9%,
+     * so every card in the app was the same colour as the page behind it and
+     * survived only on a 1px hairline. Each rung below is a real step: about
+     * 4 points of lightness, shedding a little saturation as it rises, which
+     * is how a surface reads as "closer to the light" rather than "greyer".
+     *
+     *   background  #090F1A   the ground; nothing sits behind it
+     *   surface-1   #111927   cards, panels, table bodies  (= --card)
+     *   surface-2   #192333   popovers, inputs, hover fills (= --popover)
+     *   surface-3   #242F42   menus over popovers, selected rows, tooltips
+     */
+    --background: 220 47% 7%;
+    --surface-1: 219 40% 11%;
+    --surface-2: 218 34% 15%;
+    --surface-3: 217 30% 20%;
+
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 142 71% 45%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20% 68%;
+
+    --card: var(--surface-1);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface-2);
+    --popover-foreground: var(--foreground);
+
+    /* Background roles inherited from shadcn. Kept pointing at the ladder so
+     * a hover state is always visibly *above* the thing it sits in. */
+    --muted: 218 34% 15%;
+    --secondary: 218 34% 15%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217 30% 20%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+
+    --border: 217 28% 22%;
+    --border-strong: 216 25% 30%;
+    --input: 217 28% 24%;
+
+    /* --- Brand -------------------------------------------------------------
+     * The app's green stays the brand colour, but it is now *chrome only*:
+     * active nav, primary buttons, focus rings. It is always rendered as a
+     * FILLED surface with near-black type on it. Money is never this colour.
+     */
+    --primary: 142 69% 47%;
+    --primary-foreground: 220 47% 7%;
+    --ring: 142 69% 47%;
+
+    /* --- Semantic money ----------------------------------------------------
+     * Six different hexes used to mean "up" or "down" (#10B981, #22C55E,
+     * #16A34A, --primary, #EF4444, #DC2626, --destructive). These three are
+     * the only ones now. They are *ink*: text, chart strokes, meter fills —
+     * never a large filled block, which is what keeps them apart from the
+     * brand green above at a glance.
+     *
+     * Sign is three-way, matching shareCard.ts `profitColor`: an exact $0.00
+     * is --neutral, not a suspiciously cheerful green.
+     *
+     *   profit   #34D399   loss   #F26464   neutral  #94A8B8
+     */
+    --profit: 158 64% 52%;
+    --profit-strong: 160 84% 39%; /* #10B77F — fills and bars, where the ink weight is too light */
+    --profit-tint: 158 40% 14%; /* #153228 — opaque chip wash; predictable over any rung */
+
+    --loss: 0 84% 67%;
+    --loss-strong: 0 72% 51%; /* #DC2828 */
+    --loss-tint: 0 40% 16%; /* #391818 */
+
+    --neutral: 214 20% 65%;
+    --neutral-tint: 217 25% 18%; /* #222B39 */
+
+    /* Kept because shadcn primitives (alert-dialog, button) reference it.
+     * Destructive means "this action deletes something", NOT "you lost money" —
+     * that is --loss. The old --destructive was 0 62.8% 30.6%, a maroon so dark
+     * it was unreadable on the ground. */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142 71% 45%;
+
+    /* --- Player identity ---------------------------------------------------
+     * Nine hues, hashed from player *id* in lib/viz/playerColor.ts. Every hue
+     * deliberately avoids the profit arc (140–178) and the loss arc (345–20),
+     * so series[0] can never be mistaken for "this line is winning".
+     */
+    --player-0: 199 90% 60%; /* sky      #38BDF8 */
+    --player-1: 43 96% 56%; /* amber    #FBBF24 */
+    --player-2: 270 95% 75%; /* purple   #C084FC */
+    --player-3: 82 78% 55%; /* lime     #A3E635 */
+    --player-4: 187 85% 53%; /* cyan     #22D3EE */
+    --player-5: 291 91% 73%; /* magenta  #E879F9 */
+    --player-6: 27 96% 61%; /* orange   #FB923C */
+    --player-7: 239 84% 74%; /* indigo   #818CF8 */
+    --player-8: 330 81% 70%; /* pink     #F472B6 */
+    --player-others: 215 16% 47%; /* slate  #6B7A8F — the "+N others" bucket */
+
+    /* --- Chart furniture ---------------------------------------------------
+     * The old chartTheme used Tailwind *gray* (#374151/#9CA3AF/#6B7280) while
+     * the entire rest of the app is *slate*. Charts read as a foreign object
+     * pasted into the page. These are slate, tuned to the new ground.
+     */
+    --chart-grid: 217 26% 21%; /* #29344A */
+    --chart-axis: 215 18% 58%; /* #808F9F */
+    --chart-zero: 216 20% 38%; /* #4E5C74 */
+
+    /* --- Shape ------------------------------------------------------------- */
+    --radius: 0.625rem;
+
+    /* --- Shadow -----------------------------------------------------------
+     * A black drop shadow does nothing on a near-black ground, which is why
+     * the old `shadow-sm` was invisible. What actually reads is a *lit top
+     * edge*: an inset hairline of white catching the light from above, over a
+     * wide, soft, very dark spread that seats the card in the page.
+     */
+    --shadow-1: 0 1px 2px 0 rgb(0 0 0 / 0.55), inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+    --shadow-2: 0 6px 16px -4px rgb(0 0 0 / 0.6), 0 2px 4px -2px rgb(0 0 0 / 0.4),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.055);
+    --shadow-3: 0 18px 40px -12px rgb(0 0 0 / 0.72), 0 4px 10px -4px rgb(0 0 0 / 0.5),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.07);
+    --shadow-profit: 0 0 0 1px hsl(var(--profit) / 0.35), 0 8px 28px -10px hsl(var(--profit) / 0.35);
+    --shadow-loss: 0 0 0 1px hsl(var(--loss) / 0.35), 0 8px 28px -10px hsl(var(--loss) / 0.35);
   }
 }
 
@@ -53,7 +142,115 @@
   * {
     @apply border-border;
   }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* A stadium light from above. Fixed, so it stays put while the page
+     * scrolls and never turns into a moving gradient. */
+    background-image: radial-gradient(
+      1100px 520px at 50% -240px,
+      hsl(158 50% 30% / 0.1),
+      transparent 68%
+    );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* Numerals are the whole point of this app. `tabular-nums` appeared exactly
+   * once in the entire client before this, which is why every table column
+   * jittered as figures changed. Anything that is a figure gets it by default. */
+  .font-display,
+  th,
+  td,
+  time {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* The default dark scrollbar is a light-grey slug on a black page. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--surface-3)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--surface-3));
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--border-strong));
+  }
+}
+
+@layer utilities {
+  /* Opt in explicitly where the base rules above do not reach — inside a
+   * <div> stat value, a chart tick, a badge. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* The uppercase micro-label that sits above every figure on a standings
+   * board. Tracking is doing the work; the size is deliberately small. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Stagger. Pair with `animate-rise` on the members of a row or grid so they
+   * arrive as a sequence rather than a slab. 45ms is enough to read as ordered
+   * and short enough that the eighth tile is not still animating when the eye
+   * gets there. Past eight, everything lands together — a stagger long enough
+   * to notice on item twelve is a stagger that feels broken. */
+  .stagger-1 { animation-delay: 0ms; }
+  .stagger-2 { animation-delay: 45ms; }
+  .stagger-3 { animation-delay: 90ms; }
+  .stagger-4 { animation-delay: 135ms; }
+  .stagger-5 { animation-delay: 180ms; }
+  .stagger-6 { animation-delay: 225ms; }
+  .stagger-7 { animation-delay: 270ms; }
+  .stagger-8 { animation-delay: 315ms; }
+}
+
+/* Nothing above is load-bearing: every animation is decoration over content
+ * that is already in the DOM, so turning them all off costs nothing. The
+ * `!important` is needed to beat Tailwind's own animation utilities. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

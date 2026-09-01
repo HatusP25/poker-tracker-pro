@@ -354,3 +354,203 @@ export interface Season {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---- Angles ----
+// Mirrors server/src/types/angles.ts EXACTLY. Derived on read from existing rows;
+// no grinder/bankroll metrics anywhere in this contract (DECISIONS D-002).
+
+export type SplitDimension = 'dayOfWeek' | 'venue' | 'tableSize';
+
+export interface SplitBucket {
+  key: string; // 'FRI', a lowercased venue, '6'
+  label: string; // 'Friday', "Sam's place", '6-handed'
+  sessions: number;
+  totalProfit: number;
+  avgProfit: number;
+  totalBuyIn: number;
+  avgBuyIn: number;
+  wins: number;
+  winRate: number;
+}
+
+export interface SplitSummary {
+  dimension: SplitDimension;
+  buckets: SplitBucket[]; // best average first; venue capped at the busiest 10
+  best: SplitBucket | null; // null unless >= 2 buckets clear minSessions
+  worst: SplitBucket | null;
+  minSessions: number;
+  totalSessions: number;
+}
+
+export interface PlayerSplits {
+  dayOfWeek: SplitSummary;
+  venue: SplitSummary;
+  tableSize: SplitSummary;
+}
+
+export interface AttendanceSummary {
+  played: number;
+  eligible: number; // group nights since this player's first appearance
+  attendanceRate: number;
+  currentStreak: number;
+  longestStreak: number;
+  missedInARow: number;
+  firstPlayedDate: string | null;
+  lastPlayedDate: string | null;
+}
+
+export interface DroughtSummary {
+  hasEverWon: boolean;
+  nightsSinceLastWin: number | null; // null when they have never won
+  lastWinDate: string | null;
+  lastWinSessionId: string | null;
+  longestDrought: number;
+}
+
+export interface RebuySummary {
+  totalAmount: number;
+  count: number;
+  avgPerNight: number;
+  biggestNight: {
+    sessionId: string;
+    date: string;
+    amount: number;
+    count: number;
+  } | null;
+}
+
+export interface DepartureSummary {
+  trackedSessions: number; // nights where anyone's exit time was recorded at all
+  earlyExits: number;
+  avgProfitWhenEarly: number | null;
+  avgProfitWhenStayed: number | null;
+  meaningful: boolean; // false => say "we can't tell", don't render a number
+}
+
+export interface RankedNight {
+  sessionId: string;
+  date: string;
+  profit: number;
+  rank: number; // 1 = best night of this player's career
+  outOf: number;
+}
+
+export interface CoAttendancePair {
+  playerAId: string;
+  playerAName: string;
+  playerBId: string;
+  playerBName: string;
+  sharedSessions: number;
+}
+
+export interface RivalrySummary {
+  playerId: string;
+  playerName: string;
+  wins: number; // nights the subject finished ahead
+  losses: number;
+  ties: number;
+  sharedSessions: number;
+  dominance: number; // larger of wins/losses as a % of shared nights
+}
+
+export interface PlayerRivalries {
+  nemesis: RivalrySummary | null;
+  favouriteVictim: RivalrySummary | null;
+  mostPlayedWith: CoAttendancePair | null;
+}
+
+export type StoryAngleId =
+  | 'nemesis'
+  | 'favourite-victim'
+  | 'attendance-streak'
+  | 'attendance-rate'
+  | 'gone-missing'
+  | 'drought'
+  | 'never-won'
+  | 'best-day'
+  | 'worst-day'
+  | 'best-venue'
+  | 'worst-venue'
+  | 'best-table-size'
+  | 'worst-table-size'
+  | 'rebuy-dollars'
+  | 'played-together'
+  | 'career-night'
+  | 'night-rank'
+  | 'heater'
+  | 'slump'
+  | 'early-exit'
+  | 'career-balance'
+  | 'newcomer'
+  | 'never-played';
+
+export type AngleTone = 'brag' | 'burn' | 'neutral';
+
+export type AngleFamily =
+  | 'rivalry'
+  | 'attendance'
+  | 'drought'
+  | 'split'
+  | 'rebuys'
+  | 'nights'
+  | 'form'
+  | 'social'
+  | 'career';
+
+export type AngleUnit = 'currency' | 'count' | 'percent' | 'nights' | 'rank';
+
+/** Structured facts for one sentence about one player. The client writes the words. */
+export interface StoryAngle {
+  id: StoryAngleId;
+  family: AngleFamily;
+  tone: AngleTone;
+  score: number; // 1-100
+  value: number;
+  unit: AngleUnit;
+  comparisonValue: number | null;
+  label: string | null;
+  subject: { playerId: string; playerName: string } | null;
+  sessionId: string | null;
+  date: string | null;
+  sampleSize: number;
+  fallback: boolean; // generic last-resort angle, not earned
+}
+
+export interface PlayerAngles {
+  playerId: string;
+  playerName: string;
+  isActive: boolean;
+  games: number;
+  balance: number;
+  attendance: AttendanceSummary;
+  drought: DroughtSummary;
+  splits: PlayerSplits;
+  rebuys: RebuySummary;
+  departures: DepartureSummary;
+  bestNights: RankedNight[]; // top 3, best first
+  latestNight: RankedNight | null;
+  rivalries: PlayerRivalries;
+  angles: StoryAngle[]; // best first, at most 5, one per family, never empty
+}
+
+export interface AngleThresholds {
+  splitMinSessions: number;
+  rivalryMinSessions: number;
+  attendanceMinSessions: number;
+  droughtMinNights: number;
+  departureMinTracked: number;
+  coAttendanceMinSessions: number;
+  streakBadgeMinNights: number;
+  maxAnglesPerPlayer: number;
+}
+
+export interface GroupAnglesResponse {
+  groupId: string;
+  totalSessions: number; // completed, non-deleted
+  firstSessionDate: string | null;
+  lastSessionDate: string | null;
+  splits: PlayerSplits; // the same three splits across the whole group
+  players: PlayerAngles[]; // one per group member, including those who never played
+  coAttendance: CoAttendancePair[]; // every pair with >= 1 shared night, most first
+  thresholds: AngleThresholds;
+}

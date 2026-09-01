@@ -11,6 +11,7 @@ import {
   AchievementsResponse,
 } from '../types/banter';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
+import { COMPLETED_SESSION_FILTER } from './statsRules';
 
 // ---- In-memory row shapes (already fetched, DB-agnostic for unit tests) ----
 // Matches what insightsService fetches: Session { id, date, createdAt, status,
@@ -410,8 +411,10 @@ export function computeAchievements(sessions: BanterSessionRow[]): AchievementsR
 
 // ---- Data access ----
 async function fetchBanterSessionRows(groupId: string): Promise<BanterSessionRow[]> {
+  // The pure functions filter on status too; doing it in SQL as well keeps the
+  // definition of "a session that counts" in one place and fetches less.
   const sessions = await prisma.session.findMany({
-    where: { groupId, deletedAt: null },
+    where: { groupId, ...COMPLETED_SESSION_FILTER },
     include: {
       entries: { include: { player: true } },
       rebuyEvents: true,

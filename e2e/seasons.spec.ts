@@ -43,14 +43,17 @@ test('a group can define a season and recap it', async ({ page, request }) => {
 
   // Poker Wrapped can now recap that season.
   await page.goto('/insights');
+  // The period picker is the app's own Select now, not a bare <select>, so it
+  // opens a listbox rather than taking selectOption.
   const picker = page.getByLabel('Period');
   await expect(picker).toBeVisible();
-  await picker.selectOption({ label: 'Spring Run' });
+  await picker.click();
+  await page.getByRole('option', { name: 'Spring Run' }).click();
 
   // The recap now covers the season, not a calendar year. Scope to the card so the
   // assertion can't be satisfied by the (hidden) <option> of the picker itself.
   const recap = page.locator('section', { hasText: 'Poker Wrapped' });
-  await expect(recap.getByText('1 nights · $200 on the table')).toBeVisible();
+  await expect(recap.getByText('1 night · $200 on the table')).toBeVisible();
   // Alice won the only night in the season, so she takes the superlatives.
   await expect(recap.getByText('Alice').first()).toBeVisible();
 });
