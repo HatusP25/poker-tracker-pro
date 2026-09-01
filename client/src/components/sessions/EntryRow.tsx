@@ -2,6 +2,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2, Copy } from 'lucide-react';
 import { validateBuyIn, validateCashOut, clampCashOut, MAX_BUY_IN, MAX_CASH_OUT } from '@/lib/moneyValidation';
+import { deriveRebuyCount } from '@/lib/nightRebuys';
+import { cn } from '@/lib/utils';
+import { formatCount, formatMoney, moneyTextClass } from '@/lib/viz';
 import type { Player } from '@/types';
 
 interface EntryRowProps {
@@ -17,6 +20,8 @@ interface EntryRowProps {
   onRemove: () => void;
   onDuplicate: () => void;
   showDuplicate?: boolean;
+  /** ISO code from `group.currency`; falls back to "$". */
+  currency?: string | null;
 }
 
 const EntryRow = ({
@@ -32,9 +37,13 @@ const EntryRow = ({
   onRemove,
   onDuplicate,
   showDuplicate = true,
+  currency,
 }: EntryRowProps) => {
   const profit = cashOut - buyIn;
-  const rebuys = buyIn > defaultBuyIn ? (buyIn - defaultBuyIn) / defaultBuyIn : 0;
+  // A whole number of trips to the bank. This used to divide the excess by the
+  // buy-in and print the quotient, so $17 at a $5 default read "2.4x".
+  const rebuys = deriveRebuyCount(buyIn, defaultBuyIn);
+  const profitText = formatMoney(profit, { currency, signed: true, decimals: 2 });
 
   const availablePlayers = players.filter((p) => p.isActive);
 
@@ -94,24 +103,23 @@ const EntryRow = ({
 
       {/* Profit - Hidden on mobile, shown on large screens */}
       <div className="hidden lg:block lg:col-span-1 text-right">
-        <span className={`font-medium text-sm ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-          {profit >= 0 ? '+' : ''}
-          {profit.toFixed(2)}
+        <span className={cn('font-display text-label font-semibold tnum', moneyTextClass(profit))}>
+          {profitText}
         </span>
       </div>
 
       {/* Rebuys - Hidden on mobile, shown on large screens */}
-      <div className="hidden lg:block lg:col-span-1 text-center text-sm text-muted-foreground">
-        {rebuys > 0 ? `${rebuys.toFixed(1)}x` : '-'}
+      <div className="hidden text-center text-label text-muted-foreground tnum lg:col-span-1 lg:block">
+        {rebuys > 0 ? formatCount(rebuys) : '—'}
       </div>
 
       {/* Actions - Mobile shows profit inline */}
       <div className="col-span-6 sm:col-span-1 lg:col-span-2 flex gap-1 justify-between sm:justify-end items-center">
         {/* Show profit on mobile/tablet only */}
-        <span className="lg:hidden text-sm font-medium">
-          <span className={profit >= 0 ? 'text-green-500' : 'text-red-500'}>
-            {profit >= 0 ? '+' : ''}${profit.toFixed(2)}
-          </span>
+        <span
+          className={cn('font-display text-label font-semibold tnum lg:hidden', moneyTextClass(profit))}
+        >
+          {profitText}
         </span>
 
         {/* Action buttons */}
