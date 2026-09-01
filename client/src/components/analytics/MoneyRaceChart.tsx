@@ -64,7 +64,13 @@ const formatFullDate = (value: string | number) =>
 
 const MoneyRaceChart = ({ sessions, currency, loading, rangeLabel }: MoneyRaceChartProps) => {
   const theme = resolveChartTheme();
-  const [focused, setFocused] = useState<string | null>(null);
+  // Two states, not one: hovering previews a line and pinning keeps it. With a
+  // single value the list's mouse-leave wiped the pin the instant you moved
+  // towards the chart you had just isolated — and on a touch screen there is no
+  // hover at all, so the tap has to be what does the work.
+  const [pinned, setPinned] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const focused = hovered ?? pinned;
 
   const { rows, lines, hidden, axis } = useMemo(() => {
     const { rows: raceRows, players } = computeMoneyRace(sessions);
@@ -180,20 +186,26 @@ const MoneyRaceChart = ({ sessions, currency, loading, rangeLabel }: MoneyRaceCh
       {!isEmpty && !loading && (
         <ul
           className="mt-5 flex flex-wrap gap-x-1 gap-y-1 border-t border-border pt-4"
-          onMouseLeave={() => setFocused(null)}
+          onMouseLeave={() => setHovered(null)}
         >
           {standings.map((line) => (
             <li key={line.id}>
               <button
                 type="button"
-                onMouseEnter={() => setFocused(line.id)}
-                onFocus={() => setFocused(line.id)}
-                onBlur={() => setFocused(null)}
-                onClick={() => setFocused((current) => (current === line.id ? null : line.id))}
-                aria-pressed={focused === line.id}
+                onMouseEnter={() => setHovered(line.id)}
+                onFocus={() => setHovered(line.id)}
+                onBlur={() => setHovered(null)}
+                onClick={() => setPinned((current) => (current === line.id ? null : line.id))}
+                aria-pressed={pinned === line.id}
+                title={
+                  pinned === line.id
+                    ? `Show every line again`
+                    : `Show only ${line.label}`
+                }
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-2 py-1 text-label-sm transition',
                   'hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  pinned === line.id && 'bg-surface-2 ring-1 ring-border-strong',
                   focused !== null && focused !== line.id && 'opacity-40'
                 )}
               >

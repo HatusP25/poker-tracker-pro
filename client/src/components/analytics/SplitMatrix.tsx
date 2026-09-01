@@ -71,7 +71,9 @@ export const SPLIT_DIMENSIONS: ReadonlyArray<{
 const cellFill = (value: number, intensity: number): string | undefined => {
   const sign = moneySign(value);
   if (sign === 'neutral') return undefined;
-  return `hsl(var(${SIGN_VAR[sign]}) / ${(0.1 + intensity * 0.32).toFixed(3)})`;
+  // A wash, not a fill: money is ink in this design system, and a saturated
+  // block of profit green would compete with the brand green in the chrome.
+  return `hsl(var(${SIGN_VAR[sign]}) / ${(0.07 + intensity * 0.27).toFixed(3)})`;
 };
 
 const SplitMatrix = ({ splits, players, dimension, currency, loading }: SplitMatrixProps) => {
@@ -133,26 +135,28 @@ const SplitMatrix = ({ splits, players, dimension, currency, loading }: SplitMat
           }}
         >
           {/* Header */}
-          <div
-            role="columnheader"
-            className="sticky left-0 z-10 bg-card pb-2 pr-3 text-overline uppercase text-muted-foreground"
-          >
-            Player
-          </div>
-          {columns.map((column) => (
+          <div role="row" className="contents">
             <div
-              key={column.key}
               role="columnheader"
-              className="min-w-0 pb-2 text-center leading-tight"
+              className="sticky left-0 z-10 bg-card pb-2 pr-3 text-overline uppercase text-muted-foreground"
             >
-              <div className="truncate text-label-sm font-semibold text-foreground">
-                {column.label}
-              </div>
-              <div className="tnum text-caption text-muted-foreground">
-                {column.sessions} seats · {formatMoney(column.avgBuyIn, { currency })}
-              </div>
+              Player
             </div>
-          ))}
+            {columns.map((column) => (
+              <div
+                key={column.key}
+                role="columnheader"
+                className="min-w-0 pb-2 text-center leading-tight"
+              >
+                <div className="truncate text-label-sm font-semibold text-foreground">
+                  {column.label}
+                </div>
+                <div className="tnum text-caption text-muted-foreground">
+                  {column.sessions} seats · {formatMoney(column.avgBuyIn, { currency })}
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* Body */}
           {rows.map((row) => (
