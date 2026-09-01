@@ -119,15 +119,12 @@ const PodiumCard = ({
           />
         </Link>
 
-        {/* The hero is a tall column, so its figure and form stack; the
-         * runner-ups are short and wide, so theirs sit side by side. Either
-         * way the form line stays clear of the ghost numeral's corner. */}
-        <div
-          className={cn(
-            'mt-2.5',
-            !hero && 'flex flex-wrap items-end gap-x-8 gap-y-4'
-          )}
-        >
+        {/* Figure and form stack, except on a runner-up at `xl` — the only
+         * width at which those cards are wide enough to take two columns.
+         * Below `lg` they sit two-up and the form line collapses to a vertical
+         * scratch; at `lg` itself its label wraps. Either way the form stays
+         * clear of the ghost numeral's corner. */}
+        <div className={cn('mt-2.5', !hero && 'xl:flex xl:items-end xl:gap-x-8')}>
           <div className="min-w-0">
             <p
               className={cn(
@@ -166,11 +163,7 @@ const PodiumCard = ({
           <div
             className={cn(
               'min-w-0',
-              hero
-                ? 'mt-7 pb-6'
-                : // At phone width the figure and the form line cannot share a
-                  // row without squeezing the sparkline into a vertical scratch.
-                  'w-full sm:w-auto sm:flex-1 sm:max-w-[15rem]'
+              hero ? 'mt-7 pb-6' : 'mt-4 xl:mt-0 xl:flex-1 xl:max-w-[15rem]'
             )}
           >
             <div className="flex items-baseline justify-between gap-2">

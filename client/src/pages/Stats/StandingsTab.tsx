@@ -219,14 +219,15 @@ const StandingsTab = () => {
       )}
 
       {!noNights && podium.length > 0 && (
-        // An actual podium on a wide screen: the leader takes the tall left
-        // column and the other two stack beside them, so first place is
-        // physically larger rather than merely first in a list. Below `lg`
-        // they fall into the reading order they already have.
+        // An actual podium once there is room for one: the leader takes the
+        // tall left column and the other two stack beside them, so first place
+        // is physically larger rather than merely first in a list. `xl` and not
+        // `lg`, because at 1024 the runner-ups grow tall enough that the hero
+        // stretched beside them is mostly empty card.
         <section
           className={cn(
             'grid gap-4',
-            runnersUp.length > 0 && 'lg:grid-cols-[1.25fr_minmax(0,1fr)] lg:items-start'
+            runnersUp.length > 0 && 'xl:grid-cols-[1.25fr_minmax(0,1fr)] xl:items-start'
           )}
         >
           <PodiumCard
@@ -236,13 +237,13 @@ const StandingsTab = () => {
             currency={currency}
             title={board.sort.leaderLabel}
             crowned={Boolean(board.sort.canonical) && board.direction === 'desc'}
-            className="animate-rise lg:h-full"
+            className="animate-rise xl:h-full"
           />
 
           {runnersUp.length > 0 && (
             <div
               className={cn(
-                'grid gap-4 lg:grid-cols-1',
+                'grid gap-4 xl:grid-cols-1',
                 runnersUp.length > 1 && 'sm:grid-cols-2'
               )}
             >
