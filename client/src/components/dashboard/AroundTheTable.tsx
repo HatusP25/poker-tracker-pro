@@ -46,7 +46,7 @@ const AroundTheTable = ({
     return (
       <section className="space-y-4">
         <span className="eyebrow">Around the table</span>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -64,7 +64,7 @@ const AroundTheTable = ({
         <span className="text-caption text-muted-foreground">Rotates daily</span>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {items.map((item, index) => {
           const roster = players.find((p) => p.id === item.player.playerId);
           return (
