@@ -61,6 +61,13 @@ import {
  * verified field-for-field against that endpoint.
  */
 
+/**
+ * Written out rather than built as `stagger-${n}`: the stagger utilities are
+ * declared in index.css inside `@layer utilities`, so Tailwind only emits the
+ * ones it can find in the source. A composed class name is invisible to it.
+ */
+const RUNNER_UP_STAGGER = ['stagger-2', 'stagger-3'] as const;
+
 const StandingsTab = () => {
   const { selectedGroup } = useGroupContext();
   const groupId = selectedGroup?.id ?? '';
@@ -256,7 +263,7 @@ const StandingsTab = () => {
                   currency={currency}
                   title={board.sort.leaderLabel}
                   crowned={false}
-                  className={`animate-rise stagger-${index + 2}`}
+                  className={cn('animate-rise', RUNNER_UP_STAGGER[index])}
                 />
               ))}
             </div>
