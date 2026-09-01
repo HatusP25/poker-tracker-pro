@@ -156,16 +156,23 @@ export const scopeLabel = (scope: StandingsScope): string =>
   scope.kind === 'season' ? scope.season.name : TIMEFRAME_LABEL[scope.timeframe];
 
 /**
- * How to say "did not play in this window".
+ * The tail of "No nights …": `this week`, `in Winter 25/26`.
  *
- * A season is a proper noun and keeps its capitals; the ranges read as prose.
- * "No nights in all time" is not a sentence, so all-time gets its own.
+ * A season is a proper noun and keeps its capitals; the ranges read as prose,
+ * so they are lower-cased. Blindly lower-casing `scopeLabel` gave both
+ * "no nights in winter 25/26" and the non-sentence "in this week".
  */
-export function absentDescription(scope: StandingsScope): string {
-  if (scope.kind === 'season') return `No nights in ${scope.season.name}`;
-  if (scope.timeframe === 'all') return 'Has never played a night';
-  return `No nights ${TIMEFRAME_LABEL[scope.timeframe].toLowerCase()}`;
+export function scopePhrase(scope: StandingsScope): string {
+  if (scope.kind === 'season') return `in ${scope.season.name}`;
+  if (scope.timeframe === 'all') return 'ever';
+  return TIMEFRAME_LABEL[scope.timeframe].toLowerCase();
 }
+
+/** How to say a player did not play in this window. */
+export const absentDescription = (scope: StandingsScope): string =>
+  scope.kind === 'timeframe' && scope.timeframe === 'all'
+    ? 'Has never played a night'
+    : `No nights ${scopePhrase(scope)}`;
 
 /** True when the board is showing less than the group's whole history. */
 export const isScoped = (scope: StandingsScope): boolean =>

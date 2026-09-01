@@ -8,6 +8,7 @@ import {
   parseScopeValue,
   qualifyingThreshold,
   scopeLabel,
+  scopePhrase,
   scopeValue,
   scopeWindow,
   toLeaderboardEntries,
@@ -147,6 +148,12 @@ describe('scope values', () => {
     expect(absentDescription({ kind: 'timeframe', timeframe: 'all' })).toBe(
       'Has never played a night'
     );
+  });
+
+  it('phrases a window as the tail of a sentence', () => {
+    expect(scopePhrase({ kind: 'season', season })).toBe('in Winter');
+    expect(scopePhrase({ kind: 'timeframe', timeframe: 'week' })).toBe('this week');
+    expect(scopePhrase({ kind: 'timeframe', timeframe: 'all' })).toBe('ever');
   });
 
   it('knows when the board is narrower than the whole history', () => {

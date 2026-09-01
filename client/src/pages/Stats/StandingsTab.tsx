@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarPlus, Trophy, Users } from 'lucide-react';
+import { CalendarPlus, CalendarRange, Trophy, Users } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -27,6 +27,7 @@ import {
   qualifyingThreshold,
   isScoped,
   scopeLabel,
+  scopePhrase,
   scopeValue,
   scopeWindow,
   sortByKey,
@@ -175,23 +176,35 @@ const StandingsTab = () => {
         {qualifiedOnly && threshold > 1 && ` · ${threshold}-night minimum`}
         {/* The angles endpoint is career-wide and takes no window, so a chip on
          * a season board is a fact about the player, not about the season. Say
-         * so once here rather than qualifying twenty chips. */}
-        {isScoped(scope) && ' · story lines are career-wide'}
+         * so once here rather than qualifying twenty chips — and only when
+         * there are chips on the page to qualify. */}
+        {isScoped(scope) && !noNights && ' · story lines are career-wide'}
       </p>
 
       {noNights && (
         <Card>
-          <EmptyState
-            icon={Trophy}
-            title="No standings yet"
-            description="Record a night and the board fills itself in — balance, form, streaks and a line about everyone who played."
-            action={
-              <Link to="/entry" className={buttonVariants({ size: 'sm' })}>
-                <CalendarPlus className="h-4 w-4" />
-                Record a night
-              </Link>
-            }
-          />
+          {/* An empty *window* is a different fact from an empty group, and
+           * telling a group of two years' standing to "record a night" because
+           * they have not played since Sunday is the wrong answer. */}
+          {isScoped(scope) ? (
+            <EmptyState
+              icon={CalendarRange}
+              title={`No nights ${scopePhrase(scope)}`}
+              description="Pick a wider range, or a season, to see the board."
+            />
+          ) : (
+            <EmptyState
+              icon={Trophy}
+              title="No standings yet"
+              description="Record a night and the board fills itself in — balance, form, streaks and a line about everyone who played."
+              action={
+                <Link to="/entry" className={buttonVariants({ size: 'sm' })}>
+                  <CalendarPlus className="h-4 w-4" />
+                  Record a night
+                </Link>
+              }
+            />
+          )}
         </Card>
       )}
 
