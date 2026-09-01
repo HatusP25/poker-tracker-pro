@@ -86,24 +86,34 @@ const CommandPalette = () => {
               </Command.Item>
 
               <Command.Item
-                onSelect={() => handleNavigate('/rankings')}
+                onSelect={() => handleNavigate('/stats/standings')}
                 className="command-item"
               >
                 <span className="command-icon">🏆</span>
                 <div className="command-content">
-                  <div className="command-title">Rankings</div>
+                  <div className="command-title">Standings</div>
                   <div className="command-shortcut">G R</div>
                 </div>
               </Command.Item>
 
               <Command.Item
-                onSelect={() => handleNavigate('/analytics')}
+                onSelect={() => handleNavigate('/stats/trends')}
                 className="command-item"
               >
                 <span className="command-icon">📊</span>
                 <div className="command-content">
-                  <div className="command-title">Analytics</div>
+                  <div className="command-title">Trends</div>
                   <div className="command-shortcut">G A</div>
+                </div>
+              </Command.Item>
+
+              <Command.Item
+                onSelect={() => handleNavigate('/stats/rivals')}
+                className="command-item"
+              >
+                <span className="command-icon">⚔️</span>
+                <div className="command-content">
+                  <div className="command-title">Rivals</div>
                 </div>
               </Command.Item>
 
