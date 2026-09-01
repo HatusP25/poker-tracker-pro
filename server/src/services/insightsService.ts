@@ -20,6 +20,7 @@ import {
 } from '../types/insights';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
 import { previousSeason } from './seasonRules';
+import { COMPLETED_SESSION_FILTER } from './statsRules';
 
 // ---- Tunable constants ----
 export const RECENT_WINDOW = 5;
@@ -448,7 +449,10 @@ export function computeSeasonRecap(
 }
 
 // ---- Data access ----
-// Fetch non-deleted sessions for a group as SessionRow[] with rebuy counts.
+// Fetch countable sessions for a group as SessionRow[] with rebuy counts.
+// In-progress nights are excluded: everyone still at the table has cashOut = 0, so
+// including one made every player present look like a catastrophic loss in records,
+// rivalries, form and the season recap.
 async function fetchSessionRows(
   groupId: string,
   where: { gte?: Date; lte?: Date } = {}
@@ -459,7 +463,7 @@ async function fetchSessionRows(
       : {};
 
   const sessions = await prisma.session.findMany({
-    where: { groupId, deletedAt: null, ...dateFilter },
+    where: { groupId, ...COMPLETED_SESSION_FILTER, ...dateFilter },
     include: {
       entries: { include: { player: true } },
       rebuyEvents: true,
