@@ -1,26 +1,41 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Copy } from 'lucide-react';
+import { Copy, Loader2, MapPin, Users } from 'lucide-react';
 import { useSession } from '@/hooks/useSessions';
 import { useSessionSummary } from '@/hooks/useSessionSummary';
 import { useBelt } from '@/hooks/useInsights';
 import { useRole } from '@/context/RoleContext';
 import type { Settlement } from '@/types';
-import { cn } from '@/lib/utils';
+import { parseLocalDate } from '@/lib/dateUtils';
+import { rebuyCountsByPlayer } from '@/lib/nightRebuys';
+import { formatCount, formatMoney } from '@/lib/viz';
 import { formatNightMessage } from '@/lib/nightMessage';
 import { buildNightShareInput, nightCardFilename } from '@/lib/nightShareData';
 import { buildNightCardScene } from '@/lib/shareCard';
 import { displayName } from '@/lib/displayName';
 import ShareCardButton from '@/components/share/ShareCardButton';
-import RankingChangesSection from '@/components/session/RankingChangesSection';
-import SessionHighlightsSection from '@/components/session/SessionHighlightsSection';
-import StreaksSection from '@/components/session/StreaksSection';
+import NightHeadline from '@/components/session/NightHeadline';
+import NightResultsBoard from '@/components/session/NightResultsBoard';
+import NightStory from '@/components/session/NightStory';
 import SettlementList from '@/components/session/SettlementList';
 import NightTitleChips from '@/components/session/NightTitleChips';
 
+/**
+ * The moment a night ends.
+ *
+ * The screen people are looking at together, phones out, right after the chips
+ * are counted — so it opens with the result and the payments, and the
+ * accounting trivia it used to lead with is gone: session duration (a
+ * bankroll-tool metric, D-002) and a "Transactions: 1" tile that counted the
+ * rows in the list immediately below it.
+ *
+ * It shares its headline, board and story with the session page, so a night
+ * cannot describe itself two different ways depending on which route you
+ * reached it by.
+ */
 const SettlementView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -36,17 +51,34 @@ const SettlementView = () => {
 
   if (isLoading || !session) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Loading settlement...</p>
+      <div className="flex justify-center py-16">
+        <Loader2
+          className="h-6 w-6 animate-spin text-muted-foreground"
+          aria-label="Loading settlement"
+        />
       </div>
     );
   }
 
+  const currency = session.group?.currency;
   const settlements: Settlement[] = session.settlements
     ? JSON.parse(session.settlements)
     : [];
 
   const totalPot = session.entries?.reduce((sum, e) => sum + e.buyIn, 0) || 0;
+
+  // Recorded rebuy rows first, reconstruction second — never buy-in arithmetic.
+  const rebuysByPlayer = rebuyCountsByPlayer({
+    entries: session.entries || [],
+    rebuyEvents: session.rebuyEvents,
+    defaultBuyIn: session.group?.defaultBuyIn,
+  });
+
+  const results = (session.entries || []).map((entry) => ({
+    ...entry,
+    profit: entry.cashOut - entry.buyIn,
+    rebuys: rebuysByPlayer.get(entry.playerId) ?? 0,
+  }));
 
   // One description of the night, shared by the text and the image so they can
   // never disagree.
@@ -54,10 +86,10 @@ const SettlementView = () => {
     buildNightShareInput({
       date: session.date,
       currency: session.group?.currency,
-      entries: (session.entries || []).map((entry) => ({
+      entries: results.map((entry) => ({
         playerId: entry.playerId,
         playerName: entry.player ? displayName(entry.player) : 'Unknown',
-        profit: entry.cashOut - entry.buyIn,
+        profit: entry.profit,
       })),
       settlements,
       titles: summary?.titles || [],
@@ -83,173 +115,67 @@ const SettlementView = () => {
     }
   };
 
-  const calculateDuration = () => {
-    if (!session.startTime || !session.endTime) return null;
-
-    const [startHours, startMins] = session.startTime.split(':').map(Number);
-    const [endHours, endMins] = session.endTime.split(':').map(Number);
-
-    let totalMins = (endHours * 60 + endMins) - (startHours * 60 + startMins);
-    if (totalMins < 0) totalMins += 24 * 60; // Handle overnight sessions
-
-    const hours = Math.floor(totalMins / 60);
-    const mins = totalMins % 60;
-
-    return `${hours}h ${mins}m`;
-  };
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Session Complete!</h1>
-        <p className="text-muted-foreground">
-          {session.location || 'No location'} • {calculateDuration() || 'Duration unknown'}
-        </p>
-      </div>
+    <div className="space-y-5">
+      <NightHeadline
+        eyebrow={format(parseLocalDate(session.date), 'EEEE, MMMM d, yyyy')}
+        title="Session Complete!"
+        meta={[
+          session.location && { icon: MapPin, label: session.location },
+          { icon: Users, label: `${formatCount(results.length)} players` },
+        ]}
+        stats={[{ label: 'Pot', value: formatMoney(totalPot, { currency, decimals: 2 }) }]}
+        entries={results}
+        currency={currency}
+      >
+        {summary && summary.titles.length > 0 && (
+          <NightTitleChips titles={summary.titles} nicknames={displayNames} className="mt-6" />
+        )}
+      </NightHeadline>
 
-      {/* Session Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Session Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-3xl font-bold">{session.entries?.length || 0}</div>
-              <div className="text-sm text-muted-foreground">Players</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">${totalPot.toFixed(2)}</div>
-              <div className="text-sm text-muted-foreground">Total Pot</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">{settlements.length}</div>
-              <div className="text-sm text-muted-foreground">Transactions</div>
-            </div>
+      {/* The reason anyone is on this page: who pays whom. */}
+      <Card className="border-primary/40 p-5 shadow-elev-2 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-semibold tracking-tight">Settle up</h2>
+            <p className="text-label text-muted-foreground">
+              The fewest payments that square the table
+            </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Session Analytics */}
-      {summaryLoading ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      ) : summary ? (
-        <>
-          {/* Ranking Changes */}
-          <RankingChangesSection changes={summary.rankingChanges} />
-
-          {/* Session Highlights */}
-          <SessionHighlightsSection highlights={summary.highlights} />
-
-          {/* Streaks & Milestones */}
-          <StreaksSection streaks={summary.streaks} milestones={summary.milestones} />
-        </>
-      ) : null}
-
-      {/* Final Results */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Final Results</CardTitle>
-          {summary && summary.titles.length > 0 && (
-            <div className="pt-2">
-              <NightTitleChips titles={summary.titles} nicknames={displayNames} />
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead className="text-right">Buy-In</TableHead>
-                <TableHead className="text-right">Cash-Out</TableHead>
-                <TableHead className="text-right">Profit/Loss</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {session.entries
-                ?.sort((a, b) => (b.cashOut - b.buyIn) - (a.cashOut - a.buyIn))
-                .map((entry) => {
-                  const profit = entry.cashOut - entry.buyIn;
-                  return (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">
-                        {entry.player?.name}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${entry.buyIn.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ${entry.cashOut.toFixed(2)}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          'text-right font-bold font-mono',
-                          profit > 0 && 'text-green-600',
-                          profit < 0 && 'text-red-600',
-                          profit === 0 && 'text-muted-foreground'
-                        )}
-                      >
-                        {profit > 0 && '+'}${profit.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Settlement Instructions */}
-      <Card className="border-primary">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <span>💰</span>
-                Settlement Instructions
-              </CardTitle>
-              <CardDescription>
-                Optimal payment structure (minimized transactions)
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy for WhatsApp
-            </Button>
+          <div className="flex flex-wrap gap-2">
             <ShareCardButton
               size="sm"
               buildScene={() => buildNightCardScene(shareInput())}
               filename={nightCardFilename(session.date)}
             />
+            <Button variant="outline" size="sm" onClick={handleCopyForWhatsApp}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copy for WhatsApp
+            </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="mt-5">
           <SettlementList
             sessionId={session.id}
             settlements={settlements}
             canEdit={canEdit}
+            currency={currency}
           />
-        </CardContent>
+        </div>
       </Card>
 
-      {/* Actions */}
-      <div className="flex gap-4">
+      {results.length > 0 && (
+        <NightResultsBoard rows={results} currency={currency} title="Final results" />
+      )}
+
+      <NightStory summary={summary} loading={summaryLoading} currency={currency} />
+
+      <div className="flex flex-wrap gap-3">
         <Button onClick={() => navigate('/sessions')} className="flex-1">
-          View All Sessions
+          View all sessions
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/data-entry')}
-          className="flex-1"
-        >
-          Start New Session
+        <Button variant="outline" onClick={() => navigate('/data-entry')} className="flex-1">
+          Start new session
         </Button>
       </div>
     </div>

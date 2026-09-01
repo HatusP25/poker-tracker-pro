@@ -1,92 +1,72 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { DeltaChip } from '@/components/ui/delta-chip';
+import { PlayerChip } from '@/components/ui/player-chip';
+import { cn } from '@/lib/utils';
 import type { RankingChange } from '@/types';
+
+/**
+ * What the night did to the standings.
+ *
+ * Was a five-column table whose last column repeated the profit figure already
+ * shown twice elsewhere on the same page. The movement is the only thing this
+ * block knows that nothing else does, so that is all it says now: where you
+ * were, where you are, and how far you travelled.
+ */
+
+const rankLabel = (rank: number): string => {
+  if (rank === 0) return 'unranked';
+  if (rank === 1) return '1st';
+  if (rank === 2) return '2nd';
+  if (rank === 3) return '3rd';
+  return `${rank}th`;
+};
 
 interface RankingChangesSectionProps {
   changes: RankingChange[];
+  className?: string;
 }
 
-const RankingChangesSection = ({ changes }: RankingChangesSectionProps) => {
-  if (changes.length === 0) {
-    return null;
-  }
+const RankingChangesSection = ({ changes, className }: RankingChangesSectionProps) => {
+  if (changes.length === 0) return null;
 
-  const getRankDisplay = (rank: number) => {
-    if (rank === 0) return 'New';
-    if (rank === 1) return '🥇 1st';
-    if (rank === 2) return '🥈 2nd';
-    if (rank === 3) return '🥉 3rd';
-    return `#${rank}`;
-  };
-
-  const getChangeIcon = (change: number) => {
-    if (change > 0) {
-      return <TrendingUp className="h-4 w-4 text-green-500" />;
-    } else if (change < 0) {
-      return <TrendingDown className="h-4 w-4 text-red-500" />;
-    }
-    return <Minus className="h-4 w-4 text-muted-foreground" />;
-  };
-
-  const getChangeText = (change: number) => {
-    if (change === 0) return '-';
-    if (change > 0) return `↑ ${change}`;
-    return `↓ ${Math.abs(change)}`;
-  };
-
-  const getChangeColor = (change: number) => {
-    if (change > 0) return 'text-green-500';
-    if (change < 0) return 'text-red-500';
-    return 'text-muted-foreground';
-  };
+  // Biggest movers first — a night where nobody moved should not lead with the
+  // people who didn't.
+  const ordered = [...changes].sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Trophy className="h-5 w-5" />
-          Ranking Changes
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Player</TableHead>
-              <TableHead className="text-center">Previous Rank</TableHead>
-              <TableHead className="text-center">New Rank</TableHead>
-              <TableHead className="text-center">Change</TableHead>
-              <TableHead className="text-right">Profit/Loss</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {changes.map((change) => (
-              <TableRow key={change.playerId}>
-                <TableCell className="font-medium">{change.playerName}</TableCell>
-                <TableCell className="text-center text-muted-foreground">
-                  {getRankDisplay(change.oldRank)}
-                </TableCell>
-                <TableCell className="text-center font-medium">
-                  {getRankDisplay(change.newRank)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    {getChangeIcon(change.change)}
-                    <span className={`font-medium ${getChangeColor(change.change)}`}>
-                      {getChangeText(change.change)}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className={`text-right font-semibold ${change.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {change.profit >= 0 ? '+' : ''}${change.profit.toFixed(2)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+    <section className={cn('space-y-3', className)}>
+      <h3 className="eyebrow">Standings after this night</h3>
+      <ul className="divide-y divide-border/70 overflow-hidden rounded-lg border border-border bg-surface-2">
+        {ordered.map((change) => (
+          <li key={change.playerId} className="flex items-center gap-3 px-4 py-2.5">
+            <div className="min-w-0 flex-1">
+              <PlayerChip
+                player={{ id: change.playerId, name: change.playerName }}
+                size="sm"
+                className="font-semibold"
+              />
+            </div>
+            <span className="flex shrink-0 items-center gap-1.5 font-display text-label-sm tnum text-muted-foreground">
+              {rankLabel(change.oldRank)}
+              <ArrowRight className="h-3 w-3" aria-hidden />
+              <span className="text-foreground">{rankLabel(change.newRank)}</span>
+            </span>
+            <span className="w-16 shrink-0 text-right">
+              {change.change === 0 ? (
+                <span className="text-label-sm text-muted-foreground">held</span>
+              ) : (
+                <DeltaChip
+                  value={change.change}
+                  variant="plain"
+                  format={(v) => `${Math.abs(v)}`}
+                  aria-label={`${change.change > 0 ? 'up' : 'down'} ${Math.abs(change.change)} places`}
+                />
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 };
 
