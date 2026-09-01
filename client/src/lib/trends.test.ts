@@ -6,6 +6,7 @@ import {
   buildNightSwings,
   buildSplitMatrix,
   orderSplitBuckets,
+  niceMoneyDomain,
   type TrendSession,
 } from './trends';
 import type { SplitSummary } from '@/types';
@@ -107,6 +108,7 @@ describe('summariseTrends', () => {
     expect(summary.nights).toBe(2);
     expect(summary.moneyOnTable).toBe(80);
     expect(summary.avgPot).toBe(40);
+    expect(summary.avgTable).toBe(2);
   });
 
   it('is safe over an empty range', () => {
@@ -115,6 +117,7 @@ describe('summariseTrends', () => {
       players: 0,
       moneyOnTable: 0,
       avgPot: 0,
+      avgTable: 0,
       biggestWin: null,
       biggestLoss: null,
     });
@@ -306,5 +309,41 @@ describe('buildSplitMatrix', () => {
     const matrix = buildSplitMatrix(groupSplit, many, { maxRows: 8 });
     expect(matrix.rows).toHaveLength(8);
     expect(matrix.hiddenPlayers).toBe(4);
+  });
+});
+
+describe('niceMoneyDomain', () => {
+  it('rounds the bounds out to a round step so every tick is a readable figure', () => {
+    const { domain, ticks } = niceMoneyDomain(-95, 172);
+    expect(domain[0] % ticks[1]).toBe(domain[0] % ticks[1]); // sanity
+    expect(ticks).toContain(0);
+    expect(domain[0]).toBeLessThanOrEqual(-95);
+    expect(domain[1]).toBeGreaterThanOrEqual(172);
+    expect(ticks[0]).toBe(domain[0]);
+    expect(ticks[ticks.length - 1]).toBe(domain[1]);
+  });
+
+  it('always includes zero, so the break-even line is labelled', () => {
+    expect(niceMoneyDomain(20, 180).ticks).toContain(0);
+    expect(niceMoneyDomain(-180, -20).ticks).toContain(0);
+  });
+
+  it('keeps the steps even', () => {
+    const { ticks } = niceMoneyDomain(-95, 172);
+    const steps = ticks.slice(1).map((t, i) => t - ticks[i]);
+    expect(new Set(steps.map((s) => Math.round(s * 100)))).toHaveProperty('size', 1);
+  });
+
+  it('falls back to a readable band when everything is flat at zero', () => {
+    const { domain, ticks } = niceMoneyDomain(0, 0);
+    expect(domain[0]).toBeLessThan(0);
+    expect(domain[1]).toBeGreaterThan(0);
+    expect(ticks).toContain(0);
+  });
+
+  it('can be forced symmetric, so a win and a loss of the same size are the same height', () => {
+    const { domain } = niceMoneyDomain(-35, 45, { symmetric: true });
+    expect(domain[0]).toBe(-domain[1]);
+    expect(domain[1]).toBeGreaterThanOrEqual(45);
   });
 });

@@ -106,6 +106,8 @@ export interface TrendSummary {
   players: number;
   moneyOnTable: number;
   avgPot: number;
+  /** Average seats filled per night. */
+  avgTable: number;
   /** Null when nobody in the range finished a night up — not a zero. */
   biggestWin: TrendHighlight | null;
   biggestLoss: TrendHighlight | null;
@@ -113,6 +115,7 @@ export interface TrendSummary {
 
 export const summariseTrends = (sessions: readonly TrendSession[]): TrendSummary => {
   const ids = new Set<string>();
+  let seats = 0;
   let moneyOnTable = 0;
   let biggestWin: TrendHighlight | null = null;
   let biggestLoss: TrendHighlight | null = null;
@@ -120,6 +123,7 @@ export const summariseTrends = (sessions: readonly TrendSession[]): TrendSummary
   for (const session of sessions) {
     for (const entry of session.entries ?? []) {
       ids.add(entry.playerId);
+      seats += 1;
       moneyOnTable += entry.buyIn;
 
       const amount = entry.cashOut - entry.buyIn;
@@ -138,6 +142,7 @@ export const summariseTrends = (sessions: readonly TrendSession[]): TrendSummary
     players: ids.size,
     moneyOnTable: round2(moneyOnTable),
     avgPot: sessions.length > 0 ? round2(moneyOnTable / sessions.length) : 0,
+    avgTable: sessions.length > 0 ? round2(seats / sessions.length) : 0,
     biggestWin,
     biggestLoss,
   };
@@ -380,4 +385,62 @@ export const buildSplitMatrix = (
     minSessions: groupSplit.minSessions,
     hiddenPlayers: Math.max(0, ranked.length - visible.length),
   };
+};
+
+/* ------------------------------------------------------------------ *
+ * Axis bounds
+ * ------------------------------------------------------------------ */
+
+/** 1, 2, 2.5 and 5 per decade — the steps people read without doing arithmetic. */
+const NICE_STEPS = [1, 2, 2.5, 5, 10];
+
+export interface NiceDomainOptions {
+  /** Aim for this many gridlines. */
+  ticks?: number;
+  /** Force |min| === |max|, so a $40 win and a $40 loss are the same height. */
+  symmetric?: boolean;
+}
+
+/**
+ * Axis bounds that land on round money.
+ *
+ * Recharts' own "nice" bounds are computed from the tick count, so a $172 peak
+ * produced a ceiling of $192 with ticks at $55 and −$20 — a third of the hero
+ * chart's canvas spent on empty space, and no gridline on the break-even line
+ * that the whole chart is read against. Zero is always a tick here.
+ */
+export const niceMoneyDomain = (
+  dataMin: number,
+  dataMax: number,
+  { ticks = 5, symmetric = false }: NiceDomainOptions = {}
+): { domain: [number, number]; ticks: number[] } => {
+  let low = Math.min(0, Number.isFinite(dataMin) ? dataMin : 0);
+  let high = Math.max(0, Number.isFinite(dataMax) ? dataMax : 0);
+
+  if (symmetric) {
+    const reach = Math.max(-low, high);
+    low = -reach;
+    high = reach;
+  }
+
+  if (high - low === 0) {
+    low = -10;
+    high = 10;
+  }
+
+  const rough = (high - low) / Math.max(2, ticks - 1);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step =
+    (NICE_STEPS.find((candidate) => candidate * magnitude >= rough) ?? 10) * magnitude;
+
+  const lo = Math.floor(low / step) * step;
+  const hi = Math.ceil(high / step) * step;
+
+  const out: number[] = [];
+  // Multiply rather than accumulate: 0.1 + 0.1 + 0.1 is not 0.3.
+  for (let i = 0; lo + i * step <= hi + step / 1000; i += 1) {
+    out.push(round2(lo + i * step));
+  }
+
+  return { domain: [round2(lo), round2(hi)], ticks: out };
 };
