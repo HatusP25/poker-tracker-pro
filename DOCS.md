@@ -168,18 +168,29 @@ After each session (live or historical), view:
 
 - Player leaderboards with sortable columns
 - ROI, win rate, and streak tracking
-- 7 interactive charts on Analytics page
-- Individual player performance pages
+- Charts on the Stats hub's Trends tab
+- Individual player cards on the Stats hub's Player tab
+
+### The Stats Hub
+
+`/stats` — four routed tabs. The tab is in the URL, so it is linkable and survives a reload.
+`/rankings`, `/analytics` and `/players/:id` redirect here.
+
+| Tab | Route | What it answers |
+|-----|-------|-----------------|
+| Standings | `/stats/standings` | Who is up, and what else is true about each player |
+| Trends | `/stats/trends` | The money race, each night's swing, and who wins when and where |
+| Rivals | `/stats/rivals` | Every head-to-head record in the group, on one grid |
+| Player | `/stats/player/:id` | One player's card — their story, then their detail |
 
 ### Insights — The Story of Your Game
 
-A narrative-first area (`/insights`, shortcut `G + I`) separate from the Analytics
-toolbox. All modules are read-only and derived from existing data (no schema changes):
+A narrative-first area (`/insights`, shortcut `G + I`) separate from the `/stats` hub. All modules are read-only and derived from existing data (no schema changes):
 
 - **Hall of Fame & Records**: biggest win/loss/comeback, longest streaks, most rebuys,
   best ROI night, biggest pot — each links to the session where it happened.
-- **Rivalries / Head-to-Head**: pick two players for their record, profit differential,
-  and current streak; auto-surfaced biggest rivalry plus per-player bogey / favorite victim.
+- **Rivalries**: the auto-surfaced biggest feud, told in full. Every other matchup lives on
+  the hub's Rivals tab (`/stats/rivals`), which draws the whole head-to-head grid.
 - **Form & Momentum**: hot/cold board with trajectory arrows, heater/slump badges, and
   per-player momentum sparklines.
 - **Season Recap ("Poker Wrapped")**: champion, biggest mover, attendance king, best
@@ -202,8 +213,8 @@ toolbox. All modules are read-only and derived from existing data (no schema cha
 | G + E | Go to Data Entry |
 | G + S | Go to Sessions |
 | G + P | Go to Players |
-| G + R | Go to Rankings |
-| G + A | Go to Analytics |
+| G + R | Go to Standings (`/stats/standings`) |
+| G + A | Go to Trends (`/stats/trends`) |
 | G + I | Go to Insights |
 | N + S | New Session |
 | N + P | New Player |
