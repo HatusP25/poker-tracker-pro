@@ -14,6 +14,7 @@ import {
   getSeasonRecap,
   getGroupBelt,
   getGroupAchievements,
+  getGroupAngles,
 } from '../controllers/statsController';
 
 const router = Router();
@@ -43,6 +44,10 @@ router.get('/groups/:groupId/records', getGroupRecords);
 router.get('/groups/:groupId/head-to-head', getGroupHeadToHead);
 router.get('/groups/:groupId/form', getGroupForm);
 router.get('/groups/:groupId/season', getSeasonRecap);
+
+// The angles matrix — every derived metric plus each player's story angles,
+// in one full-history pass.
+router.get('/groups/:groupId/angles', getGroupAngles);
 
 // Banter pack endpoints
 router.get('/groups/:groupId/belt', getGroupBelt);

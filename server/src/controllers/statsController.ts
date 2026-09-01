@@ -3,6 +3,7 @@ import { statsService } from '../services/statsService';
 import { sessionSummaryService } from '../services/sessionSummaryService';
 import { insightsService } from '../services/insightsService';
 import { banterService } from '../services/banterService';
+import { anglesService } from '../services/anglesService';
 import { LeaderboardTimeframe } from '../types';
 
 const VALID_LEADERBOARD_TIMEFRAMES: LeaderboardTimeframe[] = ['all', 'year', 'month', 'week'];
@@ -166,6 +167,21 @@ export const getGroupBelt = async (req: Request, res: Response, next: NextFuncti
     const { groupId } = req.params;
     const belt = await banterService.getBelt(groupId);
     res.json(belt);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * The whole angles matrix for a group in one request — splits, attendance,
+ * droughts, rebuy dollars, departures, night ranks, co-attendance and each
+ * player's scored story angles.
+ */
+export const getGroupAngles = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { groupId } = req.params;
+    const angles = await anglesService.getGroupAngles(groupId);
+    res.json(angles);
   } catch (error) {
     next(error);
   }
