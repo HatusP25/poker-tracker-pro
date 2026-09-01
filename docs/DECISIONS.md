@@ -71,3 +71,41 @@ typecheck) must be green before any merge/push. Pushing `main` is a production d
 user confirmation.
 
 **Consequences:** Codified in [CLAUDE.md](../CLAUDE.md) §2. CI enforces the suite on every PR/push.
+
+---
+
+## D-006 — Statistics count only completed sessions (2026-08-31, accepted)
+
+**Context:** An in-progress session stores `cashOut = 0` for everyone still at the table. Nothing in
+the stats path filtered on `status`, so the moment a live night started, every player at it appeared
+as a catastrophic loss in the leaderboard, player stats, dashboard, streaks, trend, records,
+rivalries, form and the season recap. Only `banterService` filtered correctly.
+
+**Decision:** A session counts towards statistics only when it is `status = 'COMPLETED'` and not
+soft-deleted. `COMPLETED_SESSION_FILTER` in `server/src/services/statsRules.ts` is the single
+definition, applied in SQL by every group-history query.
+
+**Consequences:** A live night is invisible to every aggregate surface until it is ended, which is
+the only honest reading of a night with no results yet. Single-session endpoints
+(`/stats/sessions/:id/stats`, `/stats/sessions/:id/balance-check`) are deliberately exempt — they
+are asked about that one session, and the live table depends on the zero-sum check. Any new
+group-history query must use the shared filter rather than re-deriving it.
+
+---
+
+## D-007 — Every player gets a story, and the server scores it (2026-08-31, accepted)
+
+**Context:** Every headline metric in the app was a superlative exactly one person owned. A player
+down $60 across 20 nights opened the app and found nothing about themselves.
+
+**Decision:** The server derives a catalogue of per-player angles (rivalries, attendance, droughts,
+splits, rebuy dollars, departures, night ranks, form) and scores them for specificity, evidence and
+recency, returning the best few as **structured facts**. The client owns every word of the copy; the
+server never returns prose. Losing/absent angles are weighted as highly as winning ones, and a
+guaranteed career fallback means the list is never empty.
+
+**Consequences:** New angles are added to `anglesRules.ts` with a weight, a strength function, a
+minimum sample and a family; the family dedupe keeps the returned set from repeating itself. Because
+the payload is facts rather than sentences, tone and wording stay a client concern and can change
+without a server deploy.
+

@@ -10,6 +10,25 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-08-31 — Stats correctness + the angles engine
+
+- **A live night no longer wrecks every statistic.** An in-progress session stores no cash-outs, so
+  everyone at the table was showing up as a total loss in the leaderboard, player stats, dashboard,
+  streaks, records, rivalries, form and the season recap. Statistics now count completed nights
+  only. The live table's own session view and zero-sum check are unchanged.
+- **"Last 5 games" is actually the last 5 games.** Recent form sliced an unordered list, so it was
+  whatever order the database happened to return.
+- **A session with no players no longer breaks the dashboard.**
+- **New: the angles matrix** (`GET /stats/groups/:groupId/angles`) — day-of-week, venue effect on
+  profit, table size, attendance rate and streak, longest drought, rebuy dollars, early departures,
+  best-night ranking, the full co-attendance matrix, and nemesis / favourite victim. All derived
+  from data already stored; no schema change.
+- **Every player gets a story.** The server scores each player's candidate angles for specificity,
+  evidence and recency and returns the best few as structured facts — weighted so that a player who
+  is down, new, or has stopped showing up gets a real line about themselves, not the winner's
+  leftovers. Nobody ever gets nothing.
+- `statsService`'s formulas moved into tested pure functions (`statsRules.ts`).
+
 ### 2026-08-03 — Configurable seasons (F-11)
 
 Poker Wrapped was hardcoded to the calendar year, but groups think in seasons that start when they

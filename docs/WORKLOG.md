@@ -10,6 +10,57 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-08-31 — Stats correctness, the pure-function extraction, and the angles engine
+
+**Why** The stats restructure spec (`docs/superpowers/specs/2026-08-31-stats-restructure-design.md`)
+§6 and §8. `statsService` was the untested flank — 559 lines with Prisma interleaved with
+arithmetic and exactly one exported, tested function — and the audit found real defects behind it.
+
+**`statsRules.ts` (new, +35 unit tests).** Every formula behind the leaderboard, dashboard, player
+stats, session stats, streaks and the performance trend is now an exported pure function over
+already-fetched rows, following the `insightsService` / `sessionSummaryRules` convention.
+`statsService` fetches and delegates; `getTimeframeStart` moved across and is re-exported so its
+original tests keep their import path.
+
+**In-progress sessions polluted every statistic.** A live night stores `cashOut = 0` for everyone
+still at the table, and no stats query filtered on `status` — so starting a session made every
+player at it a catastrophic loss across the leaderboard, player stats, dashboard, streaks, trend,
+records, rivalries, form and the season recap. `COMPLETED_SESSION_FILTER` is now the single
+definition, applied in SQL by `statsService`, `insightsService`, `sessionSummaryService`'s history
+query and `banterService`'s fetch. Single-session endpoints stay exempt by design — the live table's
+own stats and zero-sum balance check must still see the night in front of it. Recorded as D-006.
+
+**Two more defects, both caught by the extraction.** Recent form sliced `entries.slice(-5)` on rows
+fetched with no `orderBy`, so "the last 5 games" was whatever Postgres returned; ordering is now
+explicit. `getDashboardStats` called `.reduce()` with no initial value and threw outright on a
+session with zero entries. The dead `include: { group: true }` in `getLeaderboard` was verified
+unused and removed.
+
+**`anglesRules.ts` + `anglesService.ts` (new, +47 unit / +14 integration tests).** One endpoint,
+`GET /stats/groups/:groupId/angles`, one full-history pass, returning every metric the app could
+already derive and never surfaced: day-of-week (UTC-anchored — the F-11 timezone lesson applied up
+front), venue effect on *profit*, table size, attendance rate and streak, longest drought, rebuy
+dollars (Σ `RebuyEvent.amount`, previously computed internally and discarded), early departures
+scoped honestly to nights where exits were actually recorded, best-night ranking, the whole
+co-attendance matrix (`insightsService` built it for every pair and then returned only the maximum),
+and nemesis / favourite victim — already computed, shipped over the wire, and rendered nowhere.
+
+**The player-story selector.** Per player it builds every candidate angle, scores it
+`weight × strength × confidence × recency`, dedupes to one per family and returns the best few as
+structured facts, never prose. The catalogue weights burns as highly as brags on purpose: the losing
+player, the newcomer and the one who stopped showing up all get a real line. A guaranteed career
+fallback means the list is never empty — a player with zero angles would be the exact failure the
+redesign exists to fix. Recorded as D-007.
+
+One rich endpoint rather than ten thin ones: the Insights page already costs six full-history scans
+a load, and the client narrows one cached payload with `select` for the hub, the rivals grid and
+every player card.
+
+**Verification** server unit 262 → 344 ✓ · integration 138 → 163 ✓ · server `tsc` ✓ · client `tsc` ✓
+· client unit ✓.
+
+---
+
 ## 2026-08-03 — Configurable seasons (F-11)
 
 **Why** Roadmap F-11. `getSeasonRecap` was hardcoded to Jan 1 – Dec 31. Groups think in seasons
