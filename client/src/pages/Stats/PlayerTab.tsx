@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Download, UserSearch, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,6 +46,17 @@ const PlayerArcChart = lazy(() => import('@/components/players/PlayerArcChart'))
  * that used to lead (ROI, cash-out rate, avg buy-in, rebuy rate) are behind a
  * disclosure at the bottom; the cross-session ledger is gone entirely (D-001).
  */
+
+/**
+ * Four angles want one row of four, not a row of three and an orphan. The
+ * server caps the set at five, so this table covers every case.
+ */
+const STORY_COLUMNS: Record<number, string> = {
+  1: 'lg:grid-cols-1',
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+};
 
 const SectionHeading = ({ title, hint }: { title: string; hint?: string }) => (
   <div className="mb-4">
@@ -216,9 +228,9 @@ const PlayerTab = () => {
         <section>
           <SectionHeading
             title="The story so far"
-            hint={`Everything else this group's ${games === 1 ? 'night' : 'nights'} can prove about ${name}.`}
+            hint={`Everything else the record can prove about ${name}.`}
           />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={cn('grid gap-4 sm:grid-cols-2', STORY_COLUMNS[Math.min(rest.length, 4)])}>
             {rest.map((angle, index) => (
               <StoryCard
                 key={`${angle.id}-${index}`}

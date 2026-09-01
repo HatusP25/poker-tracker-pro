@@ -36,9 +36,14 @@ const NightStrip = ({ nights, limit = 14, currency, className }: NightStripProps
   const peak = Math.max(1, ...tail.map((n) => Math.abs(n.profit)));
 
   return (
-    <div className={cn('w-fit max-w-full space-y-2', className)}>
-      {/* Fixed-width strokes rather than a full-width stretch: this is a form
-       * strip, not a chart, and it should read at a glance from its shape. */}
+    <div
+      className={cn('space-y-2', className)}
+      // Width is set by the number of nights rather than the card: fourteen
+      // strokes fill about half a desktop card and three fill a corner, so a
+      // short history never becomes three slabs of colour reading as something
+      // far more dramatic than "they lost ten dollars".
+      style={{ maxWidth: `${tail.length * 2.9375}rem` }}
+    >
       <div className="relative flex h-12 items-stretch gap-[3px]">
         <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-border-strong" aria-hidden />
         {tail.map((night, index) => {
@@ -49,7 +54,7 @@ const NightStrip = ({ nights, limit = 14, currency, className }: NightStripProps
           return (
             <div
               key={`${night.date}-${index}`}
-              className="group relative w-[14px] shrink-0 sm:w-[18px]"
+              className="group relative min-w-[6px] flex-1"
               title={`${storyDate(night.date)} · ${formatMoney(night.profit, { currency, signed: true, decimals: 2 })}`}
             >
               {sign === 'neutral' ? (

@@ -73,7 +73,7 @@ const PlayerArcChart = ({ playerId, points, currency, loading = false }: PlayerA
     <ChartFrame
       title="The arc"
       description="Every night that got them to today's number."
-      height="lg"
+      height={data.length < 2 ? 'md' : 'lg'}
       loading={loading}
       /* One point is a dot, not an arc — Recharts would happily give it a full
        * axis and a lone bar as if that were a trend. */

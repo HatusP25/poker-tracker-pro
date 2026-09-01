@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { playerColor } from '@/lib/viz/playerColor';
@@ -21,6 +22,14 @@ interface PlayerSwitcherProps {
 }
 
 const PlayerSwitcher = ({ players, activeId, className }: PlayerSwitcherProps) => {
+  const activeRef = useRef<HTMLAnchorElement | null>(null);
+
+  // On a phone the row scrolls, and the person whose card you opened is as
+  // likely to be off the right edge as not. Bring them into view.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [activeId]);
+
   if (players.length === 0) return null;
 
   return (
@@ -34,6 +43,7 @@ const PlayerSwitcher = ({ players, activeId, className }: PlayerSwitcherProps) =
         return (
           <Link
             key={player.id}
+            ref={active ? activeRef : undefined}
             to={`/stats/player/${player.id}`}
             aria-current={active ? 'page' : undefined}
             className={cn(
