@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   SORTS,
+  absentDescription,
   buildStandings,
   compareBy,
+  isScoped,
   parseScopeValue,
   qualifyingThreshold,
   scopeLabel,
@@ -134,6 +136,23 @@ describe('scope values', () => {
     const scope = { kind: 'season', season } as const;
     expect(parseScopeValue(scopeValue(scope), [season])).toEqual(scope);
     expect(scopeLabel(scope)).toBe('Winter');
+  });
+
+  it('keeps a season name capitalised but reads the ranges as prose', () => {
+    expect(absentDescription({ kind: 'season', season })).toBe('No nights in Winter');
+    expect(absentDescription({ kind: 'timeframe', timeframe: 'month' })).toBe(
+      'No nights this month'
+    );
+    // "No nights in all time" is not a sentence.
+    expect(absentDescription({ kind: 'timeframe', timeframe: 'all' })).toBe(
+      'Has never played a night'
+    );
+  });
+
+  it('knows when the board is narrower than the whole history', () => {
+    expect(isScoped({ kind: 'timeframe', timeframe: 'all' })).toBe(false);
+    expect(isScoped({ kind: 'timeframe', timeframe: 'week' })).toBe(true);
+    expect(isScoped({ kind: 'season', season })).toBe(true);
   });
 
   it('falls back to all-time when a season has since been deleted', () => {

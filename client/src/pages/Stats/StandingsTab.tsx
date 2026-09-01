@@ -20,10 +20,12 @@ import StandingsTable from '@/components/standings/StandingsTable';
 import UnrankedList from '@/components/standings/UnrankedList';
 import { assignStoryAngles } from '@/components/standings/angleCopy';
 import {
+  absentDescription,
   buildStandings,
   countSessionsInWindow,
   parseScopeValue,
   qualifyingThreshold,
+  isScoped,
   scopeLabel,
   scopeValue,
   scopeWindow,
@@ -171,6 +173,10 @@ const StandingsTab = () => {
         {board.sessionCount === 1 ? 'night' : 'nights'} · ranked by {board.sort.rankedBy}
         {board.direction === 'asc' && ', lowest first'}
         {qualifiedOnly && threshold > 1 && ` · ${threshold}-night minimum`}
+        {/* The angles endpoint is career-wide and takes no window, so a chip on
+         * a season board is a fact about the player, not about the season. Say
+         * so once here rather than qualifying twenty chips. */}
+        {isScoped(scope) && ' · story lines are career-wide'}
       </p>
 
       {noNights && (
@@ -275,7 +281,7 @@ const StandingsTab = () => {
 
           <UnrankedList
             title="Not at the table"
-            description={`No nights in ${scopeLabel(scope).toLowerCase()}`}
+            description={absentDescription(scope)}
             rows={board.absent}
             angles={storyAngles}
             currency={currency}

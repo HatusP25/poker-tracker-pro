@@ -155,6 +155,22 @@ export function parseScopeValue(
 export const scopeLabel = (scope: StandingsScope): string =>
   scope.kind === 'season' ? scope.season.name : TIMEFRAME_LABEL[scope.timeframe];
 
+/**
+ * How to say "did not play in this window".
+ *
+ * A season is a proper noun and keeps its capitals; the ranges read as prose.
+ * "No nights in all time" is not a sentence, so all-time gets its own.
+ */
+export function absentDescription(scope: StandingsScope): string {
+  if (scope.kind === 'season') return `No nights in ${scope.season.name}`;
+  if (scope.timeframe === 'all') return 'Has never played a night';
+  return `No nights ${TIMEFRAME_LABEL[scope.timeframe].toLowerCase()}`;
+}
+
+/** True when the board is showing less than the group's whole history. */
+export const isScoped = (scope: StandingsScope): boolean =>
+  scope.kind === 'season' || scope.timeframe !== 'all';
+
 export const TIMEFRAMES = Object.entries(TIMEFRAME_LABEL) as Array<
   [LeaderboardTimeframe, string]
 >;
