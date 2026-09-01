@@ -333,6 +333,19 @@ describe('pickStory', () => {
     expect(pickStory(angles).rest.map((r) => r.id)).toEqual(['career-balance']);
   });
 
+  it('does not open with an angle every single player has', () => {
+    // Everybody rebuys and everybody has a most-played-with; those are true but
+    // they are not a headline. The nemesis is about this person specifically.
+    const angles = [a('rebuy-dollars'), a('played-together'), a('nemesis')];
+    expect(pickStory(angles).headline?.id).toBe('nemesis');
+    expect(pickStory(angles).rest.map((r) => r.id)).toEqual(['rebuy-dollars', 'played-together']);
+  });
+
+  it('still opens with the common angle when it is the only finding there is', () => {
+    const angles = [a('rebuy-dollars'), a('career-balance', true)];
+    expect(pickStory(angles).headline?.id).toBe('rebuy-dollars');
+  });
+
   it('leads a one-night player with "too early to say" rather than a one-night stat', () => {
     const angles = [a('rebuy-dollars'), a('gone-missing'), a('newcomer', true)];
     expect(pickStory(angles).headline?.id).toBe('newcomer');

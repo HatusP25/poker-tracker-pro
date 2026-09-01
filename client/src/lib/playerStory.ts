@@ -464,11 +464,25 @@ export function angleCopy(angle: StoryAngle, ctx: StoryCopyContext): AngleCopy {
 // ---- Which angle leads -------------------------------------------------------
 
 /**
+ * True of virtually everyone, and therefore not an opening line.
+ *
+ * The server scores an angle on specificity, evidence and recency, and by those
+ * measures a big rebuy total is a strong finding. But in a five-dollar home
+ * game *everybody* rebuys and everybody has somebody they have sat next to
+ * most, so these two land at the top of nearly every card and say nothing that
+ * separates one player from the next. They stay in the story; they just do not
+ * lead it while something specific to this person is available.
+ */
+const COMMON_ANGLE_IDS: ReadonlySet<StoryAngleId> = new Set(['rebuy-dollars', 'played-together']);
+
+/**
  * The angles arrive best-first, so the headline is usually just the first one.
- * Two client-side edits on top of that ranking:
+ * Three client-side edits on top of that ranking, all of them editorial — which
+ * is exactly the half of the contract this side owns:
  *
  *   - A `fallback` angle is the floor, not a finding. If anything real is in
  *     the list, that leads instead.
+ *   - A finding everyone shares does not lead while a specific one exists.
  *   - Except for a player one or two nights old: "too early to say" is a more
  *     honest opening line than any single-night statistic, so the newcomer
  *     angle — and the never-played one — outrank everything.
@@ -479,10 +493,12 @@ export function pickStory(angles: StoryAngle[]): {
 } {
   if (!angles || angles.length === 0) return { headline: null, rest: [] };
 
+  const real = (a: StoryAngle) => !a.fallback;
   const headline =
     angles.find((a) => a.id === 'never-played') ??
     angles.find((a) => a.id === 'newcomer') ??
-    angles.find((a) => !a.fallback) ??
+    angles.find((a) => real(a) && !COMMON_ANGLE_IDS.has(a.id)) ??
+    angles.find(real) ??
     angles[0];
 
   return { headline, rest: angles.filter((a) => a !== headline) };
