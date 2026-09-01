@@ -86,9 +86,10 @@ const HeadlineRecord = ({
   const sign = moneyTextClass(record.value);
 
   return (
-    <NightLink sessionId={record.sessionId} className="group block">
+    <NightLink sessionId={record.sessionId} className="group block h-full">
+      {/* Only lift on hover when there is actually a night to open. */}
       <Card
-        interactive
+        interactive={!!record.sessionId}
         className="relative h-full overflow-hidden p-6 sm:p-7"
       >
         {/* A wash of the record's own colour, well below text weight. Money is
@@ -134,27 +135,33 @@ interface BookEntry {
   valueClass?: string;
 }
 
-const RecordBookCell = ({ entry }: { entry: BookEntry }) => (
-  <NightLink
-    sessionId={entry.value ? entry.sessionId : undefined}
-    className="block bg-card p-4 transition-colors hover:bg-surface-2 sm:p-5"
-  >
-    <p className="eyebrow flex items-center gap-1.5">
-      <entry.icon className="h-3.5 w-3.5" aria-hidden />
-      <span className="truncate">{entry.label}</span>
-    </p>
-    {entry.value ? (
-      <>
-        <p className={`mt-2 font-display text-stat-sm tnum ${entry.valueClass ?? ''}`}>
-          {entry.value}
-        </p>
-        <p className="mt-0.5 truncate text-label-sm text-muted-foreground">{entry.holder}</p>
-      </>
-    ) : (
-      <p className="mt-2 text-label-sm text-muted-foreground">Not set yet</p>
-    )}
-  </NightLink>
-);
+const RecordBookCell = ({ entry }: { entry: BookEntry }) => {
+  const sessionId = entry.value ? entry.sessionId : undefined;
+
+  return (
+    <NightLink
+      sessionId={sessionId}
+      className={`block bg-card p-4 sm:p-5${
+        sessionId ? ' transition-colors hover:bg-surface-2' : ''
+      }`}
+    >
+      <p className="eyebrow flex items-center gap-1.5">
+        <entry.icon className="h-3.5 w-3.5" aria-hidden />
+        <span className="truncate">{entry.label}</span>
+      </p>
+      {entry.value ? (
+        <>
+          <p className={`mt-2 font-display text-stat-sm tnum ${entry.valueClass ?? ''}`}>
+            {entry.value}
+          </p>
+          <p className="mt-0.5 truncate text-label-sm text-muted-foreground">{entry.holder}</p>
+        </>
+      ) : (
+        <p className="mt-2 text-label-sm text-muted-foreground">Not set yet</p>
+      )}
+    </NightLink>
+  );
+};
 
 const RecordsSkeleton = () => (
   <div className="space-y-4">
