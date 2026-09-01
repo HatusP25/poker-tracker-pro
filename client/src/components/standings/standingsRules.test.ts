@@ -3,7 +3,10 @@ import {
   SORTS,
   buildStandings,
   compareBy,
+  parseScopeValue,
   qualifyingThreshold,
+  scopeLabel,
+  scopeValue,
   scopeWindow,
   toLeaderboardEntries,
   type StandingsRow,
@@ -107,6 +110,41 @@ describe('scopeWindow', () => {
     // A night on 31 March must land inside the season, not after it.
     expect(end!.getTime()).toBeGreaterThan(new Date(2026, 2, 31).getTime());
     expect(end!.getTime()).toBeLessThan(new Date(2026, 3, 1).getTime());
+  });
+});
+
+describe('scope values', () => {
+  const season: Season = {
+    id: 's1',
+    groupId: 'g1',
+    name: 'Winter',
+    startDate: '2025-10-01T00:00:00.000Z',
+    endDate: '2026-03-31T00:00:00.000Z',
+    createdAt: '2025-09-01T00:00:00.000Z',
+    updatedAt: '2025-09-01T00:00:00.000Z',
+  };
+
+  it('round-trips a range', () => {
+    const scope = { kind: 'timeframe', timeframe: 'month' } as const;
+    expect(parseScopeValue(scopeValue(scope), [])).toEqual(scope);
+    expect(scopeLabel(scope)).toBe('This month');
+  });
+
+  it('round-trips a season', () => {
+    const scope = { kind: 'season', season } as const;
+    expect(parseScopeValue(scopeValue(scope), [season])).toEqual(scope);
+    expect(scopeLabel(scope)).toBe('Winter');
+  });
+
+  it('falls back to all-time when a season has since been deleted', () => {
+    expect(parseScopeValue('season:gone', [season])).toEqual({
+      kind: 'timeframe',
+      timeframe: 'all',
+    });
+    expect(parseScopeValue('range:nonsense', [])).toEqual({
+      kind: 'timeframe',
+      timeframe: 'all',
+    });
   });
 });
 

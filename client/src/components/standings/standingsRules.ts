@@ -120,6 +120,45 @@ export function scopeWindow(scope: StandingsScope, now: Date = new Date()): Date
   }
 }
 
+const TIMEFRAME_LABEL: Record<LeaderboardTimeframe, string> = {
+  all: 'All time',
+  year: 'This year',
+  month: 'This month',
+  week: 'This week',
+};
+
+/**
+ * A scope as one string, so the whole picker — four ranges and every season
+ * the group has defined — can be a single `<Select>` rather than two controls
+ * that have to agree with each other.
+ */
+export const scopeValue = (scope: StandingsScope): string =>
+  scope.kind === 'season' ? `season:${scope.season.id}` : `range:${scope.timeframe}`;
+
+/** Falls back to all-time for a season that has since been deleted. */
+export function parseScopeValue(
+  value: string,
+  seasons: readonly Season[] | undefined
+): StandingsScope {
+  if (value.startsWith('season:')) {
+    const season = (seasons ?? []).find((s) => s.id === value.slice('season:'.length));
+    if (season) return { kind: 'season', season };
+    return { kind: 'timeframe', timeframe: 'all' };
+  }
+  const timeframe = value.slice('range:'.length) as LeaderboardTimeframe;
+  return {
+    kind: 'timeframe',
+    timeframe: timeframe in TIMEFRAME_LABEL ? timeframe : 'all',
+  };
+}
+
+export const scopeLabel = (scope: StandingsScope): string =>
+  scope.kind === 'season' ? scope.season.name : TIMEFRAME_LABEL[scope.timeframe];
+
+export const TIMEFRAMES = Object.entries(TIMEFRAME_LABEL) as Array<
+  [LeaderboardTimeframe, string]
+>;
+
 // ---- Qualification ----------------------------------------------------------
 
 /**
@@ -296,6 +335,17 @@ const counts = (session: Session, window: DateWindow): boolean => {
   if (window.end && at > window.end.getTime()) return false;
   return true;
 };
+
+/**
+ * Nights that count in this window.
+ *
+ * Exposed because the qualifying threshold is derived from the group's history
+ * *inside the window*, which the caller needs before it can ask for a board.
+ */
+export const countSessionsInWindow = (
+  sessions: Session[] | undefined,
+  window: DateWindow
+): number => (sessions ?? []).filter((s) => counts(s, window)).length;
 
 /** Oldest first, ties on a date broken by session id — the app's one ordering. */
 const chronological = (nights: Array<StandingsNight & { buyIn: number; cashOut: number }>) =>
