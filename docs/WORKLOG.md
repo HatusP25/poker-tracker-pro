@@ -10,6 +10,91 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-09-01 — The stats restructure
+
+**Why** The user's read was that the stats "weren't giving enough value to everyone" and weren't
+visually appealing. Both halves turned out to have a specific, findable cause.
+
+*Value:* every headline metric was a superlative exactly one person owned. Four pages also told the
+same story four times — "biggest win" in four places under three definitions, three cumulative-profit
+implementations, five streak displays. `HeadToHeadResponse.playerInsights.bogey` and
+`.favoriteVictim` were computed, shipped over the wire and rendered nowhere.
+
+*Presentation:* `--card` and `--background` were both `222.2 84% 4.9%`, so every card in the app was
+the same colour as the page behind it and survived on a 1px hairline with a `shadow-sm` that is
+invisible on near-black. Six hexes meant "up" or "down"; three of nine charts used the shared chart
+theme and the rest re-typed the same hexes inline; `tabular-nums` appeared once in the whole client;
+and below 768px there was no navigation at all.
+
+**How it was run.** Four parallel audit agents (frontend surfaces, backend data, design system,
+product decisions) with baseline screenshots at 1440 and 390, then a spec, then two foundation waves
+(design system / backend) on disjoint file sets, then seven surface agents with exclusive file
+ownership, then integration. Ownership was enforced by brief — agents staged explicit pathspecs
+rather than `git add -A`.
+
+**Design** The thesis is *every player has a story*. `anglesRules.ts` derives a catalogue of
+per-player angles and scores them `weight × strength × confidence × recency`, one angle per family,
+top five, never empty. Burns are weighted as highly as brags, which is what puts a nemesis at the top
+of a losing player's card instead of a career-balance restatement. The server returns **structured
+facts, not prose** — every sentence is written client-side, so tone can change without a deploy.
+
+**Scope call.** Grinder-flavoured metrics (ROI, cash-out rate, avg buy-in, rebuy rate) are *demoted,
+not deleted* — D-002 keeps them off the primary surfaces, but the API fields and the CSV export are
+compatibility surface. They live behind a Detail toggle and a `<details>` block.
+
+**Changed**
+- `server/src/services/statsRules.ts` (new, +35 tests) — `statsService`'s inline math extracted to
+  pure functions; the service is fetch-and-delegate. It had been the untested flank: 7 tests covering
+  one date helper, with every formula verified only indirectly.
+- `server/src/services/anglesRules.ts` + `anglesService.ts` (new, +47 unit, +14 integration) and
+  `GET /api/stats/groups/:groupId/angles` — one full-history pass, 3 queries.
+- `COMPLETED_SESSION_FILTER` applied in `statsService`, `insightsService`, `sessionSummaryService`
+  and `banterService` (+11 integration). `getSessionStats` and `checkSessionBalance` are deliberately
+  exempt — the live table depends on them. Recorded as D-006.
+- `client/src/index.css`, `tailwind.config.js` — elevation ladder, three-way money tokens, display
+  type scale, player identity hues chosen to avoid the profit and loss arcs.
+- `client/src/lib/viz/**` (new, +56 tests) — sign, money, player colour, series capping, CSS vars.
+- `client/src/components/ui/**` — `StatTile`, `DeltaChip`, `PlayerChip`, `EmptyState`, `Meter`,
+  `CountUp`, `Tabs`, `Tooltip`, `ChartFrame`, `ChartTooltip`.
+- `client/src/pages/Stats/**` — the hub and its four tabs; `Rankings.tsx`, `Analytics.tsx` and
+  `PlayerDetail.tsx` deleted, their routes redirected.
+- New surface components under `components/{standings,rivals,analytics,dashboard,session,players}`.
+
+**Five bugs found by building on top of the code, not by reading it**
+1. *In-progress sessions were counted everywhere.* A live night stores `cashOut = 0`, so every player
+   at the table read as having lost their entire buy-in across the leaderboard, records, form and the
+   season recap. Only `banterService` had ever filtered on `status`.
+2. *`cn()` was deleting the new type scale.* tailwind-merge classifies `text-*` by pattern, so
+   `text-display-2` and `text-stat` were filed as colours and dropped whenever a colour shared the
+   call — `cn('text-display-2','text-profit')` returned `'text-profit'`. Every hero numeral on every
+   new surface was rendering at inherited size. Fixed centrally with `extendTailwindMerge`, pinned by
+   a test that reads the scale out of `tailwind.config.js`.
+3. *Recharts was on the critical path of every route.* Object-form `manualChunks` assigns a package's
+   whole subgraph, so `'recharts-vendor': ['recharts']` swallowed `clsx` — which `cn()` imports and
+   the eager shell needs. Rollup made all 18 route chunks import the 415 kB chunk and Vite preloaded
+   it. The June code-splitting work had been silently ineffective ever since.
+4. *Player colour collided.* Nine hues hashed per id is roughly a three-in-four collision at five
+   players; Muel and Rauw both landed on lime. Charts using `assignPlayerColors` over their own
+   subset also disagreed with chips using the raw hash, so one player could be two colours on one
+   screen.
+5. *Fractional rebuys on the client.* `SessionDetail.tsx:98` and the data-entry row hardcoded a $5
+   buy-in and divided, rendering "6.0x" for one recorded $30 rebuy. F-07 made `RebuyEvent` the single
+   source of truth on the server; the client had never been updated.
+
+Also fixed: a live night shown as "Session unbalanced" in loss-red (it is short by the whole pot
+until cash-outs exist); unordered "last 5 games"; `getDashboardStats` throwing on an entry-less
+session; `NaN%` on a zero-game player; "+$0.00" as the biggest win of an all-losses range;
+participation keyed by player name; two in-place sorts of the query cache; the leaderboard's client
+sort desynchronising from the server rank; and `tailwindcss-animate` never having been installed, so
+every `animate-in` / `zoom-in-95` class in the app generated no CSS.
+
+**Decisions** D-006 (completed sessions only), D-007 (server scores angles, client owns the copy),
+D-008 (the hub narrows but does not reverse D-003), D-009 (roster-scoped player colour).
+
+**Verification** server unit 344 ✓ · integration 163 ✓ · server tsc ✓ · client tsc ✓ · client unit
+412 ✓ · build ✓ · E2E 18 ✓. Every surface screenshotted at 1440 and 390 against the real dev group
+and read, before and after, with no page or console errors.
+
 ## 2026-08-31 — Stats correctness, the pure-function extraction, and the angles engine
 
 **Why** The stats restructure spec (`docs/superpowers/specs/2026-08-31-stats-restructure-design.md`)
