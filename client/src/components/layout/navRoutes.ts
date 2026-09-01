@@ -5,7 +5,6 @@ import {
   PlusCircle,
   Settings as SettingsIcon,
   Sparkles,
-  Trophy,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -35,8 +34,7 @@ export const NAV_ROUTES: NavRoute[] = [
   { path: '/entry', label: 'Data Entry', shortLabel: 'Entry', icon: PlusCircle },
   { path: '/sessions', label: 'Sessions', icon: Calendar, primary: true },
   { path: '/players', label: 'Players', icon: Users },
-  { path: '/rankings', label: 'Rankings', shortLabel: 'Ranks', icon: Trophy, primary: true },
-  { path: '/analytics', label: 'Analytics', shortLabel: 'Stats', icon: BarChart3 },
+  { path: '/stats', label: 'Stats', icon: BarChart3, primary: true },
   { path: '/insights', label: 'Insights', icon: Sparkles, primary: true },
   { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
