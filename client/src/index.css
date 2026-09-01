@@ -224,4 +224,33 @@
     text-transform: uppercase;
     color: hsl(var(--muted-foreground));
   }
+
+  /* Stagger. Pair with `animate-rise` on the members of a row or grid so they
+   * arrive as a sequence rather than a slab. 45ms is enough to read as ordered
+   * and short enough that the eighth tile is not still animating when the eye
+   * gets there. Past eight, everything lands together — a stagger long enough
+   * to notice on item twelve is a stagger that feels broken. */
+  .stagger-1 { animation-delay: 0ms; }
+  .stagger-2 { animation-delay: 45ms; }
+  .stagger-3 { animation-delay: 90ms; }
+  .stagger-4 { animation-delay: 135ms; }
+  .stagger-5 { animation-delay: 180ms; }
+  .stagger-6 { animation-delay: 225ms; }
+  .stagger-7 { animation-delay: 270ms; }
+  .stagger-8 { animation-delay: 315ms; }
+}
+
+/* Nothing above is load-bearing: every animation is decoration over content
+ * that is already in the DOM, so turning them all off costs nothing. The
+ * `!important` is needed to beat Tailwind's own animation utilities. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

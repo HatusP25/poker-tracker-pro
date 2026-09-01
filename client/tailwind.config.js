@@ -1,3 +1,5 @@
+import animate from 'tailwindcss-animate';
+
 /** @type {import('tailwindcss').Config} */
 
 /**
@@ -142,7 +144,45 @@ export default {
         profit: 'var(--shadow-profit)',
         loss: 'var(--shadow-loss)',
       },
+
+      /* --- Motion ----------------------------------------------------------
+       * A small vocabulary, not a library. `tailwindcss-animate` (below) covers
+       * the Radix enter/exit states; these three cover content arriving.
+       *
+       *   animate-rise    a card or row entering — the default
+       *   animate-sweep   a meter or bar filling from its origin
+       *   animate-flare   a one-shot emphasis on a figure that just changed
+       *
+       * Pair `animate-rise` with a `stagger-N` class for a sequence. Every one
+       * of these is disabled under prefers-reduced-motion (see index.css).
+       */
+      keyframes: {
+        rise: {
+          from: { opacity: '0', transform: 'translateY(10px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        sweep: {
+          from: { transform: 'scaleX(0)' },
+          to: { transform: 'scaleX(1)' },
+        },
+        flare: {
+          '0%, 100%': { opacity: '1' },
+          '35%': { opacity: '0.45' },
+        },
+      },
+      animation: {
+        rise: 'rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        sweep: 'sweep 620ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        flare: 'flare 700ms ease-in-out',
+      },
     },
   },
-  plugins: [],
+  /**
+   * `dialog.tsx`, `alert-dialog.tsx` and `select.tsx` have always carried
+   * `animate-in`, `zoom-in-95`, `slide-in-from-top-2` and `fade-in-0`, but the
+   * plugin that defines them was never installed — so those classes generated
+   * no CSS at all and every dialog in the app appeared instantly, with no
+   * transition. Adding it is build-time only: zero runtime bytes.
+   */
+  plugins: [animate],
 };
