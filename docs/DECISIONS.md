@@ -109,3 +109,38 @@ minimum sample and a family; the family dedupe keeps the returned set from repea
 the payload is facts rather than sentences, tone and wording stay a client concern and can change
 without a server deploy.
 
+
+## D-008 — The stats hub narrows, but does not reverse, D-003 (2026-08-31, accepted)
+
+**Context:** D-003 split the app into `/analytics` (a data toolbox) and `/insights` (the story). In
+practice the toolbox spread across four pages — Dashboard, Rankings, Analytics and the player page —
+with enough overlap that "biggest win" appeared four times under three different definitions, three
+separate components drew a cumulative-profit line, and five drew a streak. "Where do I find X?" had
+no answer because X was in three places.
+
+**Decision:** The toolbox stops being its own page and becomes `/stats`, a hub of four routed tabs
+(Standings, Trends, Rivals, Player). `/rankings`, `/analytics` and `/players/:id` redirect into it,
+so existing links, bookmarks and e2e deep-links keep working. **Insights stays a separate area and
+does not absorb the charts** — D-003's actual intent, the separation of story from toolbox, is
+preserved. The Dashboard stops being a fourth copy of the toolbox and becomes a home screen.
+
+**Consequences:** The tab lives in the URL, so it is linkable and survives a reload. A new numeric
+surface belongs in a hub tab, not a new top-level route. The nav has one Stats entry instead of two,
+which is also what let the eight-item header stop overflowing at 1440px.
+
+## D-009 — Player colour is assigned across the roster, not hashed per player (2026-08-31, accepted)
+
+**Context:** Player identity colour was a hash of the player id against a nine-hue palette. With five
+players that collides about three times in four, and it did: two of five shared a hue in every chart,
+chip and avatar. Charts that used `assignPlayerColors` over their own subset also disagreed with
+chips that used the raw hash, so one player could be two colours on a single screen.
+
+**Decision:** The roster is registered once at the layout level and `playerColor(id)` reads that
+assignment, falling back to the hash for anyone outside the current group (a departed player still
+in the history keeps a stable colour). Each player still starts from their hashed preference and only
+moves if it is taken, so adding a member rarely disturbs anyone else.
+
+**Consequences:** Colour is group-scoped, not global — the same person in two groups may differ, which
+is the right trade for never colliding inside the group people actually look at. Past nine players the
+palette is exhausted and colours repeat by design; inventing a tenth hue would collide with the
+profit/loss semantics the palette deliberately avoids.
