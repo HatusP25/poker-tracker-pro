@@ -13,6 +13,8 @@ export {
   playerColor,
   playerColorIndex,
   assignPlayerColors,
+  setRosterColors,
+  clearRosterColors,
 } from './playerColor';
 
 export { moneySign, moneyTextClass, moneyTintClass, MONEY_EPSILON, SIGN_TEXT_CLASS, SIGN_TINT_CLASS, SIGN_VAR } from './sign';

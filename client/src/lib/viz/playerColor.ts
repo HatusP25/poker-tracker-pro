@@ -47,11 +47,47 @@ export const playerColorIndex = (id: string): number =>
   hash(typeof id === 'string' ? id : String(id ?? '')) % PLAYER_PALETTE.length;
 
 /**
- * The canonical, permanent colour for a player. Use this everywhere a single
- * player is shown on their own — a chip, an avatar, a timeline row. Two players
- * in a nine-plus roster can share it; that is the price of never moving.
+ * The roster's resolved colours, once something has told us who is in the group.
+ *
+ * Nine hues and a hashed preference means two players collide surprisingly
+ * often — with a five-player roster it is about a three-in-four chance, not a
+ * rare edge case. Every surface calls `playerColor(id)` directly, so rather
+ * than thread a map through thirty call sites, the roster is registered once
+ * and read here. Registration is app-level configuration, like the theme.
  */
-export const playerColor = (id: string): string => PLAYER_PALETTE[playerColorIndex(id)];
+let rosterColors: Record<string, string> = {};
+
+/**
+ * Hand the whole roster over so colours can be de-conflicted. Idempotent, and
+ * safe to call on every players fetch. Returns true when the map actually
+ * changed, so a caller can avoid a pointless re-render.
+ */
+export function setRosterColors(ids: readonly string[]): boolean {
+  const next = assignPlayerColors(ids);
+  const keys = Object.keys(next);
+  const unchanged =
+    keys.length === Object.keys(rosterColors).length &&
+    keys.every((id) => rosterColors[id] === next[id]);
+  if (unchanged) return false;
+  rosterColors = next;
+  return true;
+}
+
+/** Test seam. */
+export function clearRosterColors(): void {
+  rosterColors = {};
+}
+
+/**
+ * The canonical colour for a player. Use this everywhere a single player is
+ * shown on their own — a chip, an avatar, a timeline row.
+ *
+ * Once the roster has been registered this is de-conflicted; before that (and
+ * for anyone outside the current group, such as a departed player still in the
+ * history) it falls back to the hashed preference, which is stable forever.
+ */
+export const playerColor = (id: string): string =>
+  rosterColors[id] ?? PLAYER_PALETTE[playerColorIndex(id)];
 
 /**
  * Colours for a whole roster at once, where two players sharing a colour would

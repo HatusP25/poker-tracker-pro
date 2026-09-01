@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   PLAYER_PALETTE,
   OTHERS_COLOR,
   playerColor,
   playerColorIndex,
+  setRosterColors,
+  clearRosterColors,
   assignPlayerColors,
 } from './playerColor';
 
@@ -125,5 +127,51 @@ describe('assignPlayerColors', () => {
 
   it('returns an empty map for an empty roster', () => {
     expect(assignPlayerColors([])).toEqual({});
+  });
+});
+
+describe('roster registration', () => {
+  afterEach(clearRosterColors);
+
+  /* The real Friday Night Poker roster. Muel and Rauw both hash to the lime
+   * slot, which put two of five players in the same colour on every chart,
+   * chip and avatar in the app. This is the regression that motivated the
+   * registry, so it is pinned to the actual ids. */
+  const REAL_ROSTER = [
+    'cml04c5wm0002768dl1kgu7v7', // Lucho
+    'cml04c5wo0004768djo0lsnnp', // Rauw
+    'cml04c5wo0006768djtwi0zf2', // Muel
+    'cml04c5wp0008768d17ujesdt', // Hatus
+    'cmo0ntiht0006ofe73n7g3eo2', // Divino
+  ];
+
+  it('collides on the real roster before registration', () => {
+    const colours = REAL_ROSTER.map(playerColor);
+    expect(new Set(colours).size).toBeLessThan(REAL_ROSTER.length);
+  });
+
+  it('de-conflicts the whole roster once registered', () => {
+    setRosterColors(REAL_ROSTER);
+    const colours = REAL_ROSTER.map(playerColor);
+    expect(new Set(colours).size).toBe(REAL_ROSTER.length);
+  });
+
+  it('agrees with assignPlayerColors, so charts and chips cannot disagree', () => {
+    setRosterColors(REAL_ROSTER);
+    const map = assignPlayerColors(REAL_ROSTER);
+    for (const id of REAL_ROSTER) expect(playerColor(id)).toBe(map[id]);
+  });
+
+  it('falls back to the hash for someone outside the registered roster', () => {
+    setRosterColors(REAL_ROSTER);
+    const stranger = 'not-in-this-group';
+    expect(playerColor(stranger)).toBe(PLAYER_PALETTE[playerColorIndex(stranger)]);
+  });
+
+  it('reports whether the map actually changed, so callers can skip a re-render', () => {
+    expect(setRosterColors(REAL_ROSTER)).toBe(true);
+    expect(setRosterColors(REAL_ROSTER)).toBe(false);
+    expect(setRosterColors([...REAL_ROSTER].reverse())).toBe(false);
+    expect(setRosterColors(REAL_ROSTER.slice(0, 3))).toBe(true);
   });
 });
