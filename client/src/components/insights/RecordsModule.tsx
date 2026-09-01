@@ -1,125 +1,284 @@
+import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, TrendingDown, Flame, Zap, RefreshCw, Percent, Coins, Award } from 'lucide-react';
+import {
+  Award,
+  Coins,
+  Flame,
+  Percent,
+  RefreshCw,
+  Snowflake,
+  TrendingDown,
+  Trophy,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PlayerChip } from '@/components/ui/player-chip';
 import { useRecords } from '@/hooks/useInsights';
-import { formatSignedCurrency } from './charts/chartTheme';
-import type { GroupRecords } from '@/types';
+import { useGroupContext } from '@/context/GroupContext';
+import { formatMoney, moneyTextClass } from '@/lib/viz';
+import { formatLocalDate } from '@/lib/dateUtils';
+import StorySection from './StorySection';
+import type { GroupRecords, RecordEntry } from '@/types';
+
+/**
+ * Hall of Fame — the records that get argued about.
+ *
+ * Was eight identical small cards, which meant "Biggest Win" (the record every
+ * group has a story about) and "Best ROI Night" (a percentage nobody has ever
+ * said out loud) were the same size. Two records carry the section; the other
+ * six are a record book underneath it.
+ *
+ * Plain names throughout, per the nickname policy — this is the one part of
+ * Insights that is a record table rather than a story about a person.
+ */
 
 interface RecordsModuleProps {
   groupId: string;
+  kicker?: string;
 }
 
-const RecordCard = ({
-  icon,
-  label,
-  holder,
-  value,
+/** A record with a night behind it becomes a link to that night. */
+const NightLink = ({
   sessionId,
+  className,
+  children,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  holder: string | null;
-  value: string | null;
   sessionId?: string;
-}) => {
-  const body = (
-    <Card className="h-full transition-colors hover:border-primary/50">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
-          {icon}
-          {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {holder ? (
-          <>
-            <p className="text-xl font-bold">{value}</p>
-            <p className="text-sm text-muted-foreground">{holder}</p>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">No record yet</p>
-        )}
-      </CardContent>
-    </Card>
+  className?: string;
+  children: React.ReactNode;
+}) =>
+  sessionId ? (
+    <Link to={`/sessions/${sessionId}`} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
   );
-  return sessionId ? <Link to={`/sessions/${sessionId}`}>{body}</Link> : body;
-};
 
-const RecordsModule = ({ groupId }: RecordsModuleProps) => {
-  const { data, isLoading } = useRecords(groupId);
-
-  if (isLoading) {
-    return <div className="text-muted-foreground">Loading records…</div>;
+const HeadlineRecord = ({
+  label,
+  icon: Icon,
+  record,
+  currency,
+  emptyHint,
+}: {
+  label: string;
+  icon: LucideIcon;
+  record: RecordEntry | null;
+  currency?: string | null;
+  emptyHint: string;
+}) => {
+  if (!record) {
+    return (
+      <Card className="p-6">
+        <p className="eyebrow flex items-center gap-1.5">
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+          {label}
+        </p>
+        <p className="mt-4 text-label text-muted-foreground">{emptyHint}</p>
+      </Card>
+    );
   }
 
-  const r: GroupRecords | undefined = data;
-  if (!r) return null;
+  const sign = moneyTextClass(record.value);
 
   return (
-    <section>
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Award className="h-6 w-6 text-yellow-500" /> Hall of Fame
-        </h2>
-        <p className="text-muted-foreground">Your group's all-time records</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <RecordCard
-          icon={<Trophy className="h-4 w-4 text-green-500" />}
-          label="Biggest Win"
-          holder={r.biggestWin?.playerName ?? null}
-          value={r.biggestWin ? formatSignedCurrency(r.biggestWin.value) : null}
-          sessionId={r.biggestWin?.sessionId}
+    <NightLink sessionId={record.sessionId} className="group block">
+      <Card
+        interactive
+        className="relative h-full overflow-hidden p-6 sm:p-7"
+      >
+        {/* A wash of the record's own colour, well below text weight. Money is
+         * ink on this page; this is atmosphere, not a filled money block. */}
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full blur-3xl ${
+            record.value < 0 ? 'bg-loss/10' : 'bg-profit/10'
+          }`}
         />
-        <RecordCard
-          icon={<TrendingDown className="h-4 w-4 text-red-500" />}
-          label="Biggest Loss"
-          holder={r.biggestLoss?.playerName ?? null}
-          value={r.biggestLoss ? formatSignedCurrency(r.biggestLoss.value) : null}
-          sessionId={r.biggestLoss?.sessionId}
-        />
-        <RecordCard
-          icon={<Zap className="h-4 w-4 text-amber-500" />}
-          label="Biggest Comeback"
-          holder={r.biggestComeback?.playerName ?? null}
-          value={r.biggestComeback ? formatSignedCurrency(r.biggestComeback.value) : null}
-          sessionId={r.biggestComeback?.sessionId}
-        />
-        <RecordCard
-          icon={<Coins className="h-4 w-4 text-yellow-500" />}
-          label="Biggest Pot"
-          holder={r.biggestPot ? 'That night' : null}
-          value={r.biggestPot ? `$${r.biggestPot.total.toFixed(0)}` : null}
-          sessionId={r.biggestPot?.sessionId}
-        />
-        <RecordCard
-          icon={<Flame className="h-4 w-4 text-orange-500" />}
-          label="Longest Win Streak"
-          holder={r.longestWinStreak?.playerName ?? null}
-          value={r.longestWinStreak ? `${r.longestWinStreak.count} nights` : null}
-        />
-        <RecordCard
-          icon={<TrendingDown className="h-4 w-4 text-blue-500" />}
-          label="Longest Loss Streak"
-          holder={r.longestLossStreak?.playerName ?? null}
-          value={r.longestLossStreak ? `${r.longestLossStreak.count} nights` : null}
-        />
-        <RecordCard
-          icon={<RefreshCw className="h-4 w-4 text-purple-500" />}
-          label="Most Rebuys (1 night)"
-          holder={r.mostRebuys?.playerName ?? null}
-          value={r.mostRebuys ? `${r.mostRebuys.value}` : null}
-          sessionId={r.mostRebuys?.sessionId}
-        />
-        <RecordCard
-          icon={<Percent className="h-4 w-4 text-teal-500" />}
-          label="Best ROI Night"
-          holder={r.bestRoiNight?.playerName ?? null}
-          value={r.bestRoiNight ? `${r.bestRoiNight.value.toFixed(0)}%` : null}
-          sessionId={r.bestRoiNight?.sessionId}
-        />
-      </div>
-    </section>
+        <div className="relative">
+          <p className="eyebrow flex items-center gap-1.5">
+            <Icon className="h-3.5 w-3.5" aria-hidden />
+            {label}
+          </p>
+          <p className={`mt-3 font-display text-display-4 tnum sm:text-display-3 ${sign}`}>
+            {formatMoney(record.value, { currency, signed: true })}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+            <PlayerChip
+              player={{ id: record.playerId, name: record.playerName }}
+              size="lg"
+            />
+            <time
+              dateTime={record.date}
+              className="text-label-sm text-muted-foreground transition-colors group-hover:text-foreground"
+            >
+              {formatLocalDate(record.date, 'MMM dd, yyyy')}
+            </time>
+          </div>
+        </div>
+      </Card>
+    </NightLink>
+  );
+};
+
+interface BookEntry {
+  label: string;
+  icon: LucideIcon;
+  value: string | null;
+  holder: string | null;
+  sessionId?: string;
+  valueClass?: string;
+}
+
+const RecordBookCell = ({ entry }: { entry: BookEntry }) => (
+  <NightLink
+    sessionId={entry.value ? entry.sessionId : undefined}
+    className="block bg-card p-4 transition-colors hover:bg-surface-2 sm:p-5"
+  >
+    <p className="eyebrow flex items-center gap-1.5">
+      <entry.icon className="h-3.5 w-3.5" aria-hidden />
+      <span className="truncate">{entry.label}</span>
+    </p>
+    {entry.value ? (
+      <>
+        <p className={`mt-2 font-display text-stat-sm tnum ${entry.valueClass ?? ''}`}>
+          {entry.value}
+        </p>
+        <p className="mt-0.5 truncate text-label-sm text-muted-foreground">{entry.holder}</p>
+      </>
+    ) : (
+      <p className="mt-2 text-label-sm text-muted-foreground">Not set yet</p>
+    )}
+  </NightLink>
+);
+
+const RecordsSkeleton = () => (
+  <div className="space-y-4">
+    <div className="grid gap-4 lg:grid-cols-2">
+      {[0, 1].map((i) => (
+        <Card key={i} className="p-6 sm:p-7">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="mt-4 h-10 w-40" />
+          <Skeleton className="mt-5 h-6 w-36" />
+        </Card>
+      ))}
+    </div>
+    <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="bg-card p-4 sm:p-5">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="mt-3 h-6 w-20" />
+          <Skeleton className="mt-2 h-3 w-24" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const RecordsModule = ({ groupId, kicker }: RecordsModuleProps) => {
+  const { data, isLoading } = useRecords(groupId);
+  const { selectedGroup } = useGroupContext();
+  const currency = selectedGroup?.currency;
+  const r: GroupRecords | undefined = data;
+
+  const money = (value: number, signed = true) => formatMoney(value, { currency, signed });
+
+  const book: BookEntry[] = [
+    {
+      label: 'Biggest Pot',
+      icon: Coins,
+      // Was the literal string "That night", which read like a placeholder
+      // nobody replaced. A pot belongs to a night, so name the night.
+      value: r?.biggestPot ? money(r.biggestPot.total, false) : null,
+      holder: r?.biggestPot ? formatLocalDate(r.biggestPot.date, 'MMM dd, yyyy') : null,
+      sessionId: r?.biggestPot?.sessionId,
+    },
+    {
+      label: 'Biggest Comeback',
+      icon: Zap,
+      value: r?.biggestComeback ? money(r.biggestComeback.value) : null,
+      holder: r?.biggestComeback?.playerName ?? null,
+      sessionId: r?.biggestComeback?.sessionId,
+      valueClass: r?.biggestComeback ? moneyTextClass(r.biggestComeback.value) : undefined,
+    },
+    {
+      label: 'Longest Win Streak',
+      icon: Flame,
+      value: r?.longestWinStreak ? `${r.longestWinStreak.count} nights` : null,
+      holder: r?.longestWinStreak?.playerName ?? null,
+    },
+    {
+      label: 'Longest Loss Streak',
+      icon: Snowflake,
+      value: r?.longestLossStreak ? `${r.longestLossStreak.count} nights` : null,
+      holder: r?.longestLossStreak?.playerName ?? null,
+    },
+    {
+      label: 'Most Rebuys (1 night)',
+      icon: RefreshCw,
+      value: r?.mostRebuys ? `${r.mostRebuys.value}` : null,
+      holder: r?.mostRebuys?.playerName ?? null,
+      sessionId: r?.mostRebuys?.sessionId,
+    },
+    {
+      label: 'Best ROI Night',
+      icon: Percent,
+      value: r?.bestRoiNight ? `${r.bestRoiNight.value.toFixed(0)}%` : null,
+      holder: r?.bestRoiNight?.playerName ?? null,
+      sessionId: r?.bestRoiNight?.sessionId,
+    },
+  ];
+
+  const nothingYet = r && !r.biggestWin && !r.biggestLoss && !r.biggestPot;
+
+  return (
+    <StorySection
+      kicker={kicker}
+      title="Hall of Fame"
+      description="Your group's all-time records"
+      icon={Award}
+    >
+      {isLoading ? (
+        <RecordsSkeleton />
+      ) : nothingYet ? (
+        <Card>
+          <EmptyState
+            icon={Award}
+            title="No records yet"
+            description="Finish a night and the first names go on the board."
+          />
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <HeadlineRecord
+              label="Biggest Win"
+              icon={Trophy}
+              record={r?.biggestWin ?? null}
+              currency={currency}
+              emptyHint="Nobody has booked a winning night yet."
+            />
+            <HeadlineRecord
+              label="Biggest Loss"
+              icon={TrendingDown}
+              record={r?.biggestLoss ?? null}
+              currency={currency}
+              emptyHint="Nobody has taken a beating yet."
+            />
+          </div>
+
+          <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border shadow-elev-1 sm:grid-cols-2 lg:grid-cols-3">
+            {book.map((entry) => (
+              <RecordBookCell key={entry.label} entry={entry} />
+            ))}
+          </div>
+        </div>
+      )}
+    </StorySection>
   );
 };
 

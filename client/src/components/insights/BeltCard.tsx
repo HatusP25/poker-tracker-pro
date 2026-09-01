@@ -1,143 +1,234 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Award, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBelt } from '@/hooks/useInsights';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { displayName } from '@/lib/displayName';
 import { formatLocalDate } from '@/lib/dateUtils';
+import { playerColor } from '@/lib/viz';
 import BeltTimeline from './BeltTimeline';
+import StorySection from './StorySection';
 import ShareCardButton from '@/components/share/ShareCardButton';
 import { buildBeltCardScene } from '@/lib/shareCard';
 import type { BeltReign } from '@/types';
 
+/**
+ * The Belt — the group's flagship story.
+ *
+ * The champion now gets display type and the lineage bar gets the width of the
+ * card instead of sixteen pixels in the middle of a stack of paragraphs. The
+ * facts underneath it are the same facts; they are just no longer all the same
+ * size, which is what made the module read as a list of sentences rather than
+ * as a title belt.
+ *
+ * Nicknames are on, deliberately: this is the story surface the policy in
+ * lib/displayName.ts was written for.
+ */
+
 interface BeltCardProps {
   groupId: string;
+  kicker?: string;
 }
 
-const ReignRow = ({ reign, isCurrent }: { reign: BeltReign; isCurrent: boolean }) => (
-  <div className="flex items-start justify-between rounded-lg border border-border p-3">
-    <div>
-      <p className="font-semibold">{reign.playerName}</p>
-      <p className="text-sm text-muted-foreground">
+const Figure = ({ label, value }: { label: string; value: string }) => (
+  <div>
+    <dt className="eyebrow">{label}</dt>
+    <dd className="mt-1 font-display text-stat-sm tnum">{value}</dd>
+  </div>
+);
+
+const ReignRow = ({
+  reign,
+  isCurrent,
+  storyName,
+}: {
+  reign: BeltReign;
+  isCurrent: boolean;
+  storyName: string;
+}) => (
+  <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-surface-2 p-3">
+    <div className="min-w-0">
+      <p className="flex items-center gap-2 font-semibold">
+        <span
+          aria-hidden
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: playerColor(reign.playerId) }}
+        />
+        <span className="truncate">{storyName}</span>
+        {isCurrent && <span className="eyebrow shrink-0 text-primary">Current</span>}
+      </p>
+      <p className="mt-0.5 text-label-sm text-muted-foreground">
         {formatLocalDate(reign.fromDate, 'MMM dd, yyyy')}
         {' – '}
         {isCurrent || !reign.toDate ? 'present' : formatLocalDate(reign.toDate, 'MMM dd, yyyy')}
+        {reign.takenFromPlayerName && ` · took it from ${reign.takenFromPlayerName}`}
       </p>
-      {reign.takenFromPlayerName && (
-        <p className="text-xs text-muted-foreground">Took it from {reign.takenFromPlayerName}</p>
-      )}
     </div>
-    <div className="text-right text-sm text-muted-foreground">
-      <p>{reign.nightsHeld} {reign.nightsHeld === 1 ? 'night' : 'nights'} held</p>
-      <p>{reign.defenses} {reign.defenses === 1 ? 'defense' : 'defenses'}</p>
+    <div className="shrink-0 text-right text-label-sm text-muted-foreground">
+      <p className="tnum">
+        {reign.nightsHeld} {reign.nightsHeld === 1 ? 'night' : 'nights'}
+      </p>
+      <p className="tnum">
+        {reign.defenses} {reign.defenses === 1 ? 'defense' : 'defenses'}
+      </p>
     </div>
   </div>
 );
 
-const BeltCard = ({ groupId }: BeltCardProps) => {
+const BeltSkeleton = () => (
+  <Card className="overflow-hidden">
+    <div className="p-6 sm:p-8">
+      <Skeleton className="h-3 w-32" />
+      <Skeleton className="mt-3 h-11 w-64" />
+      <div className="mt-7 grid max-w-md grid-cols-3 gap-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i}>
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="mt-2 h-6 w-10" />
+          </div>
+        ))}
+      </div>
+    </div>
+    <div className="border-t border-border bg-surface-1 p-6 sm:p-8">
+      <Skeleton className="h-12 w-full" />
+    </div>
+  </Card>
+);
+
+const BeltCard = ({ groupId, kicker }: BeltCardProps) => {
   const { data, isLoading } = useBelt(groupId);
   const { data: players = [] } = usePlayersByGroup(groupId);
   const [showLineage, setShowLineage] = useState(false);
 
-  // The belt is the group's flagship personality surface, so show nicknames. The
-  // API returns plain names; resolve them against the roster this view already has.
+  // The API returns plain names; resolve them against the roster this view
+  // already has so the belt can use nicknames.
   const named = (playerId: string, fallback: string) => {
     const player = players.find((p) => p.id === playerId);
     return player ? displayName(player) : fallback;
   };
 
+  const current = data?.current ?? null;
+  const championName = current ? named(current.playerId, current.playerName) : null;
+
   return (
-    <section>
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Award className="h-6 w-6 text-yellow-500" /> The Belt
-        </h2>
-        <p className="text-muted-foreground">Championship lineage, retroactively computed</p>
-      </div>
-
+    <StorySection
+      kicker={kicker}
+      title="The Belt"
+      description="Championship lineage, retroactively computed"
+      icon={Award}
+      action={
+        current ? (
+          <ShareCardButton
+            size="sm"
+            label="Share the belt"
+            buildScene={() =>
+              buildBeltCardScene({
+                holderName: championName ?? current.playerName,
+                takenFromName: current.takenFromPlayerName,
+                nightsHeld: current.nightsHeld,
+                defenses: current.defenses,
+              })
+            }
+            filename={`poker-belt-${current.playerName.toLowerCase().replace(/\s+/g, '-')}.png`}
+          />
+        ) : undefined
+      }
+    >
       {isLoading ? (
-        <div className="text-muted-foreground">Loading belt…</div>
-      ) : (
+        <BeltSkeleton />
+      ) : !current ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              🥇{' '}
-              {data?.current
-                ? named(data.current.playerId, data.current.playerName)
-                : 'No champion yet'}
-            </CardTitle>
-            {data?.current ? (
-              <CardDescription>
-                Holding since {formatLocalDate(data.current.fromDate, 'MMM dd, yyyy')} ·{' '}
-                {data.current.nightsHeld} {data.current.nightsHeld === 1 ? 'night' : 'nights'} held ·{' '}
-                {data.current.defenses} {data.current.defenses === 1 ? 'defense' : 'defenses'}
-              </CardDescription>
-            ) : (
-              <CardDescription>Play a completed session to crown the first champion.</CardDescription>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data && <BeltTimeline lineage={data} />}
-            {data?.current?.takenFromPlayerName && (
-              <p className="text-sm text-muted-foreground">
-                Took the belt from {data.current.takenFromPlayerName}
-              </p>
-            )}
-            {data?.current && (
-              <p className="text-sm text-muted-foreground">
-                The belt is at stake every time{' '}
-                {named(data.current.playerId, data.current.playerName)} plays.
-              </p>
-            )}
+          <EmptyState
+            icon={Award}
+            title="No champion yet"
+            description="Finish a night and whoever wins it is crowned — then everyone else gets to come and take it."
+          />
+        </Card>
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="relative p-6 sm:p-8">
+            {/* The champion's own colour, well under text weight. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full opacity-20 blur-3xl"
+              style={{ backgroundColor: playerColor(current.playerId) }}
+            />
+            <div className="relative">
+              <p className="eyebrow">Current champion</p>
+              <div className="mt-2 flex items-center gap-3 sm:gap-4">
+                <span aria-hidden className="text-3xl sm:text-4xl">
+                  🥇
+                </span>
+                <h3 className="min-w-0 font-display text-display-4 font-extrabold tracking-tight sm:text-display-3">
+                  {championName}
+                </h3>
+              </div>
 
-            {data?.current && (
-              <ShareCardButton
-                size="sm"
-                label="Share the belt"
-                buildScene={() =>
-                  buildBeltCardScene({
-                    holderName: named(data.current!.playerId, data.current!.playerName),
-                    takenFromName: data.current!.takenFromPlayerName,
-                    nightsHeld: data.current!.nightsHeld,
-                    defenses: data.current!.defenses,
-                  })
-                }
-                filename={`poker-belt-${data.current.playerName.toLowerCase().replace(/\s+/g, '-')}.png`}
-              />
-            )}
+              <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">
+                <Figure
+                  label="Nights held"
+                  value={String(current.nightsHeld)}
+                />
+                <Figure label="Defenses" value={String(current.defenses)} />
+                <Figure
+                  label="Title changes"
+                  value={String(data?.totalTitleChanges ?? 0)}
+                />
+              </dl>
+
+              <p className="mt-5 max-w-prose text-label text-muted-foreground">
+                Holding since {formatLocalDate(current.fromDate, 'MMM dd, yyyy')}
+                {current.takenFromPlayerName && `, taken from ${current.takenFromPlayerName}`}. The
+                belt is at stake every time {championName} plays.
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-border bg-surface-1 p-6 sm:p-8">
+            <p className="eyebrow mb-3">The lineage</p>
+            {data && <BeltTimeline lineage={data} nameFor={named} />}
 
             {data && data.history.length > 0 && (
-              <div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowLineage((v) => !v)}
-                >
+              <div className="mt-5">
+                <Button variant="outline" size="sm" onClick={() => setShowLineage((v) => !v)}>
                   {showLineage ? (
                     <>
-                      <ChevronUp className="h-4 w-4 mr-2" /> Hide full lineage
+                      <ChevronUp className="mr-2 h-4 w-4" /> Hide full lineage
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="h-4 w-4 mr-2" /> View full lineage ({data.totalTitleChanges} title {data.totalTitleChanges === 1 ? 'change' : 'changes'})
+                      <ChevronDown className="mr-2 h-4 w-4" /> View full lineage (
+                      {data.totalTitleChanges} title{' '}
+                      {data.totalTitleChanges === 1 ? 'change' : 'changes'})
                     </>
                   )}
                 </Button>
                 {showLineage && (
                   <div className="mt-3 space-y-2">
-                    {data.current && <ReignRow reign={data.current} isCurrent />}
+                    <ReignRow
+                      reign={current}
+                      isCurrent
+                      storyName={championName ?? current.playerName}
+                    />
                     {[...data.history].reverse().map((reign, i) => (
-                      <ReignRow key={`${reign.playerId}-${reign.fromDate}-${i}`} reign={reign} isCurrent={false} />
+                      <ReignRow
+                        key={`${reign.playerId}-${reign.fromDate}-${i}`}
+                        reign={reign}
+                        isCurrent={false}
+                        storyName={named(reign.playerId, reign.playerName)}
+                      />
                     ))}
                   </div>
                 )}
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
       )}
-    </section>
+    </StorySection>
   );
 };
 

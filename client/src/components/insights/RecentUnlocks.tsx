@@ -1,57 +1,124 @@
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAchievements } from '@/hooks/useInsights';
+import { usePlayersByGroup } from '@/hooks/usePlayers';
+import { displayName } from '@/lib/displayName';
+import { playerColor } from '@/lib/viz';
 import { formatLocalDate } from '@/lib/dateUtils';
+import StorySection from './StorySection';
+
+/**
+ * Recent Unlocks — the newest badges in the group.
+ *
+ * Capped at six. The API returns ten, and ten cards of near-identical copy at
+ * the bottom of a long page is a list nobody reaches the end of; six is two
+ * clean rows and still answers "what's new".
+ *
+ * Nicknames on — a trophy is a story surface — resolved against the roster the
+ * page has already fetched for the belt.
+ */
 
 interface RecentUnlocksProps {
   groupId: string;
+  kicker?: string;
 }
 
-const RecentUnlocks = ({ groupId }: RecentUnlocksProps) => {
+const VISIBLE = 6;
+
+/**
+ * Written out rather than built with a template string: these are custom
+ * utilities in index.css, and Tailwind only keeps the ones it can see in the
+ * source.
+ */
+const STAGGER = ['stagger-1', 'stagger-2', 'stagger-3', 'stagger-4', 'stagger-5', 'stagger-6'];
+
+const UnlockSkeleton = () => (
+  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {[0, 1, 2, 3, 4, 5].map((i) => (
+      <Card key={i} className="p-4">
+        <div className="flex items-start gap-3">
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="mt-2 h-3 w-20" />
+          </div>
+        </div>
+        <Skeleton className="mt-3 h-3 w-full" />
+      </Card>
+    ))}
+  </div>
+);
+
+const RecentUnlocks = ({ groupId, kicker }: RecentUnlocksProps) => {
   const { data, isLoading } = useAchievements(groupId);
+  const { data: roster = [] } = usePlayersByGroup(groupId);
+
+  const named = (playerId: string, fallback: string) => {
+    const player = roster.find((p) => p.id === playerId);
+    return player ? displayName(player) : fallback;
+  };
+
+  const unlocks = data?.recentUnlocks ?? [];
+  const shown = unlocks.slice(0, VISIBLE);
 
   return (
-    <section>
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-purple-500" /> Recent Unlocks
-        </h2>
-        <p className="text-muted-foreground">The latest bragging rights earned across the group</p>
-      </div>
-
+    <StorySection
+      kicker={kicker}
+      title="Recent Unlocks"
+      description="The latest bragging rights earned across the group"
+      icon={Sparkles}
+    >
       {isLoading ? (
-        <div className="text-muted-foreground">Loading unlocks…</div>
-      ) : !data || data.recentUnlocks.length === 0 ? (
+        <UnlockSkeleton />
+      ) : shown.length === 0 ? (
         <Card>
-          <CardContent className="py-6">
-            <p className="text-sm text-muted-foreground">No achievements unlocked yet.</p>
-          </CardContent>
+          <EmptyState
+            icon={Sparkles}
+            title="No badges yet"
+            description="Streaks, comebacks and attendance all unlock badges — they start landing after a few nights."
+          />
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.recentUnlocks.map((unlock) => (
-            <Link key={`${unlock.playerId}-${unlock.id}`} to={`/players/${unlock.playerId}`}>
-              <Card className="h-full transition-colors hover:border-primary/50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <span className="text-2xl">{unlock.emoji}</span>
-                    {unlock.name}
-                  </CardTitle>
-                  <CardDescription>{unlock.playerName}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{unlock.description}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatLocalDate(unlock.earnedAt, 'MMM dd, yyyy')}
-                  </p>
-                </CardContent>
+          {shown.map((unlock, i) => (
+            <Link
+              key={`${unlock.playerId}-${unlock.id}-${unlock.earnedAt}`}
+              to={`/stats/player/${unlock.playerId}`}
+              className={`block animate-rise ${STAGGER[i] ?? ''}`}
+            >
+              <Card interactive className="h-full p-4">
+                <div className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface-2 text-xl"
+                  >
+                    {unlock.emoji}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display font-semibold leading-tight">{unlock.name}</p>
+                    <p className="mt-0.5 flex items-center gap-1.5 truncate text-label-sm text-muted-foreground">
+                      <span
+                        aria-hidden
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: playerColor(unlock.playerId) }}
+                      />
+                      {named(unlock.playerId, unlock.playerName)}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-label-sm text-muted-foreground">{unlock.description}</p>
+                <time dateTime={unlock.earnedAt} className="mt-2 block text-caption text-muted-foreground">
+                  {formatLocalDate(unlock.earnedAt, 'MMM dd, yyyy')}
+                </time>
               </Card>
             </Link>
           ))}
         </div>
       )}
-    </section>
+    </StorySection>
   );
 };
 
