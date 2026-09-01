@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { Swords, Users } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,6 +36,13 @@ import {
  *   3. the card — everyone against everyone, as a grid on a desktop and as one
  *      player's ranked ledger on a phone.
  */
+
+/** Anchors an empty state to a surface rather than leaving it floating. */
+const Nothing = (props: ComponentProps<typeof EmptyState>) => (
+  <Card>
+    <EmptyState {...props} />
+  </Card>
+);
 
 const LoadingState = () => (
   <div className="space-y-6">
@@ -81,7 +88,7 @@ const RivalsTab = () => {
 
   if (!selectedGroup) {
     return (
-      <EmptyState
+      <Nothing
         icon={Users}
         title="No group selected"
         description="Pick a group to see who owns whom."
@@ -93,7 +100,7 @@ const RivalsTab = () => {
 
   if (isError) {
     return (
-      <EmptyState
+      <Nothing
         icon={Swords}
         title="Couldn't load head-to-head"
         description="The nights this group has played didn't come back. Try again in a moment."
@@ -103,7 +110,7 @@ const RivalsTab = () => {
 
   if (matrix.totalSessions === 0) {
     return (
-      <EmptyState
+      <Nothing
         icon={Swords}
         title="No completed nights yet"
         description="Head-to-head records appear once a night has been played out and ended — a table still in progress has no result to compare."
@@ -113,7 +120,7 @@ const RivalsTab = () => {
 
   if (!shown) {
     return (
-      <EmptyState
+      <Nothing
         icon={Users}
         title="Nobody has faced anybody"
         description={`${nightsLabel(matrix.totalSessions)} logged, but no two players have sat down together yet.`}

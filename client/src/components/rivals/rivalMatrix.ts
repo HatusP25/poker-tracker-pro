@@ -394,10 +394,14 @@ export function ownershipClaims(
 /**
  * The pairing to open on.
  *
- * Weighted towards nights played rather than pure lopsidedness — a 4-0 that
- * happened twice in March is not the group's main event. Falls back to the
- * most-played pairing when nothing has cleared the gate yet, so a young group
- * still gets a headline.
+ * Nights played decide it, exactly as `insightsService` decides its
+ * `biggestRivalry`; the margin only breaks a tie between two pairings that
+ * have shared the same number of nights. A 4-0 that happened twice in March is
+ * not the group's main event, however lopsided it looks.
+ *
+ * Falls back to the most-played pairing when nothing has cleared the gate yet,
+ * so a young group still gets a headline — flagged as thin by the card itself
+ * rather than hidden.
  */
 export function topRivalry(
   matrix: RivalMatrix,
@@ -407,9 +411,8 @@ export function topRivalry(
   const qualified = matrix.pairs.filter((p) => p.shared >= thresholds.minSessions);
   const pool = qualified.length > 0 ? qualified : matrix.pairs;
 
-  // shared nights carry the weight; the margin only breaks near-ties.
   const heat = (p: RivalPair) =>
-    p.shared + (Math.abs(p.aWins - p.bWins) / Math.max(1, p.shared)) * 4;
+    p.shared * 2 + Math.abs(p.aWins - p.bWins) / Math.max(1, p.shared);
 
   return pool.reduce((best, p) => (heat(p) > heat(best) ? p : best), pool[0]);
 }

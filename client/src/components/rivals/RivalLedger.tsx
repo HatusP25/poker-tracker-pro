@@ -112,6 +112,11 @@ const RivalLedger = ({
         </div>
       </div>
 
+      {/* Without this, "11–4" is two numbers with no owner. */}
+      <p className="text-caption text-muted-foreground">
+        {subject.name}&rsquo;s record against each rival
+      </p>
+
       {records.length === 0 ? (
         <Card className="p-5 text-label text-muted-foreground">
           {subject.name} has not shared a table with anyone yet.

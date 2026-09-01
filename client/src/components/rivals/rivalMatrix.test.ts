@@ -618,6 +618,16 @@ describe('topRivalry', () => {
     expect(topRivalry(m)).toMatchObject({ aId: 'a', bId: 'b', shared: 2 });
   });
 
+  it('does not let a lopsided one-nighter outrank a longer pairing', () => {
+    // A brand-new group: a and b have two nights and split them; a and c have
+    // one, which a won. Two nights is still the closest thing to a rivalry.
+    const m = buildRivalMatrix([
+      night('s1', '2026-01-01', [['a', 10], ['b', -10]]),
+      night('s2', '2026-01-08', [['b', 10], ['a', -10], ['c', -10]]),
+    ]);
+    expect(topRivalry(m)).toMatchObject({ aId: 'a', bId: 'b', shared: 2 });
+  });
+
   it('is null for a group with nobody to face', () => {
     expect(topRivalry(buildRivalMatrix([]))).toBeNull();
   });
