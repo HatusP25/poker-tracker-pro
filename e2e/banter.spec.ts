@@ -33,7 +33,9 @@ test.describe('Banter Pack', () => {
 
     await expect(page.getByRole('heading', { name: 'The Belt' })).toBeVisible();
     // Alice won the seeded night, so she is the retroactively computed champion.
-    await expect(page.getByText('🥇 Alice')).toBeVisible();
+    // The champion is now display type beside the medal rather than one string.
+    const belt = page.locator('section', { hasText: 'Current champion' }).first();
+    await expect(belt.getByRole('heading', { name: 'Alice', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Recent Unlocks' })).toBeVisible();
   });
 

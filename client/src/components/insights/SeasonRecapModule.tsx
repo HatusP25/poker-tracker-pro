@@ -208,10 +208,10 @@ const SeasonRecapModule = ({ groupId, kicker }: SeasonRecapModuleProps) => {
               ) : (
                 <p className="mt-3 text-label text-muted-foreground">No champion this period.</p>
               )}
-              <p className="mt-4 text-label text-muted-foreground">
-                <span className="tnum">{nights}</span> {nights === 1 ? 'night' : 'nights'} ·{' '}
-                <span className="tnum">{formatMoney(data.totalPot, { currency })}</span> on the
-                table
+              <p className="mt-4 text-label tnum text-muted-foreground">
+                {`${nights} ${nights === 1 ? 'night' : 'nights'} · ${formatMoney(data.totalPot, {
+                  currency,
+                })} on the table`}
               </p>
             </div>
 
