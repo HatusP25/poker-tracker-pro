@@ -95,7 +95,9 @@ const FeudCard = ({
       <div className="mt-5 grid items-center gap-5 sm:grid-cols-[1fr_auto_1fr]">
         <Side player={a} wins={pair.aWins} align="left" />
 
-        <div className="text-center">
+        {/* Left on mobile, where the two players stack: a centred scoreline
+         * between two left-aligned names reads as a zig-zag. */}
+        <div className="sm:text-center">
           <p className="font-display text-display-4 font-extrabold tnum sm:text-display-3">
             <span style={{ color: colorA }}>{pair.aWins}</span>
             <span className="px-2 text-muted-foreground sm:px-3">–</span>

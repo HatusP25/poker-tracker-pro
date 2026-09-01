@@ -8,7 +8,7 @@ import {
   gridProps,
   resolveChartTheme,
 } from '@/components/ui/chart';
-import { assignPlayerColors } from '@/lib/viz';
+import { playerColor } from '@/lib/viz';
 import { parseLocalDate } from '@/lib/dateUtils';
 import { buildRankRace } from '../rankRace';
 import StorySection from '../StorySection';
@@ -32,6 +32,8 @@ import type { Session } from '@/types';
 
 interface RankRaceChartProps {
   sessions: Session[];
+  /** The night history is still in flight — show the frame, not "no race yet". */
+  loading?: boolean;
   kicker?: string;
 }
 
@@ -45,13 +47,14 @@ const fullDate = (value: string | number): string =>
     year: 'numeric',
   });
 
-const RankRaceChart = ({ sessions, kicker }: RankRaceChartProps) => {
+const RankRaceChart = ({ sessions, loading = false, kicker }: RankRaceChartProps) => {
   const theme = resolveChartTheme();
   const race = useMemo(() => buildRankRace(sessions), [sessions]);
-  const colors = useMemo(
-    () => assignPlayerColors(race.players.map((p) => p.id)),
-    [race.players]
-  );
+  // playerColor is de-conflicted across the registered roster, so a line here
+  // is the same colour as that player's chip, avatar and belt reign. Colouring
+  // the chart's own subset instead would put a player in two colours on one
+  // screen, which is what the identity layer exists to prevent.
+  const colorOf = (id: string) => playerColor(id);
 
   const maxRank = Math.max(race.players.length, 1);
   const isEmpty = race.rows.length === 0;
@@ -75,7 +78,7 @@ const RankRaceChart = ({ sessions, kicker }: RankRaceChartProps) => {
           <span
             aria-hidden
             className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: colors[player.id] }}
+            style={{ backgroundColor: colorOf(player.id) }}
           />
           <span className="tnum text-muted-foreground">#{player.finalRank}</span>
           <span className={player.finalRank === 1 ? 'font-semibold text-foreground' : ''}>
@@ -96,12 +99,14 @@ const RankRaceChart = ({ sessions, kicker }: RankRaceChartProps) => {
       <ChartFrame
         title={headline}
         description="Leaderboard position after each completed night · 1 is the leader"
-        height="lg"
+        // A 360px void is a lot of room to say "nothing here yet".
+        height={isEmpty && !loading ? 'md' : 'lg'}
+        loading={loading}
         isEmpty={isEmpty}
         emptyIcon={TrendingUp}
         emptyTitle="The race hasn't started"
         emptyDescription="Log a couple of nights and the leaderboard starts moving."
-        footnote={isEmpty ? undefined : legend}
+        footnote={isEmpty || loading ? undefined : legend}
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={race.rows} margin={{ top: 12, right: 12, bottom: 0, left: 0 }}>
@@ -149,10 +154,10 @@ const RankRaceChart = ({ sessions, kicker }: RankRaceChartProps) => {
                   type="monotone"
                   dataKey={player.id}
                   name={player.name}
-                  stroke={colors[player.id]}
+                  stroke={colorOf(player.id)}
                   strokeWidth={leading ? 3 : 1.75}
                   strokeOpacity={leading ? 1 : 0.8}
-                  dot={showDots ? { r: 2.5, strokeWidth: 0, fill: colors[player.id] } : false}
+                  dot={showDots ? { r: 2.5, strokeWidth: 0, fill: colorOf(player.id) } : false}
                   activeDot={{ r: 4, strokeWidth: 2, stroke: theme.surface }}
                   connectNulls
                   isAnimationActive

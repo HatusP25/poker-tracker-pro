@@ -27,7 +27,7 @@ import RankRaceChart from '@/components/insights/charts/RankRaceChart';
 const Insights = () => {
   const { selectedGroup } = useGroupContext();
   const groupId = selectedGroup?.id || '';
-  const { data: sessions } = useSessionsByGroup(groupId);
+  const { data: sessions, isLoading: sessionsLoading } = useSessionsByGroup(groupId);
 
   if (!groupId) {
     return (
@@ -52,7 +52,11 @@ const Insights = () => {
       </header>
 
       <RecordsModule groupId={groupId} kicker="01 · All time" />
-      <RankRaceChart sessions={sessions ?? []} kicker="02 · The chase" />
+      <RankRaceChart
+        sessions={sessions ?? []}
+        loading={sessionsLoading}
+        kicker="02 · The chase"
+      />
       <BeltCard groupId={groupId} kicker="03 · Champion" />
       <FormBoardModule groupId={groupId} kicker="04 · Right now" />
       <RivalriesModule groupId={groupId} kicker="05 · Grudges" />
