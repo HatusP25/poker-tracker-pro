@@ -292,16 +292,20 @@ const SessionDetail = () => {
           rows={entriesWithStats}
           currency={currency}
           title="The result"
-          description={
-            isLive ? 'Cash-outs are recorded when the night ends' : undefined
-          }
+          description={isLive ? 'Cash-outs are recorded when the night ends' : undefined}
+          showBars={!isLive}
           footer={
-            <BalanceIndicator
-              totalBuyIn={totalBuyIn}
-              totalCashOut={totalCashOut}
-              threshold={1}
-              currency={currency}
-            />
+            // A night still in progress has no cash-outs, so it is *supposed* to
+            // be short by the whole pot — calling that "unbalanced" in loss red
+            // would be crying wolf. The check appears once the night is over.
+            isLive ? undefined : (
+              <BalanceIndicator
+                totalBuyIn={totalBuyIn}
+                totalCashOut={totalCashOut}
+                threshold={1}
+                currency={currency}
+              />
+            )
           }
         />
       )}

@@ -46,6 +46,11 @@ interface NightResultsBoardProps {
   description?: React.ReactNode;
   /** Usually the balance strip. Sits under the last row, inside the card. */
   footer?: React.ReactNode;
+  /**
+   * The share-of-the-swing bar. Off for a night still in progress, where every
+   * figure is just a buy-in with no cash-out against it yet.
+   */
+  showBars?: boolean;
   className?: string;
 }
 
@@ -55,6 +60,7 @@ const NightResultsBoard = ({
   title = 'The Result',
   description,
   footer,
+  showBars = true,
   className,
 }: NightResultsBoardProps) => {
   // A copy: `rows` is very often the query cache's own array.
@@ -128,18 +134,20 @@ const NightResultsBoard = ({
                 <span className={cn('font-display text-stat-sm tnum', moneyTextClass(row.profit))}>
                   {formatMoney(row.profit, { currency, signed: true, decimals: 2 })}
                 </span>
-                <span className="mt-1.5 flex h-1 w-20 justify-end overflow-hidden rounded-full bg-surface-3 sm:w-28">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'h-full origin-right rounded-full animate-sweep',
-                      sign === 'profit' && 'bg-profit',
-                      sign === 'loss' && 'bg-loss',
-                      sign === 'neutral' && 'bg-neutral/60'
-                    )}
-                    style={{ width: `${Math.max(share * 100, 5)}%` }}
-                  />
-                </span>
+                {showBars && (
+                  <span className="mt-1.5 flex h-1 w-20 justify-end overflow-hidden rounded-full bg-surface-3 sm:w-28">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'h-full origin-right rounded-full animate-sweep',
+                        sign === 'profit' && 'bg-profit',
+                        sign === 'loss' && 'bg-loss',
+                        sign === 'neutral' && 'bg-neutral/60'
+                      )}
+                      style={{ width: `${Math.max(share * 100, 5)}%` }}
+                    />
+                  </span>
+                )}
               </div>
             </li>
           );
