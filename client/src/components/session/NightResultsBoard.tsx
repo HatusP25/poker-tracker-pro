@@ -48,7 +48,8 @@ interface NightResultsBoardProps {
   footer?: React.ReactNode;
   /**
    * The share-of-the-swing bar. Off for a night still in progress, where every
-   * figure is just a buy-in with no cash-out against it yet.
+   * figure is just a buy-in with no cash-out against it yet. Also suppressed
+   * heads-up, where there is nothing to compare.
    */
   showBars?: boolean;
   className?: string;
@@ -66,6 +67,9 @@ const NightResultsBoard = ({
   // A copy: `rows` is very often the query cache's own array.
   const ranked = [...rows].sort((a, b) => b.profit - a.profit);
   const widest = Math.max(...ranked.map((row) => Math.abs(row.profit)), 1);
+  // A bar is a comparison. Heads-up, both players are always at 100% of the
+  // same swing, and two full-width bars just read as underlines.
+  const bars = showBars && ranked.length > 2;
 
   return (
     <Card className={cn('overflow-hidden', className)}>
@@ -134,7 +138,7 @@ const NightResultsBoard = ({
                 <span className={cn('font-display text-stat-sm tnum', moneyTextClass(row.profit))}>
                   {formatMoney(row.profit, { currency, signed: true, decimals: 2 })}
                 </span>
-                {showBars && (
+                {bars && (
                   <span className="mt-1.5 flex h-1 w-20 justify-end overflow-hidden rounded-full bg-surface-3 sm:w-28">
                     <span
                       aria-hidden
