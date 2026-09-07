@@ -96,7 +96,7 @@ const SeasonRecapModule = ({ groupId, kicker }: SeasonRecapModuleProps) => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const { data: seasons = [] } = useSeasons(groupId);
-  const { data: roster = [] } = usePlayersByGroup(groupId);
+  const { data: roster = [] } = usePlayersByGroup(groupId, true);
   const { selectedGroup } = useGroupContext();
   const currency = selectedGroup?.currency;
 

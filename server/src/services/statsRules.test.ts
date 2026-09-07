@@ -338,6 +338,30 @@ describe('computeDashboardStats', () => {
     expect(stats.recentSessions[0].totalPot).toBe(40);
   });
 
+  it('picks the winner from active players only when a roster is given (F-14)', () => {
+    // Bob wins s2 outright, but he is off the active roster: the callout goes to
+    // the best *active* player of that night. The night's own facts are untouched.
+    const stats = computeDashboardStats({
+      sessions,
+      players: [{ isActive: true }],
+      leaderboard,
+      activePlayerIds: new Set(['p1']),
+    });
+    expect(stats.recentSessions[0].winner).toBe('Alice');
+    expect(stats.recentSessions[0].playerCount).toBe(2);
+    expect(stats.recentSessions[0].totalPot).toBe(40);
+  });
+
+  it('reports no winner for a night no active player played (F-14)', () => {
+    const stats = computeDashboardStats({
+      sessions,
+      players: [{ isActive: true }],
+      leaderboard,
+      activePlayerIds: new Set(['nobody']),
+    });
+    expect(stats.recentSessions[0].winner).toBe('');
+  });
+
   it('caps recent sessions at 5 and top players at 3', () => {
     const many = Array.from({ length: 8 }, (_, i) => ({
       id: `s${i}`,

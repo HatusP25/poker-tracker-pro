@@ -33,7 +33,7 @@ type Step = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
 
 const ImportDialog = ({ open, onOpenChange, onImport }: ImportDialogProps) => {
   const { selectedGroup } = useGroupContext();
-  const { data: players } = usePlayersByGroup(selectedGroup?.id || '');
+  const { data: players } = usePlayersByGroup(selectedGroup?.id || '', true);
 
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);

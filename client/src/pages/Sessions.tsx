@@ -62,7 +62,7 @@ const Sessions = () => {
   const [filters, setFilters] = useState<SessionFilterValues>(EMPTY_FILTERS);
 
   const { data: sessions, isLoading } = useSessionsByGroup(selectedGroup?.id || '');
-  const { data: players } = usePlayersByGroup(selectedGroup?.id || '');
+  const { data: players } = usePlayersByGroup(selectedGroup?.id || '', true);
   const createSession = useCreateSession();
   const forceEndSession = useForceEndSession();
   const currency = selectedGroup?.currency;

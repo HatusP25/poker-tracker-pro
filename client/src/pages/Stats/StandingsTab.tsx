@@ -74,7 +74,7 @@ const StandingsTab = () => {
   const currency = selectedGroup?.currency;
 
   const { data: sessions, isLoading: loadingSessions } = useSessionsByGroup(groupId);
-  const { data: players, isLoading: loadingPlayers } = usePlayersByGroup(groupId);
+  const { data: players, isLoading: loadingPlayers } = usePlayersByGroup(groupId, true);
   const { data: seasons } = useSeasons(groupId);
   const { data: angles } = useGroupAngles(groupId);
 

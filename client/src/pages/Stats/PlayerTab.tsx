@@ -85,7 +85,7 @@ const PlayerTab = () => {
   const groupId = selectedGroup?.id ?? '';
   const currency = selectedGroup?.currency;
 
-  const { data: roster, isLoading: rosterLoading } = usePlayersByGroup(groupId);
+  const { data: roster, isLoading: rosterLoading } = usePlayersByGroup(groupId, true);
   const { data: groupAngles, isLoading: groupAnglesLoading } = useGroupAngles(groupId);
   const { data: angles, isLoading: anglesLoading } = usePlayerAngles(groupId, id);
   const { data: stats, isLoading: statsLoading } = usePlayerStats(id ?? '');
@@ -108,22 +108,26 @@ const PlayerTab = () => {
   const headlineCopy = headline ? angleCopy(headline, { name, currency }) : null;
 
   const facts = useMemo(() => {
-    if (!angles) return [];
     const list: string[] = [];
     if (stats && stats.totalGames > 0) {
       list.push(
         `${stats.winningSessionsCount}W · ${stats.losingSessionsCount}L · ${stats.breakEvenSessionsCount}E`
       );
     }
-    if (angles.attendance.eligible > 0) {
-      list.push(`${formatPercent(angles.attendance.attendanceRate / 100)} attendance`);
+    if (angles) {
+      if (angles.attendance.eligible > 0) {
+        list.push(`${formatPercent(angles.attendance.attendanceRate / 100)} attendance`);
+      }
+      if (angles.attendance.firstPlayedDate) {
+        list.push(`Playing since ${storyDate(angles.attendance.firstPlayedDate)}`);
+      }
     }
-    if (angles.attendance.firstPlayedDate) {
-      list.push(`Playing since ${storyDate(angles.attendance.firstPlayedDate)}`);
-    }
-    if (!angles.isActive) list.push('No longer on the active roster');
+    // F-14: angles are an active-roster surface, so a deactivated player has none
+    // at all. The flag comes from the player record instead — this card is still
+    // reachable from the Players tab, which is where they are managed.
+    if (player && !player.isActive) list.push('No longer on the active roster');
     return list;
-  }, [angles, stats]);
+  }, [angles, stats, player]);
 
   const handleExport = () => {
     if (!subject || !stats) return;

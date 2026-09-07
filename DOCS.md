@@ -348,7 +348,7 @@ only path that computes settlements and enforces zero-sum.
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/stats/players/:id/stats` | Get player statistics |
-| GET | `/stats/groups/:groupId/leaderboard` | Get leaderboard |
+| GET | `/stats/groups/:groupId/leaderboard` | Get leaderboard (active players only) |
 | GET | `/stats/groups/:groupId/dashboard` | Get dashboard stats |
 | GET | `/stats/sessions/:sessionId/summary` | Get session summary analytics |
 | GET | `/stats/groups/:groupId/records` | Get Hall of Fame records |
@@ -357,7 +357,7 @@ only path that computes settlements and enforces zero-sum.
 | GET | `/stats/groups/:groupId/season` | Get season recap (optional `year`) |
 | GET | `/stats/groups/:groupId/belt` | Get The Belt lineage (derived, head-to-head succession rule) |
 | GET | `/stats/groups/:groupId/achievements` | Get per-player achievements + catalog + recent unlocks (derived) |
-| GET | `/stats/groups/:groupId/angles` | Get the whole angles matrix: day/venue/table-size splits, attendance, droughts, rebuy dollars, early departures, night ranks, co-attendance, rivalries and each player's scored story angles (derived, one full-history pass) |
+| GET | `/stats/groups/:groupId/angles` | Get the whole angles matrix: day/venue/table-size splits, attendance, droughts, rebuy dollars, early departures, night ranks, co-attendance, rivalries and each player's scored story angles (derived, one full-history pass; active players only) |
 
 > **Every group-history endpoint counts only `status = 'COMPLETED'`, non-deleted sessions.**
 > Single-session endpoints (`/stats/sessions/:id/stats`, `/stats/sessions/:id/balance-check`) are
@@ -678,3 +678,39 @@ npm run build  # Check for TypeScript errors
 ---
 
 **Built with care for poker players, by poker players.**
+
+---
+
+## Deactivated players
+
+`Player.isActive = false` hides a player from every **derived** surface, and from nothing else. The
+rule and its rationale are [D-010](docs/DECISIONS.md); the mechanism is the pure `filterRowsToActive`
+in `server/src/services/activeRoster.ts`, applied between data access and computation so that every
+`compute*` rule stays unaware deactivation exists.
+
+**Excluded when deactivated**
+
+Standings · group records · rivalries and the co-attendance grid · form board · player streaks ·
+achievements and trophy case · The Belt (past reigns and current holder) · season recaps · trends ·
+story angles, both their own and their appearances on other players' cards · the Dashboard's top
+players and recent-night winner · session-summary rank changes, streaks and milestones · every
+roster picker.
+
+**Unaffected**
+
+Session detail, entry lists, settlements, and session-summary highlights, night titles, `playerCount`
+and `totalPot`. Those entries are load-bearing — settlements validate that buy-ins equal cash-outs —
+and a six-player night stays a six-player night. Group-level totals (`netGroupProfit`,
+`avgSessionSize`, and the angles payload's `totalSessions`) likewise stay whole, so a night only
+departed players attended still counts in everyone's attendance denominator.
+
+The **Players tab** keeps listing everyone; it is where they are managed, and their player card is
+still reachable from it, showing their stats plus a "no longer on the active roster" note. The
+**player colour registry** (`AppLayout`, D-009) also keeps the whole roster, so a deactivated player
+renders in their assigned colour on the historical sessions they played.
+
+Deactivation is **fully retroactive and fully reversible**: past seasons and belt reigns recompute as
+if the player never played, and reactivating restores every surface exactly, because nothing derived
+is persisted.
+
+**How pickers filter:** `GET /players/groups/:groupId/players?activeOnly=true`.

@@ -11,6 +11,7 @@ import {
   AchievementsResponse,
 } from '../types/banter';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
+import { filterRowsToActive, fetchActivePlayerIds } from './activeRoster';
 import { COMPLETED_SESSION_FILTER } from './statsRules';
 
 // ---- In-memory row shapes (already fetched, DB-agnostic for unit tests) ----
@@ -444,13 +445,19 @@ async function fetchBanterSessionRows(groupId: string): Promise<BanterSessionRow
 
 export class BanterService {
   async getBelt(groupId: string): Promise<BeltLineage> {
-    const rows = await fetchBanterSessionRows(groupId);
-    return computeBeltLineage(rows);
+    const [rows, activeIds] = await Promise.all([
+      fetchBanterSessionRows(groupId),
+      fetchActivePlayerIds(groupId),
+    ]);
+    return computeBeltLineage(filterRowsToActive(rows, activeIds));
   }
 
   async getAchievements(groupId: string): Promise<AchievementsResponse> {
-    const rows = await fetchBanterSessionRows(groupId);
-    return computeAchievements(rows);
+    const [rows, activeIds] = await Promise.all([
+      fetchBanterSessionRows(groupId),
+      fetchActivePlayerIds(groupId),
+    ]);
+    return computeAchievements(filterRowsToActive(rows, activeIds));
   }
 }
 

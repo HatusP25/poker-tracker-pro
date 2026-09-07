@@ -3,6 +3,7 @@ import { GroupAnglesResponse } from '../types/angles';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
 import { COMPLETED_SESSION_FILTER } from './statsRules';
 import { computeGroupAngles, type AngleSessionRow } from './anglesRules';
+import { filterRowsToActive } from './activeRoster';
 
 /**
  * The angles endpoint: one pass over the group's history producing the whole
@@ -26,8 +27,12 @@ export class AnglesService {
         },
         orderBy: { date: 'asc' },
       }),
+      // F-14: deactivated players are absent from every derived surface, and the
+      // angles payload feeds all of them — the rivals grid, standings story chips,
+      // player cards. Filtering the roster here also stops `computeGroupAngles`
+      // resurrecting them from history, since the entries naming them are gone too.
       prisma.player.findMany({
-        where: { groupId },
+        where: { groupId, isActive: true },
         select: { id: true, name: true, isActive: true },
         orderBy: { name: 'asc' },
       }),
@@ -56,7 +61,11 @@ export class AnglesService {
       rebuyEvents: withDerivedRebuyEvents(s.entries, s.rebuyEvents, defaultBuyIn),
     }));
 
-    return computeGroupAngles(groupId, rows, roster);
+    // `dropEmpty: false` on purpose: `ordered.length` is the denominator for every
+    // attendance rate, and a night only departed players attended still happened.
+    // Per D-B night counts stay whole, so the row survives with no entries.
+    const activeIds = new Set(roster.map((p) => p.id));
+    return computeGroupAngles(groupId, filterRowsToActive(rows, activeIds, { dropEmpty: false }), roster);
   }
 }
 

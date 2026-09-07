@@ -34,7 +34,7 @@ export interface UseRivalsResult {
 
 export const useRivals = (groupId: string): UseRivalsResult => {
   const sessions = useSessionsByGroup(groupId);
-  const players = usePlayersByGroup(groupId);
+  const players = usePlayersByGroup(groupId, true);
   const angles = useGroupAngles(groupId);
 
   const thresholds = useMemo<RivalThresholds>(
