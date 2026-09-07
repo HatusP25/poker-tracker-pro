@@ -144,3 +144,47 @@ moves if it is taken, so adding a member rarely disturbs anyone else.
 is the right trade for never colliding inside the group people actually look at. Past nine players the
 palette is exhausted and colours repeat by design; inventing a tenth hue would collide with the
 profit/loss semantics the palette deliberately avoids.
+
+---
+
+## D-010 — Deactivated players are invisible on derived surfaces (2026-09-07, accepted)
+
+**Context:** `Player.isActive` was a roster flag, not a visibility flag. It gated the picker for new
+sessions and nothing else. Deactivated players kept a place in the standings, in group records, in
+season recaps, in the rivals grid and in every player's story angles — and, because the belt only
+changes hands when the holder is beaten on a night they play, a deactivated player could hold The
+Belt permanently. Root cause was architectural: the rule functions read `SessionEntry` rows and join
+only `player.name`, so `isActive` was never in scope.
+
+**Decision:** a deactivated player is **absent from every derived surface** and **fully present in
+every record of a night that actually happened**. Four sub-decisions:
+
+- **D-A — session records stay whole.** Session detail, entries, settlements and pot totals are
+  unchanged. Those `SessionEntry` rows are load-bearing: `settlementService` validates buy-ins equal
+  cash-outs, so hiding them would make past nights fail zero-sum. Deactivation is an aggregate-level
+  concept, not a data-level one.
+- **D-B — night-level totals stay whole.** Pot size, players-per-night, average session size and the
+  group's night count describe *the night*, not the roster. Only per-player callouts go active-only.
+- **D-C — fully retroactive.** Derived surfaces compute as if the player never played. Accepted cost:
+  a completed season's story can change. Chosen over a "current standings only" split for one rule
+  and one filter point rather than a per-surface policy.
+- **D-D — the session summary splits by rule.** The three cross-night rules filter *both* of their
+  inputs, so the ranks they quote match the standings. Highlights, night titles, player count and pot
+  keep the whole entry list.
+
+**Consequences:** No schema change and no persisted derived state, consistent with D-004 — everything
+is computed on read, so reactivating restores every surface exactly. The behaviour lives in one pure
+function, `filterRowsToActive` (`server/src/services/activeRoster.ts`); every `compute*` rule kept
+its signature and its tests.
+
+Two deliberate exceptions on the client. The **Players tab** stays unfiltered — it is where players
+are managed. **`AppLayout`'s roster stays unfiltered** because it feeds the colour registry from
+D-009: colours are assigned across the whole roster, so filtering it would re-shuffle or strip the
+colour of a deactivated player on the historical session detail that D-A says must not change.
+
+The filter's `dropEmpty` option exists for one genuine conflict between D-B and the belt. A night
+only departed players attended empties out; `computeBeltLineage` must not see it (it banks
+`nightsHeld` before checking attendance, so it would award a free reign defence), while the angles
+engine must (it is the denominator for every attendance rate).
+
+Full design: [docs/superpowers/specs/2026-08-24-deactivated-player-visibility-design.md](superpowers/specs/2026-08-24-deactivated-player-visibility-design.md).

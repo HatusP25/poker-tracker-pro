@@ -10,6 +10,29 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-09-07 — Deactivated players leave the story (F-14)
+
+Deactivating a player only ever stopped them being added to *new* nights. They kept a place in the
+standings, owned group records, turned up in season recaps and the rivals grid, carried story angles
+on other people's cards — and could hold The Belt forever, because the belt only changes hands when
+the holder is beaten on a night they play.
+
+- **Gone from every derived surface**: standings, records, rivalries, form, trends, achievements,
+  season recaps, story angles and the co-attendance grid. The belt now passes to the most recent
+  active winner instead of freezing.
+- **Nights they played are untouched.** Session detail, entries, settlements and pot totals still
+  show them, because that money is real and the night still has to balance.
+- **Night-level totals stay whole.** A six-player night is still a six-player night with the same
+  pot, and it still counts toward everyone's attendance. Only per-player callouts go active-only —
+  including the Dashboard's recent-night winner, which now names nobody when no active player played.
+- **Fully reversible.** Everything is computed on read, so reactivating restores every surface
+  exactly as it was.
+
+The Players tab is the one place they still appear — that is where you manage them. Their own player
+card also still opens from there, noting they are no longer on the active roster.
+
+Design and rationale: [D-010](docs/DECISIONS.md).
+
 ### 2026-09-01 — The stats restructure
 
 The numbers were right and almost nobody could get anything out of them. Every headline metric was

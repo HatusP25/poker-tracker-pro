@@ -10,6 +10,59 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-09-07 — Deactivated player visibility (F-14)
+
+**Why** User request. `Player.isActive` was a roster flag, not a visibility flag: it gated the picker
+for new sessions and nothing else. Deactivated players kept a place in the standings, owned group
+records, appeared in season recaps and the rivals grid, and carried story angles on other people's
+cards. The belt was the sharpest case — it only changes hands when the holder is beaten on a night
+they play, so a deactivated player held it permanently. Root cause was architectural: the rule
+functions read `SessionEntry` rows and join only `player.name`, so `isActive` was never in scope.
+
+**Design** Four decisions, recorded as [D-010](DECISIONS.md); full spec in
+`superpowers/specs/2026-08-24-deactivated-player-visibility-design.md`. Derived surfaces filter;
+session records and night-level totals stay whole; the filter is fully retroactive; the session
+summary splits by rule.
+
+One pure function rather than a parameter threaded through a dozen rule functions:
+
+- `services/activeRoster.ts` (new, +8 unit tests) — `filterRowsToActive(rows, activeIds, { dropEmpty })`
+  strips inactive players' entries and their `rebuyEvents` in lockstep. Generic over all four row
+  shapes (`SessionRow`, `BanterSessionRow`, `SummarySessionRow`, `AngleSessionRow`), so none changed.
+  Plus `fetchActivePlayerIds`, the only impure export.
+- Applied in `insightsService` (records, head-to-head, form, both recaps), `banterService` (belt,
+  achievements), `sessionSummaryService` (cross-night rules only), `anglesService`.
+- `statsService.getLeaderboard` filters at the query; `statsRules.computeDashboardStats` takes an
+  optional `activePlayerIds` that narrows the recent-night winner only.
+
+**`dropEmpty` exists for a real conflict.** A night only departed players attended empties out. The
+belt must not see it — `computeBeltLineage` banks `nightsHeld` before checking attendance, so it
+would award a free reign defence. The angles engine must see it — `ordered.length` is the denominator
+for every attendance rate, and per D-B a night that happened still counts.
+
+**Filtering the angles roster covers three surfaces at once.** The rivals grid, standings story chips
+and player cards all read one `GroupAnglesResponse`. Filtering its roster *and* its rows also stops
+`computeGroupAngles` resurrecting departed players from `namesFromHistory`.
+
+**Two client call sites deliberately left whole.** `Players.tsx` is the carve-out. `AppLayout`'s
+roster feeds the colour registry from D-009 — colours are assigned across the whole roster, so
+filtering it would re-shuffle or strip a deactivated player's colour on the historical session detail
+D-A says must not change.
+
+**Rebuilt on a corrected base.** The first implementation was written on a working tree sitting on
+`origin/main` (the F-11 merge) while local `main` was 52 commits ahead with the stats restructure. A
+trial merge gave 12 conflicts, three modify/delete — `Rankings.tsx`, `Analytics.tsx` and
+`TopPerformances.tsx` had been deleted, and the angles engine was new scope the original audit never
+saw. The merge was aborted and the work redone on current `main`. `activeRoster.ts` and the four
+decisions carried over unchanged; everything touching `statsService` and the client was rewritten.
+
+**Verification** Full suite green: 354 server unit, 174 integration (11 new in
+`tests/integration/deactivation.test.ts`, incl. angles coverage), 412 client unit, both typechecks,
+18 Playwright e2e. Every pre-existing rule test passes unchanged — the evidence the shim avoided
+signature churn.
+
+---
+
 ## 2026-09-01 — The stats restructure
 
 **Why** The user's read was that the stats "weren't giving enough value to everyone" and weren't

@@ -1,7 +1,14 @@
 # Deactivated Player Visibility (F-14) — Design
 
 **Date:** 2026-08-24
-**Status:** Approved, ready for planning
+**Status:** Shipped 2026-09-07.
+
+> **Rebuilt against the stats restructure.** This spec was written against the pre-restructure
+> codebase. `Rankings.tsx`, `Analytics.tsx`, `TopPerformances.tsx` and `PlayerPerformanceChart.tsx`
+> no longer exist; `statsService` was split into `statsRules`, and a new angles engine
+> (`anglesService` / `anglesRules`) now feeds the rivals grid, standings story chips and player
+> cards. The four decisions below were unaffected — they are product calls, not code shape.
+> §5 and §6 have been rewritten to describe what actually shipped.
 
 ---
 
@@ -157,22 +164,24 @@ the pure-function layer, leaving the empty-session drop untestable without a DB 
 
 ---
 
-## 5. Two latent bugs this surfaces
+## 5. The empty-session edge case
 
-Both are currently unreachable and become reachable once filtering exists. Both must be fixed as
-part of this work.
+A night where *only* deactivated players played filters down to an empty session, and two surfaces
+care about that in opposite directions.
 
-**Empty sessions inflate belt reigns.** `computeBeltLineage` increments `current.nightsHeld` before
-checking whether anyone played that night. A night where *only* deactivated players played becomes
-an empty session, and the current champion would bank a reign for a night that no longer exists in
-the filtered view. Handled by having `filterRowsToActive` drop emptied sessions rather than passing
-them through.
+**The belt must drop it.** `computeBeltLineage` increments `current.nightsHeld` *before* checking
+whether anyone played, so an emptied night would hand the current champion a free reign defence for
+an evening that no longer exists in the filtered view. `filterRowsToActive` drops emptied rows by
+default.
 
-**Unguarded reduce on the Dashboard.** `getDashboardStats` picks each recent session's winner with
-`entriesWithProfit.reduce(...)` and no initial value — a `TypeError` on an empty array. Fixed by the
-null-winner path in §6.
+**The angles engine must keep it.** `ordered.length` is the denominator for every attendance rate,
+and per D-B a night that happened still counts. So the angles pass uses `dropEmpty: false` and the
+row survives with an empty entry list. "Alice played 8 of 10 nights" stays true even when one of
+those ten was a night only departed players attended.
 
----
+*(An earlier draft of this spec also flagged an unguarded `reduce` on the Dashboard's recent-night
+winner. The stats restructure fixed that independently — `computeDashboardStats` now folds with an
+explicit `null` seed. Nothing to do.)*
 
 ## 6. Surface-by-surface changes
 
@@ -180,30 +189,39 @@ null-winner path in §6.
 
 | Location | Change |
 |---|---|
-| `insightsService` — `getRecords`, `getHeadToHead`, `getSeasonRecapForSeason`, `getSeasonRecap` | Apply `filterRowsToActive` to fetched rows |
-| `insightsService` — `getForm` | Already correct; re-point at `fetchActivePlayerIds` for one source of truth |
-| `banterService` — `getBelt`, `getAchievements` | Apply `filterRowsToActive` (entries **and** `rebuyEvents`) |
-| `statsService` — `getLeaderboard` | `where: { groupId, isActive: true }`; drop the now-always-true `isActive` field from `LeaderboardEntry` |
-| `statsService` — `getDashboardStats` | `topPlayers` from the filtered leaderboard; `totalPlayers` becomes the active roster size and `activePlayers` is removed from the response; `recentSessions[].winner` becomes the best **active** player of that night, `null` when no active player played |
-| `statsService` — `getDashboardStats` → `netGroupProfit` | Computed directly from the already-fetched session entries instead of summing leaderboard balances. Identical value, no extra query, and stays whole per D-B regardless of leaderboard filtering |
-| `statsService` — `getPlayerStreaks` | Already correct; no change |
-| `sessionSummaryService` | Per D-D: pass filtered `history` **and** a filtered night-entry list to `computeRankingChanges`, `computeStreakUpdates`, `computeMilestones`; pass the whole entry list to `computeHighlights`, `computeNightTitles`, and the `playerCount` / `totalPot` header |
-| `sessionService` — `getSessionsByGroup` | Add `isActive` to the entry's `player` select, so Analytics can filter client-side |
+| `insightsService` — `getRecords`, `getHeadToHead`, both season recaps | Apply `filterRowsToActive` |
+| `insightsService` — `getForm` | Already filtered the roster; now filters the rows too |
+| `banterService` — `getBelt`, `getAchievements` | Apply the filter (entries **and** `rebuyEvents`) |
+| `anglesService` — `getGroupAngles` | Roster query gains `isActive: true`, rows filtered with `dropEmpty: false`. This one call covers the rivals grid, the co-attendance matrix, standings story chips and player cards, because they all read the same payload. Filtering the rows also stops `computeGroupAngles` resurrecting departed players from `namesFromHistory` |
+| `statsService` — `getLeaderboard` | `where: { groupId, isActive: true }` |
+| `statsService` / `statsRules` — dashboard | `DashboardInput` gains optional `activePlayerIds`; the recent-night winner is picked from active players only. `playerCount`, `totalPot`, `avgSessionSize` and `netGroupProfit` stay whole (D-B) |
+| `sessionSummaryService` | D-D: filtered `history` **and** filtered night entries into `computeRankingChanges`, `computeStreakUpdates`, `computeMilestones`; whole entry list into `computeHighlights`, `computeNightTitles` and the header |
 | `statsService` — `getPlayerStats`, `getPlayerPerformanceTrend`; `playerService` — `searchPlayers` | Unchanged. Reachable from the Players tab, which is the carve-out |
 | `sessionService`, `settlementService`, `liveSessionService` | Unchanged (D-A) |
 
+`LeaderboardEntry.isActive` and `DashboardStats.activePlayers` are **kept**. The first is still
+populated by the client-side `toLeaderboardEntries` used for CSV export; the second is the counter
+the Dashboard actually renders, and it was already correct.
+
 ### Client
 
-| Location | Change |
-|---|---|
-| `PlayerPerformanceChart`, `RivalriesModule`, `SessionForm`, `ImportDialog`, `Sessions` filter, `BeltCard` | `usePlayersByGroup(groupId, true)` — the `activeOnly` param already exists and is currently unused by every call site |
-| `Players.tsx` | Unchanged — unfiltered roster is the carve-out |
-| `Rankings.tsx` | Remove the `(inactive)` badge; dead once the leaderboard filters |
-| `Dashboard.tsx` | Roster tile shows the active count alone; drop the "N active" sub-line |
-| `Analytics.tsx` + charts | Filter session entries on `player.isActive` before aggregating: summary tiles (`totalPlayers`, `mostActivePlayer`, `biggestWin`), `MoneyRaceChart`, `PlayerComparisonChart`, `TopPerformances`, `RecentActivity`, `ProfitByLocationChart`. Per D-B, `avgPotSize` and `avgPlayersPerSession` keep using unfiltered entries |
-| `types/index.ts` | Add `isActive` to `SessionEntry.player`; drop `isActive` from `LeaderboardEntry`; drop `activePlayers` from `DashboardStats` |
+Eleven roster call sites pass the previously-unused `activeOnly` param: `StandingsTab`, `PlayerTab`,
+`Dashboard`, `useRivals`, `RivalriesModule`, `SeasonRecapModule`, `RecentUnlocks`, `BeltCard`,
+`SessionForm`, `ImportDialog`, `Sessions`.
 
----
+Two are deliberately left unfiltered:
+
+- **`AppLayout`** — its roster drives the player **colour registry**. Filtering it would strip the
+  assigned colour from every deactivated player, changing how they render on the historical session
+  detail that D-A says must not change.
+- **`Players.tsx`** — the carve-out.
+
+`LiveSessionStart` and `LiveSessionView` already filter inline and were left alone.
+
+Cleanups: the `inactive` badge in `StandingsTable` is dead once the roster filters, so it is removed.
+`PlayerTab`'s "No longer on the active roster" note now reads the player record rather than
+`angles.isActive` — a deactivated player has no angles at all, so the old check could never fire,
+and the card is still reachable from the Players tab.
 
 ## 7. Testing
 
