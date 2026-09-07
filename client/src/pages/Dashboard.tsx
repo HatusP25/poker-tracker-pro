@@ -54,7 +54,7 @@ const Dashboard = () => {
   const { data: lineage, isLoading: beltLoading } = useBelt(groupId);
   const { data: form, isLoading: formLoading } = useForm(groupId);
   const { data: angles, isLoading: anglesLoading } = useGroupAngles(groupId);
-  const { data: players = [] } = usePlayersByGroup(groupId);
+  const { data: players = [] } = usePlayersByGroup(groupId, true);
   const { data: liveSessions } = useActiveSessions(groupId);
   const { playerId: viewerId, setPlayerId } = useViewerPlayer(groupId);
 

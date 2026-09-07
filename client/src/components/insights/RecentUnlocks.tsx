@@ -54,7 +54,7 @@ const UnlockSkeleton = () => (
 
 const RecentUnlocks = ({ groupId, kicker }: RecentUnlocksProps) => {
   const { data, isLoading } = useAchievements(groupId);
-  const { data: roster = [] } = usePlayersByGroup(groupId);
+  const { data: roster = [] } = usePlayersByGroup(groupId, true);
 
   const named = (playerId: string, fallback: string) => {
     const player = roster.find((p) => p.id === playerId);

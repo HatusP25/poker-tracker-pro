@@ -100,7 +100,7 @@ const BeltSkeleton = () => (
 
 const BeltCard = ({ groupId, kicker }: BeltCardProps) => {
   const { data, isLoading } = useBelt(groupId);
-  const { data: players = [] } = usePlayersByGroup(groupId);
+  const { data: players = [] } = usePlayersByGroup(groupId, true);
   const [showLineage, setShowLineage] = useState(false);
 
   // The API returns plain names; resolve them against the roster this view

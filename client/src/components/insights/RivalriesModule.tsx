@@ -164,7 +164,7 @@ const RivalriesSkeleton = () => (
 
 const RivalriesModule = ({ groupId, kicker }: RivalriesModuleProps) => {
   const { data, isLoading } = useHeadToHead(groupId);
-  const { data: roster = [] } = usePlayersByGroup(groupId);
+  const { data: roster = [] } = usePlayersByGroup(groupId, true);
   const { selectedGroup } = useGroupContext();
 
   return (

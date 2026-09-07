@@ -328,12 +328,19 @@ export interface DashboardInput {
   sessions: StatsSessionRow[];
   players: Array<{ isActive: boolean }>;
   leaderboard: LeaderboardEntry[];
+  /**
+   * F-14: the active roster. The recent-night winner is a per-player callout, so
+   * it is picked from active players only. Omit to consider everyone — the
+   * night's own facts (playerCount, totalPot) stay whole either way, per D-B.
+   */
+  activePlayerIds?: ReadonlySet<string>;
 }
 
 export function computeDashboardStats({
   sessions,
   players,
   leaderboard,
+  activePlayerIds,
 }: DashboardInput): DashboardStats {
   const newestFirst = [...sessions].sort((a, b) => b.date.getTime() - a.date.getTime());
   const totalSessions = newestFirst.length;
@@ -360,7 +367,10 @@ export function computeDashboardStats({
     recentSessions: newestFirst.slice(0, 5).map((s) => {
       // A session can legitimately have no entries (created, then everyone removed).
       // The old `.reduce()` had no initial value and threw on exactly that row.
-      const winner = s.entries.reduce<SessionEntryRow | null>(
+      const contenders = activePlayerIds
+        ? s.entries.filter((e) => activePlayerIds.has(e.playerId))
+        : s.entries;
+      const winner = contenders.reduce<SessionEntryRow | null>(
         (best, e) =>
           best === null ||
           calculateProfit(e.cashOut, e.buyIn) > calculateProfit(best.cashOut, best.buyIn)

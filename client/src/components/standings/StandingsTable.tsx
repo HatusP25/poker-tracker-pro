@@ -131,9 +131,6 @@ const StandingsTable = ({
                     className="font-semibold text-foreground transition-colors group-hover:text-primary"
                   />
                 </Link>
-                {!row.isActive && (
-                  <span className="ml-2 text-caption text-muted-foreground">inactive</span>
-                )}
                 <StoryChip
                   angle={angles[row.playerId]}
                   currency={currency}

@@ -20,6 +20,7 @@ import {
 } from '../types/insights';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
 import { previousSeason } from './seasonRules';
+import { filterRowsToActive, fetchActivePlayerIds } from './activeRoster';
 import { COMPLETED_SESSION_FILTER } from './statsRules';
 
 // ---- Tunable constants ----
@@ -498,8 +499,11 @@ async function fetchSessionRows(
 
 export class InsightsService {
   async getRecords(groupId: string): Promise<GroupRecords> {
-    const rows = await fetchSessionRows(groupId);
-    return computeRecords(rows);
+    const [rows, activeIds] = await Promise.all([
+      fetchSessionRows(groupId),
+      fetchActivePlayerIds(groupId),
+    ]);
+    return computeRecords(filterRowsToActive(rows, activeIds));
   }
 
   async getHeadToHead(
@@ -507,18 +511,28 @@ export class InsightsService {
     playerA?: string,
     playerB?: string
   ): Promise<HeadToHeadResponse> {
-    const rows = await fetchSessionRows(groupId);
-    return computeHeadToHead(rows, playerA, playerB);
+    const [rows, activeIds] = await Promise.all([
+      fetchSessionRows(groupId),
+      fetchActivePlayerIds(groupId),
+    ]);
+    return computeHeadToHead(filterRowsToActive(rows, activeIds), playerA, playerB);
   }
 
   async getForm(groupId: string): Promise<PlayerForm[]> {
-    const rows = await fetchSessionRows(groupId);
-    const players = await prisma.player.findMany({
-      where: { groupId, isActive: true },
-      select: { id: true, name: true },
-    });
+    const [rows, players] = await Promise.all([
+      fetchSessionRows(groupId),
+      prisma.player.findMany({
+        where: { groupId, isActive: true },
+        select: { id: true, name: true },
+      }),
+    ]);
+    const activeIds = new Set(players.map((p) => p.id));
     const names = new Map(players.map((p) => [p.id, p.name]));
-    return computeForm(rows, players.map((p) => p.id), names);
+    return computeForm(
+      filterRowsToActive(rows, activeIds),
+      players.map((p) => p.id),
+      names
+    );
   }
 
   /**
@@ -542,7 +556,12 @@ export class InsightsService {
         : Promise.resolve([]),
     ]);
 
-    return computeSeasonRecap(periodRows, previousRows, season.name);
+    const activeIds = await fetchActivePlayerIds(groupId);
+    return computeSeasonRecap(
+      filterRowsToActive(periodRows, activeIds),
+      filterRowsToActive(previousRows, activeIds),
+      season.name
+    );
   }
 
   /**
@@ -559,7 +578,12 @@ export class InsightsService {
       fetchSessionRows(groupId, { gte: start, lte: end }),
       fetchSessionRows(groupId, { gte: prevStart, lte: prevEnd }),
     ]);
-    return computeSeasonRecap(periodRows, previousRows, String(year));
+    const activeIds = await fetchActivePlayerIds(groupId);
+    return computeSeasonRecap(
+      filterRowsToActive(periodRows, activeIds),
+      filterRowsToActive(previousRows, activeIds),
+      String(year)
+    );
   }
 }
 

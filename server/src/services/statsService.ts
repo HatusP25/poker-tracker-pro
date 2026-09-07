@@ -84,8 +84,9 @@ export class StatsService {
   ): Promise<LeaderboardEntry[]> {
     const timeframeStart = getTimeframeStart(timeframe, new Date());
 
+    // F-14: the standings are a derived surface — deactivated players are absent.
     const players = await prisma.player.findMany({
-      where: { groupId },
+      where: { groupId, isActive: true },
       include: {
         entries: {
           where: {
@@ -147,7 +148,7 @@ export class StatsService {
     const group = await prisma.group.findUnique({
       where: { id: groupId },
       include: {
-        players: { select: { isActive: true } },
+        players: { select: { id: true, isActive: true } },
         sessions: {
           where: COMPLETED_SESSION_FILTER,
           include: { entries: { include: { player: { select: { name: true } } } } },
@@ -175,6 +176,9 @@ export class StatsService {
       })),
       players: group.players,
       leaderboard,
+      // The recent-night winner is a per-player callout (F-14); pot and player
+      // count stay whole.
+      activePlayerIds: new Set(group.players.filter((p) => p.isActive).map((p) => p.id)),
     });
   }
 

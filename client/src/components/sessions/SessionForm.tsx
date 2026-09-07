@@ -65,7 +65,7 @@ const SessionForm = ({ groupId, defaultBuyIn, onSuccess, cloneFrom, currency }: 
   const [error, setError] = useState<string | null>(null);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
 
-  const { data: players = [] } = usePlayersByGroup(groupId);
+  const { data: players = [] } = usePlayersByGroup(groupId, true);
   const createSession = useCreateSession();
   const createTemplate = useCreateTemplate();
 

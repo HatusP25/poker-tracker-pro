@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { computeNightTitles } from './banterService';
 import { NightTitle } from '../types/banter';
 import { withDerivedRebuyEvents } from '../utils/rebuys';
+import { filterRowsToActive, fetchActivePlayerIds } from './activeRoster';
 import { COMPLETED_SESSION_FILTER } from './statsRules';
 import {
   computeRankings,
@@ -83,9 +84,22 @@ export class SessionSummaryService {
       cashOut: e.cashOut,
     }));
 
+    const activeIds = await fetchActivePlayerIds(groupId);
+
+    // D-D: the cross-night rules (ranks, streaks, milestones) are derived
+    // surfaces and exclude deactivated players. The night's own facts — pot,
+    // player count, highlights, titles — describe the evening as it happened (D-A).
+    //
+    // Both inputs must be filtered together: all three cross-night rules iterate
+    // the night's entry list and look each player up in the history. Filtering
+    // only the history would render a deactivated player as a rank-0 "brand new
+    // player" with a streak computed from nothing.
+    const activeRows = filterRowsToActive(rows, activeIds);
+    const activeEntries = entries.filter((e) => activeIds.has(e.playerId));
+
     const cutoff = session.date.toISOString();
-    const rankingsBefore = computeRankings(sessionsUpTo(rows, cutoff, true));
-    const rankingsAfter = computeRankings(sessionsUpTo(rows, cutoff, false));
+    const rankingsBefore = computeRankings(sessionsUpTo(activeRows, cutoff, true));
+    const rankingsAfter = computeRankings(sessionsUpTo(activeRows, cutoff, false));
 
     // Recorded rebuys win; nights that never recorded any derive from the totals.
     const rebuyEvents = withDerivedRebuyEvents(
@@ -105,10 +119,16 @@ export class SessionSummaryService {
         playerCount: session.entries.length,
         totalPot: session.entries.reduce((sum, e) => sum + e.buyIn, 0),
       },
-      rankingChanges: computeRankingChanges(entries, rankingsBefore, rankingsAfter),
+      rankingChanges: computeRankingChanges(activeEntries, rankingsBefore, rankingsAfter),
       highlights: computeHighlights(entries, rebuysByPlayer),
-      streaks: computeStreakUpdates(rows, entries, cutoff),
-      milestones: computeMilestones(rows, entries, cutoff, rankingsBefore, rankingsAfter),
+      streaks: computeStreakUpdates(activeRows, activeEntries, cutoff),
+      milestones: computeMilestones(
+        activeRows,
+        activeEntries,
+        cutoff,
+        rankingsBefore,
+        rankingsAfter
+      ),
       titles: computeNightTitles(entries, rebuyEvents),
     };
   }
