@@ -10,6 +10,40 @@ Live backlog is now [/BACKLOG.md](../BACKLOG.md); high-level summary log is [/CH
 
 ---
 
+## 2026-09-14 — Night-level totals really do stay whole (F-14 fix)
+
+**Why** Reviewing F-14 after it merged. D-B is explicit — "night-level totals stay whole. Pot size,
+players-per-night, average session size and the group's night count describe *the night*, not the
+roster" — and the CHANGELOG entry promised it in those words. Three surfaces didn't honour it.
+
+`filterRowsToActive` narrows `entries` before the rules run, and these three derive a night-level
+total by summing or counting whatever entries survive:
+
+- `computeRecords` → `biggestPot` (`insightsService.ts:74`)
+- `computeSeasonRecap` → `totalPot` (`insightsService.ts:389`)
+- `computeGroupAngles` → `tableSizeBucket(s.entries.length)` (`anglesRules.ts:170`)
+
+Demonstrated on a five-handed $100 night with two players deactivated: pot $100 → $60, season total
+$100 → $60, table size `5-handed` → `3-handed`. The last is the worst of the three, because a
+player's own short-handed record changes retroactively when *somebody else* leaves the group.
+
+**Not a deliberate deviation.** F-14's integration tests assert D-B correctly everywhere they look —
+`playerCount`/`totalPot` whole on the dashboard's recent sessions (`:133`) and on the session summary
+(`:212`) — and `avgSessionSize` is computed off unfiltered rows. These three simply weren't covered.
+
+**Changed**
+- `activeRoster.ts` — `NightTotals` (`nightPot`, `nightPlayerCount`), recorded on any row the filter
+  narrows, computed from the entries *before* narrowing. Set only when something was actually
+  removed: an untouched row's entries are already whole and summing them is exact. A second pass
+  preserves what the first recorded, so the value is always the original night.
+  `ActiveFilterableRow.entries` widened to carry `buyIn` — all four row types already had it.
+- The three rules read `nightPot` / `nightPlayerCount` in preference to the entries, with the sum as
+  fallback so unfiltered callers are unaffected.
+- Server-only. No API shape changed, so no client type mirror was needed.
+
+**Verification** server unit 354 → 363 ✓ · integration 174 → 176 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 412 ✓ · build ✓ · E2E 18 ✓.
+
 ## 2026-09-07 — Deactivated player visibility (F-14)
 
 **Why** User request. `Player.isActive` was a roster flag, not a visibility flag: it gated the picker

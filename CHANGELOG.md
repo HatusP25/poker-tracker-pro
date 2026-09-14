@@ -10,6 +10,28 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-09-14 — Night-level totals really do stay whole (F-14 fix)
+
+F-14 promised that "a six-player night is still a six-player night with the same pot". On three
+surfaces it wasn't: deactivation narrows the entry list before the rules run, and those three
+summed or counted the entries that were left. A five-handed $100 game read as a three-handed $60
+one the moment two of its players left the group.
+
+- **Hall of Fame "Biggest Pot"** and **Poker Wrapped's season total** shrank by the departed
+  players' buy-ins.
+- **The table-size split** on every player card relabelled historical nights — "5-handed" became
+  "3-handed" — so a player's short-handed record changed retroactively when somebody else left.
+
+`filterRowsToActive` now records the night's real pot and seat count on any row it narrows, and the
+three rules read those in preference to the entries. Only on rows it actually narrowed: where
+nothing was removed the entries are already whole. The dashboard and session-summary paths were
+already correct and are untouched.
+
+### Tests
++9 server unit (`activeRoster`, `insightsService`, `anglesRules`) and +2 integration on the real
+endpoints. Server unit 354 → 363, integration 174 → 176.
+
+
 ### 2026-09-07 — Deactivated players leave the story (F-14)
 
 Deactivating a player only ever stopped them being added to *new* nights. They kept a place in the

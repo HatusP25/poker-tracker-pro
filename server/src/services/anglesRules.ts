@@ -83,6 +83,13 @@ export interface AngleSessionRow {
   location: string | null;
   entries: AngleEntryRow[];
   rebuyEvents: AngleRebuyRow[];
+  /**
+   * Set by `filterRowsToActive` when deactivation narrowed this row. D-B: the
+   * seat count describes the night, not the roster — without it a five-handed
+   * game is relabelled three-handed the moment two of its players leave.
+   */
+  nightPot?: number;
+  nightPlayerCount?: number;
 }
 
 export interface AngleRosterRow {
@@ -167,7 +174,7 @@ export function buildNightsByPlayer(
   for (const s of orderSessions(sessions)) {
     const day = dayOfWeekBucket(s.date);
     const venue = venueBucket(s.location);
-    const tableSize = tableSizeBucket(s.entries.length);
+    const tableSize = tableSizeBucket(s.nightPlayerCount ?? s.entries.length);
     const departuresTracked = s.entries.some((e) => e.cashedOutEarly);
 
     const rebuyCounts = new Map<string, number>();

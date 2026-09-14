@@ -18,6 +18,7 @@ import {
   type AngleSessionRow,
   type AngleEntryRow,
 } from './anglesRules';
+import { filterRowsToActive } from './activeRoster';
 
 // ---- fixtures ----------------------------------------------------------------
 
@@ -624,5 +625,33 @@ describe('computeGroupAngles — the player-story selector', () => {
     const angles = computeGroupAngles('g3', oneNight, [roster('n', 'Newbie')]).players[0].angles;
     expect(angles.length).toBeGreaterThan(0);
     expect(angles.some((a) => a.id === 'newcomer' || a.id === 'career-balance')).toBe(true);
+  });
+});
+
+/* F-14 + D-B: players-per-night describes the night, not the roster. Deactivation
+ * narrows the entry list before the split runs, which relabelled historical
+ * nights — a five-handed game became three-handed the moment two players left. */
+describe('table size survives deactivation', () => {
+  const fiveHanded = session('s1', '2026-01-04', [
+    entry('a', 20, 100),
+    entry('b', 20, 0),
+    entry('c', 20, 0),
+    entry('d', 20, 0),
+    entry('e', 20, 0),
+  ]);
+  const stillHere = [roster('a', 'A'), roster('b', 'B'), roster('c', 'C')];
+
+  const labelsFor = (rows: AngleSessionRow[]) =>
+    computeGroupAngles('g', rows, stillHere)
+      .players.find((p) => p.playerId === 'a')!
+      .splits.tableSize.buckets.map((b) => b.label);
+
+  it('still calls a five-handed night five-handed after two players leave', () => {
+    const narrowed = filterRowsToActive([fiveHanded], new Set(['a', 'b', 'c']), { dropEmpty: false });
+    expect(labelsFor(narrowed)).toEqual(['5-handed']);
+  });
+
+  it('agrees with the unfiltered payload', () => {
+    expect(labelsFor([fiveHanded])).toEqual(['5-handed']);
   });
 });

@@ -71,3 +71,42 @@ describe('filterRowsToActive', () => {
     expect(rows[0].rebuyEvents).toHaveLength(1);
   });
 });
+
+/* D-B: "night-level totals stay whole. Pot size, players-per-night, average
+ * session size and the group's night count describe *the night*, not the
+ * roster." Narrowing a row destroys both, so the filter remembers them. */
+describe('filterRowsToActive night totals', () => {
+  it("remembers the night's real pot and seat count when it narrows a row", () => {
+    const rows = [row('s1', ['alice', 'bob', 'carol'])]; // 3 x $20
+    const out = filterRowsToActive(rows, new Set(['alice']));
+
+    expect(out[0].entries).toHaveLength(1);
+    expect(out[0].nightPot).toBe(60);
+    expect(out[0].nightPlayerCount).toBe(3);
+  });
+
+  it('remembers them even when the night empties out entirely', () => {
+    const rows = [row('s1', ['bob', 'carol'])];
+    const out = filterRowsToActive(rows, new Set(['alice']), { dropEmpty: false });
+
+    expect(out[0].entries).toEqual([]);
+    expect(out[0].nightPot).toBe(40);
+    expect(out[0].nightPlayerCount).toBe(2);
+  });
+
+  it('leaves them off a row it did not narrow, where the entries are already whole', () => {
+    const rows = [row('s1', ['alice', 'bob'])];
+    const out = filterRowsToActive(rows, new Set(['alice', 'bob']));
+
+    expect(out[0].nightPot).toBeUndefined();
+    expect(out[0].nightPlayerCount).toBeUndefined();
+  });
+
+  it('keeps the original totals through a second pass', () => {
+    const once = filterRowsToActive([row('s1', ['alice', 'bob', 'carol'])], new Set(['alice', 'bob']));
+    const twice = filterRowsToActive(once, new Set(['alice']));
+
+    expect(twice[0].nightPot).toBe(60);
+    expect(twice[0].nightPlayerCount).toBe(3);
+  });
+});
