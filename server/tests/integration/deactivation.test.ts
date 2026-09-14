@@ -213,6 +213,33 @@ describe('F-14 deactivated player visibility', () => {
     expect(res.body.session.totalPot).toBe(30);
   });
 
+  it('keeps the biggest pot and the season pot whole', async () => {
+    const { group, carol } = await seed();
+    await deactivate(carol.id);
+
+    const [records, recap] = await Promise.all([
+      request(app).get(`/api/stats/groups/${group.id}/records`),
+      request(app).get(`/api/stats/groups/${group.id}/season?year=2026`),
+    ]);
+
+    // D-B: both nights were three-handed at $10 a seat. Carol leaving does not
+    // make the pots she sat in any smaller.
+    expect(records.body.biggestPot.total).toBe(30);
+    expect(recap.body.totalPot).toBe(60);
+    expect(recap.body.totalSessions).toBe(2);
+  });
+
+  it('still calls a three-handed night three-handed in the angles payload', async () => {
+    const { group, carol, alice } = await seed();
+    await deactivate(carol.id);
+
+    const res = await request(app).get(`/api/stats/groups/${group.id}/angles`);
+    const forAlice = res.body.players.find((p: any) => p.playerId === alice.id);
+
+    // D-B names players-per-night as a night-level total.
+    expect(forAlice.splits.tableSize.buckets.map((b: any) => b.label)).toEqual(['3-handed']);
+  });
+
   it('restores every surface when the player is reactivated', async () => {
     const { group, carol } = await seed();
     await deactivate(carol.id);

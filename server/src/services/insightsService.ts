@@ -42,6 +42,13 @@ export interface SessionRow {
   id: string;
   date: string; // ISO string
   entries: EntryRow[];
+  /**
+   * Set by `filterRowsToActive` when deactivation narrowed this row. D-B: the
+   * pot and the seat count describe the night, not the roster, so they are read
+   * in preference to summing the (possibly narrowed) entries.
+   */
+  nightPot?: number;
+  nightPlayerCount?: number;
 }
 
 // ---- Module 1: Records (pure) ----
@@ -71,7 +78,7 @@ export function computeRecords(sessions: SessionRow[]): GroupRecords {
   let biggestPot: GroupRecords['biggestPot'] = null;
 
   for (const s of ordered) {
-    const pot = s.entries.reduce((sum, e) => sum + e.buyIn, 0);
+    const pot = s.nightPot ?? s.entries.reduce((sum, e) => sum + e.buyIn, 0);
     if (!biggestPot || pot > biggestPot.total) {
       biggestPot = { sessionId: s.id, date: s.date, total: round(pot) };
     }
@@ -388,7 +395,7 @@ export function computeSeasonRecap(
     totalSessions: periodSessions.length,
     totalPot: round(
       periodSessions.reduce(
-        (sum, s) => sum + s.entries.reduce((es, e) => es + e.buyIn, 0),
+        (sum, s) => sum + (s.nightPot ?? s.entries.reduce((es, e) => es + e.buyIn, 0)),
         0
       )
     ),

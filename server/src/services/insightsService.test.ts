@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeRecords, type SessionRow } from './insightsService';
+import { computeRecords, computeSeasonRecap, type SessionRow } from './insightsService';
+import { filterRowsToActive } from './activeRoster';
 
 // Helper to build a session row. rebuys = number of rebuy events for that player.
 const makeSession = (
@@ -205,5 +206,40 @@ describe('computeSeasonRecap', () => {
     expect(recap.totalSessions).toBe(0);
     expect(recap.champion).toBeNull();
     expect(recap.biggestMover).toBeNull();
+  });
+});
+
+/* F-14 + D-B. Deactivation narrows the entry list before these rules run, which
+ * silently shrank the two figures that describe the night rather than the
+ * roster. `filterRowsToActive` now remembers the real ones. */
+describe('night-level totals survive deactivation', () => {
+  const fiveHanded = makeSession('s1', '2026-01-04', [
+    { playerId: 'a', playerName: 'A', buyIn: 20, cashOut: 100, rebuys: 0 },
+    { playerId: 'b', playerName: 'B', buyIn: 20, cashOut: 0, rebuys: 0 },
+    { playerId: 'c', playerName: 'C', buyIn: 20, cashOut: 0, rebuys: 0 },
+    { playerId: 'd', playerName: 'D', buyIn: 20, cashOut: 0, rebuys: 0 },
+    { playerId: 'e', playerName: 'E', buyIn: 20, cashOut: 0, rebuys: 0 },
+  ]);
+  const stillHere = new Set(['a', 'b', 'c']);
+
+  it('keeps the biggest pot whole when two of the five have left the group', () => {
+    const whole = computeRecords([fiveHanded]);
+    const narrowed = computeRecords(filterRowsToActive([fiveHanded], stillHere));
+
+    expect(whole.biggestPot?.total).toBe(100);
+    expect(narrowed.biggestPot?.total).toBe(100);
+  });
+
+  it('keeps the season pot whole when two of the five have left the group', () => {
+    const whole = computeSeasonRecap([fiveHanded], [], '2026');
+    const narrowed = computeSeasonRecap(filterRowsToActive([fiveHanded], stillHere), [], '2026');
+
+    expect(whole.totalPot).toBe(100);
+    expect(narrowed.totalPot).toBe(100);
+  });
+
+  it('still reports the winner from the active roster only', () => {
+    const narrowed = computeRecords(filterRowsToActive([fiveHanded], stillHere));
+    expect(narrowed.biggestWin?.playerId).toBe('a');
   });
 });
