@@ -138,7 +138,7 @@ describe('F-14 deactivated player visibility', () => {
     expect(res.body.activePlayers).toBe(2);
   });
 
-  it('returns a null winner for a night only deactivated players played', async () => {
+  it('names no winner for a night only deactivated players played', async () => {
     const { group, carol } = await seed();
     await prisma.session.create({
       data: {
