@@ -41,8 +41,20 @@ player's own short-handed record changes retroactively when *somebody else* leav
   fallback so unfiltered callers are unaffected.
 - Server-only. No API shape changed, so no client type mirror was needed.
 
-**Verification** server unit 354 → 363 ✓ · integration 174 → 176 ✓ · server tsc ✓ · client tsc ✓ ·
-client unit 412 ✓ · build ✓ · E2E 18 ✓.
+**The drop path, found while reviewing the fix.** Narrowing was only one of the two ways a night
+lost its totals. When *every* player on a night has since been deactivated the row empties out, and
+`dropEmpty: true` removed it before any rule saw it — so `nightPot` was never consulted. Probed on a
+group with a $900 night played only by two since-departed players: season `totalSessions` 2 → 1,
+season `totalPot` $920 → $20, and `biggestPot` reported the $20 night.
+
+`insightsService` now passes `KEEP_EMPTY_NIGHTS` (`{ dropEmpty: false }`) on all four of its filter
+calls, matching what `anglesService` already did for its attendance denominators. The empty row
+carries its `nightPot`, so `biggestPot` and the season total stay honest and the night still counts.
+Only `computeBeltLineage` needs the drop — it banks `nightsHeld` before checking whether anyone
+played — and that lives in `banterService`, which keeps the default.
+
+**Verification** server unit 354 → 363 ✓ · integration 174 → 177 ✓ · server tsc ✓ · client tsc ✓ ·
+client unit 412 ✓ · E2E 18 ✓.
 
 ## 2026-09-07 — Deactivated player visibility (F-14)
 

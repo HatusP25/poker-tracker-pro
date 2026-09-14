@@ -27,9 +27,16 @@ three rules read those in preference to the entries. Only on rows it actually na
 nothing was removed the entries are already whole. The dashboard and session-summary paths were
 already correct and are untouched.
 
+The same flaw had a second route in. When *every* player on a night has since been deactivated the
+row empties out and was dropped entirely, taking the night's pot and the group's night count with
+it — a $900 pot hid behind a $20 one, and Poker Wrapped reported one night where the group had
+played two. Insights now keeps emptied nights, as the angles engine already did; only the belt
+genuinely needs them dropped, because `computeBeltLineage` banks a reign before checking whether
+anyone played.
+
 ### Tests
-+9 server unit (`activeRoster`, `insightsService`, `anglesRules`) and +2 integration on the real
-endpoints. Server unit 354 → 363, integration 174 → 176.
++9 server unit (`activeRoster`, `insightsService`, `anglesRules`) and +3 integration on the real
+endpoints. Server unit 354 → 363, integration 174 → 177.
 
 
 ### 2026-09-07 — Deactivated players leave the story (F-14)

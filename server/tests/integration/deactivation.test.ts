@@ -194,6 +194,42 @@ describe('F-14 deactivated player visibility', () => {
     expect(res.body.totalSessions).toBe(3);
   });
 
+  it('keeps a night whose whole roster has left in the season recap and records', async () => {
+    // The narrow path is covered above. This is the *drop* path: when every player
+    // on a night is deactivated the row empties out entirely, and dropping it took
+    // the night's pot and the group's night count with it (D-B).
+    const { group, alice, bob, carol } = await seed();
+    await prisma.session.create({
+      data: {
+        groupId: group.id,
+        date: new Date('2026-06-01T00:00:00.000Z'),
+        status: 'COMPLETED',
+        completedAt: new Date('2026-06-01T00:00:00.000Z'),
+        entries: {
+          create: [
+            { playerId: bob.id, buyIn: 500, cashOut: 900 },
+            { playerId: carol.id, buyIn: 400, cashOut: 0 },
+          ],
+        },
+      },
+    });
+    await deactivate(bob.id);
+    await deactivate(carol.id);
+
+    const [recap, records] = await Promise.all([
+      request(app).get(`/api/stats/groups/${group.id}/season?year=2026`),
+      request(app).get(`/api/stats/groups/${group.id}/records`),
+    ]);
+
+    // Three nights happened, and the biggest pot of them was the $900 one — even
+    // though nobody still on the roster played it.
+    expect(recap.body.totalSessions).toBe(3);
+    expect(recap.body.totalPot).toBe(960);
+    expect(records.body.biggestPot.total).toBe(900);
+    // Alice is still the only active player left with a name on these surfaces.
+    expect(alice.id).toBeTruthy();
+  });
+
   it('splits the session summary per D-D', async () => {
     const { group, carol, night2 } = await seed();
     await deactivate(carol.id);

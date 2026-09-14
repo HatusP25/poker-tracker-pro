@@ -21,6 +21,17 @@ import {
 import { withDerivedRebuyEvents } from '../utils/rebuys';
 import { previousSeason } from './seasonRules';
 import { filterRowsToActive, fetchActivePlayerIds } from './activeRoster';
+
+/**
+ * Insights reports night-level totals — `biggestPot`, a season's `totalPot` and
+ * `totalSessions`, and the attendance denominators — which D-B says describe the
+ * night, not the roster. A night whose whole roster has since been deactivated
+ * still happened, so it has to survive the filter with an empty entry list and
+ * its recorded `nightPot`. Dropping it hid a $900 pot behind a $20 one.
+ *
+ * Only `computeBeltLineage` needs the drop, and that lives in banterService.
+ */
+const KEEP_EMPTY_NIGHTS = { dropEmpty: false } as const;
 import { COMPLETED_SESSION_FILTER } from './statsRules';
 
 // ---- Tunable constants ----
@@ -510,7 +521,7 @@ export class InsightsService {
       fetchSessionRows(groupId),
       fetchActivePlayerIds(groupId),
     ]);
-    return computeRecords(filterRowsToActive(rows, activeIds));
+    return computeRecords(filterRowsToActive(rows, activeIds, KEEP_EMPTY_NIGHTS));
   }
 
   async getHeadToHead(
@@ -522,7 +533,7 @@ export class InsightsService {
       fetchSessionRows(groupId),
       fetchActivePlayerIds(groupId),
     ]);
-    return computeHeadToHead(filterRowsToActive(rows, activeIds), playerA, playerB);
+    return computeHeadToHead(filterRowsToActive(rows, activeIds, KEEP_EMPTY_NIGHTS), playerA, playerB);
   }
 
   async getForm(groupId: string): Promise<PlayerForm[]> {
@@ -536,7 +547,7 @@ export class InsightsService {
     const activeIds = new Set(players.map((p) => p.id));
     const names = new Map(players.map((p) => [p.id, p.name]));
     return computeForm(
-      filterRowsToActive(rows, activeIds),
+      filterRowsToActive(rows, activeIds, KEEP_EMPTY_NIGHTS),
       players.map((p) => p.id),
       names
     );
@@ -565,8 +576,8 @@ export class InsightsService {
 
     const activeIds = await fetchActivePlayerIds(groupId);
     return computeSeasonRecap(
-      filterRowsToActive(periodRows, activeIds),
-      filterRowsToActive(previousRows, activeIds),
+      filterRowsToActive(periodRows, activeIds, KEEP_EMPTY_NIGHTS),
+      filterRowsToActive(previousRows, activeIds, KEEP_EMPTY_NIGHTS),
       season.name
     );
   }
@@ -587,8 +598,8 @@ export class InsightsService {
     ]);
     const activeIds = await fetchActivePlayerIds(groupId);
     return computeSeasonRecap(
-      filterRowsToActive(periodRows, activeIds),
-      filterRowsToActive(previousRows, activeIds),
+      filterRowsToActive(periodRows, activeIds, KEEP_EMPTY_NIGHTS),
+      filterRowsToActive(previousRows, activeIds, KEEP_EMPTY_NIGHTS),
       String(year)
     );
   }
