@@ -10,6 +10,16 @@ prod), so entries are dated rather than versioned. Add an entry whenever somethi
 
 ## [Unreleased]
 
+### 2026-10-04 — Live session start: editable buy-ins, real default buy-in
+
+- **Buy-in fields can be cleared and retyped.** The start form threw away any keystroke that wasn't
+  already a valid amount, so erasing the field to type a custom value did nothing. Buy-ins are now
+  kept as typed and validated on Start, with an inline message under any empty/invalid one.
+- **The group's default buy-in is used.** The selected group was a snapshot saved in the browser
+  when it was picked, so a default changed later in Settings never reached the form (it kept
+  showing the old value, typically the $5 creation default). The selected group now refreshes from
+  the server.
+
 ### 2026-09-14 — Night-level totals really do stay whole (F-14 fix)
 
 F-14 promised that "a six-player night is still a six-player night with the same pot". On three

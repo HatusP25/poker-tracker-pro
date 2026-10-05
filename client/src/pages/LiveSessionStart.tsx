@@ -12,7 +12,8 @@ import { useRole } from '@/context/RoleContext';
 import { usePlayersByGroup } from '@/hooks/usePlayers';
 import { useStartLiveSession } from '@/hooks/useLiveSessions';
 import { useCreateTemplate } from '@/hooks/useTemplates';
-import { validateBuyIn, MAX_BUY_IN } from '@/lib/moneyValidation';
+import { MAX_BUY_IN } from '@/lib/moneyValidation';
+import { resolveStartBuyIns } from '@/lib/liveStartBuyIns';
 import TemplateSelector from '@/components/templates/TemplateSelector';
 import SaveTemplateDialog from '@/components/templates/SaveTemplateDialog';
 import { Play, Eye } from 'lucide-react';
@@ -29,7 +30,9 @@ const LiveSessionStart = () => {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState(format(new Date(), 'HH:mm'));
   const [location, setLocation] = useState('');
-  const [selectedPlayers, setSelectedPlayers] = useState<Record<string, number>>({});
+  // Buy-ins are kept as typed text so a field can be cleared and retyped.
+  const [selectedPlayers, setSelectedPlayers] = useState<Record<string, string>>({});
+  const [showBuyInErrors, setShowBuyInErrors] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
 
@@ -80,7 +83,7 @@ const LiveSessionStart = () => {
     if (checked) {
       setSelectedPlayers({
         ...selectedPlayers,
-        [playerId]: selectedGroup.defaultBuyIn,
+        [playerId]: selectedGroup.defaultBuyIn.toString(),
       });
     } else {
       const newPlayers = { ...selectedPlayers };
@@ -96,9 +99,9 @@ const LiveSessionStart = () => {
     const validPlayerIds = templatePlayerIds.filter((id) => activePlayerIds.has(id));
     const skippedCount = templatePlayerIds.length - validPlayerIds.length;
 
-    const newSelectedPlayers: Record<string, number> = {};
+    const newSelectedPlayers: Record<string, string> = {};
     validPlayerIds.forEach((playerId) => {
-      newSelectedPlayers[playerId] = selectedGroup.defaultBuyIn;
+      newSelectedPlayers[playerId] = selectedGroup.defaultBuyIn.toString();
     });
 
     setSelectedPlayers(newSelectedPlayers);
@@ -130,15 +133,15 @@ const LiveSessionStart = () => {
   };
 
   const handleBuyInChange = (playerId: string, value: string) => {
-    const numValue = parseFloat(value);
-    // Only accept valid buy-ins (> $0, within the cap); ignore nonsensical input.
-    if (validateBuyIn(numValue).valid) {
-      setSelectedPlayers({
-        ...selectedPlayers,
-        [playerId]: numValue,
-      });
-    }
+    setSelectedPlayers({
+      ...selectedPlayers,
+      [playerId]: value,
+    });
+    setError(null);
   };
+
+  const { players: playersArray, errors: buyInErrors } = resolveStartBuyIns(selectedPlayers);
+  const hasBuyInErrors = Object.keys(buyInErrors).length > 0;
 
   const handleStart = () => {
     const playerCount = Object.keys(selectedPlayers).length;
@@ -148,10 +151,11 @@ const LiveSessionStart = () => {
       return;
     }
 
-    const playersArray = Object.entries(selectedPlayers).map(([playerId, buyIn]) => ({
-      playerId,
-      buyIn,
-    }));
+    if (hasBuyInErrors) {
+      setShowBuyInErrors(true);
+      setError('Fix the highlighted buy-ins before starting');
+      return;
+    }
 
     startSession.mutate({
       groupId: selectedGroup.id,
@@ -231,6 +235,7 @@ const LiveSessionStart = () => {
         <CardContent className="space-y-3">
           {players.filter(p => p.isActive).map((player) => {
             const isSelected = player.id in selectedPlayers;
+            const buyInError = showBuyInErrors ? buyInErrors[player.id] : undefined;
             return (
               <div
                 key={player.id}
@@ -248,18 +253,23 @@ const LiveSessionStart = () => {
                   {player.name}
                 </Label>
                 {isSelected && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Buy-in:</span>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0"
-                      max={MAX_BUY_IN}
-                      value={selectedPlayers[player.id]}
-                      onChange={(e) => handleBuyInChange(player.id, e.target.value)}
-                      className="w-24"
-                    />
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Buy-in:</span>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        max={MAX_BUY_IN}
+                        value={selectedPlayers[player.id]}
+                        onChange={(e) => handleBuyInChange(player.id, e.target.value)}
+                        onBlur={() => setShowBuyInErrors(true)}
+                        aria-invalid={!!buyInError}
+                        className={buyInError ? 'w-24 border-destructive' : 'w-24'}
+                      />
+                    </div>
+                    {buyInError && <p className="text-xs text-destructive">{buyInError}</p>}
                   </div>
                 )}
               </div>

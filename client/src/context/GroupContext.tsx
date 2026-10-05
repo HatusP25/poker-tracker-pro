@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useGroup } from '@/hooks/useGroups';
+import { refreshSelectedGroup } from '@/lib/liveStartBuyIns';
 import type { Group } from '@/types';
 
 interface GroupContextType {
@@ -15,6 +17,13 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
     const saved = localStorage.getItem('selectedGroup');
     return saved ? JSON.parse(saved) : null;
   });
+
+  // The persisted copy goes stale when group settings change (e.g. default buy-in),
+  // so keep it in sync with the server copy.
+  const { data: freshGroup } = useGroup(selectedGroup?.id || '');
+  useEffect(() => {
+    setSelectedGroup((current) => (current ? refreshSelectedGroup(current, freshGroup) : current));
+  }, [freshGroup]);
 
   useEffect(() => {
     // Save to localStorage whenever it changes
